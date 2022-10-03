@@ -3,5 +3,8 @@ networkx
 sphinx
 pytest
 manuel
+pydot
+matplotlib
 sphinx_rtd_theme
+pygraphviz
 -e .
