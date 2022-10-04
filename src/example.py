@@ -30,8 +30,10 @@ tree.set_random_parameters()
 #tree.tree.add_edges_from(nodes)
 #tree.tree.add_edge("Ø","X1")
 agraph = nx.nx_agraph.to_agraph(tree.tree)
-
 agraph.layout("dot")
 agraph.draw("cstree.png")
 
+
+x = tree.sample(20)
+print(x)
 #dags = tree.to_minimal_context_graphs()

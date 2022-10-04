@@ -128,15 +128,20 @@ class CStree(nx.Graph):
         Args:
             n (int): number of random samples.
         """
-
-        x = np.zeros(self.p)
-
-        x[0] = self.get_stage(0).cond_sample()
-
-        for i in range(self.p):
-            x[i] = self.get_stage(i).cond_sample(x[i-1])
-
-        return x
+    
+        xs = []        
+        for _ in range(n):       
+            node = ()
+            x = [] 
+            while self.tree.out_degree(node) != 0:
+                edges = list(self.tree.out_edges(node))
+                probabilities = [self.tree[e[0]][e[1]]["cond_prob"] for e in edges]
+                elements = [str(e[1]) for e in edges]
+                ind = np.random.choice(range(len(edges)), 1, p=probabilities)[0]
+                node = edges[ind][1]
+                x.append(node[-1])
+            xs.append(x)
+        return np.array(xs)
 
     def pdf(self, x):
         """Density function exaluated at x
