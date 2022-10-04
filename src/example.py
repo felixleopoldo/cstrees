@@ -4,17 +4,16 @@
 import cstrees.cstree as ct
 import matplotlib.pyplot as plt
 import networkx as nx
+import numpy as np
 import pydot
 from networkx.drawing.nx_pydot import graphviz_layout
 
-
 # CStree from Figure 1 in (Duarte & Solus, 2022)
 
+np.random.seed(1)
 p = 4
-
 co = range(1, p+1)
 tree = ct.CStree(co)
-
 tree.set_cardinalities([None] + [2] * p)
 tree.add_stages({
     0: [],
@@ -26,46 +25,15 @@ tree.add_stages({
 })
 
 tree.create_tree()
-
-
 tree.set_random_parameters()
-
-# print(tree.tree.edges)
-#print(tree.tree.nodes)
-
-#pos = graphviz_layout(tree.tree, prog="twopi")
-#nx.draw(tree, pos)
-# plt.show()
-
-# plt.savefig("test.png")
-
-
-# options = {
-#     "font_size": 5,
-#     "node_size": 500,
-#     "node_color": "white",
-#     "edgecolors": "black",
-#     "linewidths": 1,
-#     "width": 1,
-# }
-# plt.figure(figsize=(8, 8))
-# pos = graphviz_layout(tree.tree, prog="dot",)
-# nx.draw_networkx(tree.tree, pos=pos, with_labels=True, **options)
-
-# # Set margins for the axes so that nodes aren't clipped
-# ax = plt.gca()
-# ax.margins(0.20)
-# plt.axis("off")
-# plt.show()
-
-
-#print(tree.tree.nodes)
-
+#nodes = [("X"+str(i), "X"+str(i+1)) for i in range(1, p)]
+#tree.tree.add_edges_from(nodes)
+#tree.tree.add_edge("Ø","X1")
 agraph = nx.nx_agraph.to_agraph(tree.tree)
 agraph.layout("dot")
-
-
 agraph.draw("cstree.png")
 
 
+x = tree.sample(20)
+print(x)
 #dags = tree.to_minimal_context_graphs()
