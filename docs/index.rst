@@ -10,7 +10,7 @@ Welcome to CStrees's documentation!
    :maxdepth: 2
 
    Installation instructions <install.rst>
-   API documentation <apidoc.rst>
+   API documentation <source/modules.rst> 
    Frequently asked questions <faq.rst>
    License <license.rst>
 
