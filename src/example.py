@@ -26,9 +26,9 @@ tree.add_stages({
 
 tree.create_tree()
 tree.set_random_parameters()
-nodes = [("X"+str(i), "X"+str(i+1)) for i in range(1, p)]
-tree.tree.add_edges_from(nodes)
-tree.tree.add_edge("Ø","X1")
+#nodes = [("X"+str(i), "X"+str(i+1)) for i in range(1, p)]
+#tree.tree.add_edges_from(nodes)
+#tree.tree.add_edge("Ø","X1")
 agraph = nx.nx_agraph.to_agraph(tree.tree)
 
 agraph.layout("dot")
