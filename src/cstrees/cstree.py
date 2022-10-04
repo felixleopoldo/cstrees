@@ -1,6 +1,6 @@
 import networkx as nx
 import numpy as np
-
+import matplotlib
 
 class CStree(nx.Graph):
     """ Naive implementation of a CStree for testing purposes and sanity checks.
@@ -29,7 +29,7 @@ class CStree(nx.Graph):
         """Adds a stage.
         """
         self.stages = stages
-        self.stage_probs = {s:[] for s in stages}
+        self.stage_probs = {key:[None]*len(val) for key, val in stages.items()}
 
     def get_stage(self, level: int):
         """ Get all the stages in one level.
@@ -40,21 +40,46 @@ class CStree(nx.Graph):
         pass
 
     def set_random_parameters(self):
+        # Set stage prbabilities
+        
+        cols = ["red", "blue", "green", "purple"]    
+        self.colors = {key:cols[:len(val)] for key, val in self.stages.items()}
+        for lev, stages in self.stages.items():
+            for i, stage_dict in enumerate(stages):
+                probs = np.random.dirichlet([1] * self.cards[lev+1])                
+                self.stage_probs[lev][i] = probs
+
+
+        # Check if the node is part part of a context
+        # if so we may overwrite probs. Otherwise, generate new ones.
         for node in self.tree.nodes():
             if len(node) == self.p:
                 continue
             lev = len(node)
-            for i, stage_dict in enumerate(self.stage[lev]):
-                if node in stage_dict:
-                    if self.stage_probs[lev][i] != []:
-                      
             
             children = self.tree.successors(node)
-                                
             probs = np.random.dirichlet([1] * self.cards[len(node)+1])
+
             for i, ch in enumerate(children):
-                self.tree[node][ch]["cond_prob"] = probs[i]
-                self.tree[node][ch]["label"] = round(probs[i], 2)
+                node_stage_no = self.get_stage_no(node)
+                if node_stage_no != None:
+                    prob = self.stage_probs[lev][node_stage_no][i]
+                    self.tree[node][ch]["cond_prob"] = prob
+                    self.tree[node][ch]["label"] = round(prob, 2)
+                    self.tree[node][ch]["color"] = self.colors[lev][node_stage_no]
+                    self.tree.nodes[node]["color"] = self.colors[lev][node_stage_no]
+                else:
+                    self.tree[node][ch]["cond_prob"] = probs[i]
+                    self.tree[node][ch]["label"] = round(probs[i], 2)
+
+                      
+    def get_stage_no(self, node):
+        lev = len(node)
+        for lev, stages in self.stages.items():
+            for i, stage_dict in enumerate(stages):
+                if node in stage_dict:
+                    return i
+        return None
                       
     def create_tree(self):
         self.tree = nx.DiGraph()

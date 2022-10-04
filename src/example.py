@@ -11,13 +11,14 @@ from networkx.drawing.nx_pydot import graphviz_layout
 # CStree from Figure 1 in (Duarte & Solus, 2022)
 
 p = 4
+
 co = range(1, p+1)
 tree = ct.CStree(co)
 
 tree.set_cardinalities([None] + [2] * p)
 tree.add_stages({
-    0: None,
-    1: None,
+    0: [],
+    1: [],
     2: [{(0, 0), (1, 0)}],  # green
     3: [{(0, 0, 0), (0, 1, 0)},  # blue
         {(0, 0, 1), (0, 1, 1)},  # orange
@@ -57,7 +58,6 @@ tree.set_random_parameters()
 # plt.axis("off")
 # plt.show()
 
-tree.tree.nodes[(1,)]["color"] = "red"
 
 #print(tree.tree.nodes)
 
@@ -65,7 +65,7 @@ agraph = nx.nx_agraph.to_agraph(tree.tree)
 agraph.layout("dot")
 
 
-agraph.draw("test.png")
+agraph.draw("cstree.png")
 
 
 #dags = tree.to_minimal_context_graphs()
