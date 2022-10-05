@@ -1,6 +1,9 @@
+from attr import s
+from matplotlib.style import context
 import networkx as nx
 import numpy as np
 import matplotlib
+
 
 class CStree(nx.Graph):
     """ Naive implementation of a CStree for testing purposes and sanity checks.
@@ -29,7 +32,8 @@ class CStree(nx.Graph):
         """Adds a stage.
         """
         self.stages = stages
-        self.stage_probs = {key:[None]*len(val) for key, val in stages.items()}
+        self.stage_probs = {key: [None]*len(val)
+                            for key, val in stages.items()}
 
     def get_stage(self, level: int):
         """ Get all the stages in one level.
@@ -41,14 +45,14 @@ class CStree(nx.Graph):
 
     def set_random_parameters(self):
         # Set stage prbabilities
-        
-        cols = ["red", "blue", "green", "purple"]    
-        self.colors = {key:cols[:len(val)] for key, val in self.stages.items()}
+
+        cols = ["red", "blue", "green", "purple"]
+        self.colors = {key: cols[:len(val)]
+                       for key, val in self.stages.items()}
         for lev, stages in self.stages.items():
             for i, stage_dict in enumerate(stages):
-                probs = np.random.dirichlet([1] * self.cards[lev+1])                
+                probs = np.random.dirichlet([1] * self.cards[lev+1])
                 self.stage_probs[lev][i] = probs
-
 
         # Check if the node is part part of a context
         # if so we may overwrite probs. Otherwise, generate new ones.
@@ -56,7 +60,7 @@ class CStree(nx.Graph):
             if len(node) == self.p:
                 continue
             lev = len(node)
-            
+
             children = self.tree.successors(node)
             probs = np.random.dirichlet([1] * self.cards[len(node)+1])
 
@@ -72,7 +76,6 @@ class CStree(nx.Graph):
                     self.tree[node][ch]["cond_prob"] = probs[i]
                     self.tree[node][ch]["label"] = round(probs[i], 2)
 
-                      
     def get_stage_no(self, node):
         lev = len(node)
         for lev, stages in self.stages.items():
@@ -80,12 +83,12 @@ class CStree(nx.Graph):
                 if node in stage_dict:
                     return i
         return None
-                      
+
     def create_tree(self):
         self.tree = nx.DiGraph()
 
         tovisit = [(i,) for i in range(self.cards[1])]
-        
+
         while len(tovisit) != 0:
             # Visit/create node in the tree
             node = tovisit.pop()
@@ -95,16 +98,15 @@ class CStree(nx.Graph):
             self.tree.add_edge(fr, to)
             self.tree.nodes[to]["label"] = to[-1]
             # Add more nodes to visit
-            if lev < self.p:        
-              np.random.dirichlet([1] * lev)
-              for i in range(self.cards[lev + 1]):
-                  tovisit.append(to + (i,))
+            if lev < self.p:
+                np.random.dirichlet([1] * lev)
+                for i in range(self.cards[lev + 1]):
+                    tovisit.append(to + (i,))
 
     def to_minimal_context_graphs(self):
         """ This returns a sequence of minimal context graphs (minimal I-maps).
         """
 
-        
         #csi_rels = self.csi_relations()
         #dags = get_minimal_dag_imaps(csi_rels)
 
@@ -115,7 +117,15 @@ class CStree(nx.Graph):
             These should normally be thinned out using absorption, and then we would extract
             the minmal contexts based on that.
         """
-        pass
+        csi_rels = {}
+        for key, stage_list in self.stages.items():
+            tmp = []
+            for stage in stage_list:
+                path = comp_bit_strings(stage)
+                csi_rel = CSI_relation(path)
+                tmp.append(csi_rel)
+            csi_rels[key] = tmp
+        return csi_rels
 
     def minimal_contexts(self):
         """ Returns the minimal contexts.
@@ -128,16 +138,18 @@ class CStree(nx.Graph):
         Args:
             n (int): number of random samples.
         """
-    
-        xs = []        
-        for _ in range(n):       
+
+        xs = []
+        for _ in range(n):
             node = ()
-            x = [] 
+            x = []
             while self.tree.out_degree(node) != 0:
                 edges = list(self.tree.out_edges(node))
-                probabilities = [self.tree[e[0]][e[1]]["cond_prob"] for e in edges]
+                probabilities = [self.tree[e[0]][e[1]]["cond_prob"]
+                                 for e in edges]
                 elements = [str(e[1]) for e in edges]
-                ind = np.random.choice(range(len(edges)), 1, p=probabilities)[0]
+                ind = np.random.choice(
+                    range(len(edges)), 1, p=probabilities)[0]
                 node = edges[ind][1]
                 x.append(node[-1])
             xs.append(x)
@@ -149,13 +161,53 @@ class CStree(nx.Graph):
         Args:
             x (array type): a vector.
         """
+    
+    def plot(self, filename="cstree.png"):
+        agraph = nx.nx_agraph.to_agraph(self.tree)
+        agraph.layout("dot")
+        agraph.draw(filename)
 
 
 class CSI_relation:
 
-    def __init__(self) -> None:
+    def __init__(self, path) -> None:
+        sepset = set()
+        context = [None]*(len(path)+1)
+        for i, el in enumerate(path):
+            if el is False:
+                sepset.add(i+1)
+            else:
+                context[i+1] = el
 
-        pass
+        self.sep_sets = {frozenset(sepset), frozenset([len(path)+1])}
+        self.cond_set = set()
+        
+        self.context = context
+
+    def __str__(self) -> str:
+        s = list(self.sep_sets)
+        context_str = ""
+        for key, val in enumerate(self.context):
+            if val != None:
+                context_str += "X{}={}, ".format(key, val)
+
+        return "{} ⊥ {} | {}, {}".format(
+            ["X"+str(i) for i in s[1]],
+            ["X"+str(i) for i in s[0]],
+            list(self.cond_set),
+            context_str)
+
+def comp_bit_strings(a):
+    lev = len(list(a)[0])
+    levels = [False]*lev
+    for i in range(lev):
+        tmp = set()
+        for el in a:
+            tmp.add(el[i])
+        if len(tmp) == 1:
+            levels[i] = tmp.pop()
+
+    return levels
 
 
 def minimal_context(csi_relations: set) -> set:
