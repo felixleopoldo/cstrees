@@ -5,7 +5,6 @@ import cstrees.cstree as ct
 import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
-import pydot
 from networkx.drawing.nx_pydot import graphviz_layout
 
 # CStree from Figure 1 in (Duarte & Solus, 2022)

@@ -126,28 +126,25 @@ To get a local copy up and running follow these simple example steps.
 ### Prerequisites
 
 This is an example of how to list things you need to use the software and how to install them.
-* npm
+* graphviz
   ```sh
-  npm install npm@latest -g
+  conda install graphviz
   ```
 
 ### Installation
 
-_Below is an example of how you can instruct your audience on installing and setting up your app. This template doesn't rely on any external dependencies or services._
+_The following steps installs the package._
 
 1. Get a free API Key at [https://example.com](https://example.com)
 2. Clone the repo
    ```sh
-   git clone https://github.com/your_username_/Project-Name.git
+   git clone git@github.com:felixleopoldo/CStrees.git
    ```
-3. Install NPM packages
+3. Install PyPi packages
    ```sh
-   npm install
+   pip install -r requirements.txt
    ```
-4. Enter your API in `config.js`
-   ```js
-   const API_KEY = 'ENTER YOUR API';
-   ```
+
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -156,9 +153,37 @@ _Below is an example of how you can instruct your audience on installing and set
 <!-- USAGE EXAMPLES -->
 ## Usage
 
-Use this space to show useful examples of how a project can be used. Additional screenshots, code examples and demos work well in this space. You may also link to more resources.
+This example crates the CStree from Figure 1 in (Duarte & Solus, 2022).
+
+
+```python
+>>> import cstrees.cstree as ct
+>>> import matplotlib.pyplot as plt
+>>> import networkx as nx
+>>> import numpy as np
+>>> from networkx.drawing.nx_pydot import graphviz_layout
+>>> # CStree from Figure 1 in (Duarte & Solus, 2022)
+>>> np.random.seed(1)
+>>> p = 4
+>>> co = range(1, p+1)
+>>> tree = ct.CStree(co)
+>>> tree.set_cardinalities([None] + [2] * p)
+>>> tree.add_stages({
+>>>     0: [],
+>>>     1: [],
+>>>     2: [{(0, 0), (1, 0)}],  # green
+>>>     3: [{(0, 0, 0), (0, 1, 0)},  # blue
+>>>         {(0, 0, 1), (0, 1, 1)},  # orange
+>>>         {(1, 0, 0), (1, 1, 0)}]  # red
+>>> })
+>>> tree.create_tree()
+>>> tree.set_random_parameters()
+>>> tree.plot()
+   ```
 
 _For more examples, please refer to the [Documentation](https://example.com)_
+
+
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
