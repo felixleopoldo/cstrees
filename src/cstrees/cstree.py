@@ -3,6 +3,7 @@ from matplotlib.style import context
 import networkx as nx
 import numpy as np
 import matplotlib
+from pydantic import conset
 
 
 class CStree(nx.Graph):
@@ -161,41 +162,71 @@ class CStree(nx.Graph):
         Args:
             x (array type): a vector.
         """
-    
+
     def plot(self, filename="cstree.png"):
         agraph = nx.nx_agraph.to_agraph(self.tree)
         agraph.layout("dot")
         agraph.draw(filename)
 
 
+class CI_relation:
+    def __init__(self, a, b, sep) -> None:
+        self.a = a
+        self.b = b
+        self.sep = sep
+        pass
+
+    def __str__(self) -> str:
+        s1 = ""
+        for i, j in enumerate(self.a):
+            if j:
+                s1 += "X{}, ".format(i)
+        s1 = s1[:-2] 
+        s2 = ""
+        for i, j in enumerate(self.b):
+            if j:
+                s2 += "X{}, ".format(i)
+        s2 = s2[:-2] 
+        s3 = ""
+        if sum(self.sep)>0:
+            for i, j in enumerate(self.sep):
+                if j:
+                    s3 += "X{}, ".format(i)
+            s3 = s3[:-2] 
+            return "{} ⊥ {} | {}".format(s1, s2, s3)
+        return "{} ⊥ {}".format(s1, s2)
+
+
 class CSI_relation:
+    """This is a context specific relation. Itshould be implemented 
+       as a context and a CI relation.
+    """
 
     def __init__(self, path) -> None:
-        sepset = set()
-        context = [None]*(len(path)+1)
+        sepseta = [False]*(len(path)+2)
+        sepsetb = [False]*(len(path)+2)
+        cond_set = [False]*(len(path)+2)
+        context = [None]*(len(path)+2)
+
+        sepsetb[len(path)+1] = True
+
         for i, el in enumerate(path):
             if el is False:
-                sepset.add(i+1)
+                sepseta[i+1] = True
             else:
                 context[i+1] = el
 
-        self.sep_sets = {frozenset(sepset), frozenset([len(path)+1])}
-        self.cond_set = set()
-        
+        self.ci = CI_relation(sepseta, sepsetb, cond_set)
         self.context = context
 
     def __str__(self) -> str:
-        s = list(self.sep_sets)
         context_str = ""
         for key, val in enumerate(self.context):
             if val != None:
                 context_str += "X{}={}, ".format(key, val)
 
-        return "{} ⊥ {} | {}, {}".format(
-            ["X"+str(i) for i in s[1]],
-            ["X"+str(i) for i in s[0]],
-            list(self.cond_set),
-            context_str)
+        return "{}, {}".format(self.ci, context_str[:-2])
+
 
 def comp_bit_strings(a):
     lev = len(list(a)[0])

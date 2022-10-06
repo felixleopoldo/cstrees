@@ -8,7 +8,6 @@ import numpy as np
 from networkx.drawing.nx_pydot import graphviz_layout
 
 # CStree from Figure 1 in (Duarte & Solus, 2022)
-
 np.random.seed(1)
 p = 4
 co = range(1, p+1)
@@ -34,6 +33,6 @@ x = tree.sample(5)
 csi_rels = tree.csi_relations()
 
 for key, val in csi_rels.items():
-    csis = [str(v) for v in val]
-    print("{}: {}".format(key,csis))
+    for v in val:
+        print("{}: {}".format(key,str(v)))
 #dags = tree.to_minimal_context_graphs()
