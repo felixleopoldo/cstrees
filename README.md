@@ -129,12 +129,12 @@ This is an example of how to list things you need to use the software and how to
 
 _The following steps installs the package._
 
-1. Get a free API Key at [https://example.com](https://example.com)
-2. Clone the repo
+1. Clone the repo
    ```sh
    git clone git@github.com:felixleopoldo/CStrees.git
+   cd CStrees
    ```
-3. Install PyPi packages
+2. Install PyPi packages
    ```sh
    pip install -r requirements.txt
    ```
@@ -152,10 +152,7 @@ This example crates the CStree from Figure 1 in (Duarte & Solus, 2022).
 
 ```python
 >>> import cstrees.cstree as ct
->>> import matplotlib.pyplot as plt
->>> import networkx as nx
 >>> import numpy as np
->>> from networkx.drawing.nx_pydot import graphviz_layout
 >>> # CStree from Figure 1 in (Duarte & Solus, 2022)
 >>> np.random.seed(1)
 >>> p = 4
@@ -173,6 +170,13 @@ This example crates the CStree from Figure 1 in (Duarte & Solus, 2022).
 >>> tree.create_tree()
 >>> tree.set_random_parameters()
 >>> tree.plot()
+>>> csi_rels = tree.csi_relations()
+>>> for key, val in csi_rels.items():
+>>>     print("{}".format(val))
+>>> X1 ⊥ X3, X2=0
+>>> X2 ⊥ X4, X1=0, X3=0
+>>> X2 ⊥ X4, X1=0, X3=1
+>>> X2 ⊥ X4, X1=1, X3=0   
    ```
 
 _For more examples, please refer to the [Documentation](https://example.com)_
@@ -189,10 +193,7 @@ _For more examples, please refer to the [Documentation](https://example.com)_
 - [x] Add Changelog
 - [x] Add back to top links
 - [ ] Add Additional Templates w/ Examples
-- [ ] Add "components" document to easily copy & paste sections of the readme
-- [ ] Multi-language Support
-    - [ ] Chinese
-    - [ ] Spanish
+- [ ] Add "components" document to easily copy & paste 
 
 See the [open issues](https://github.com/othneildrew/Best-README-Template/issues) for a full list of proposed features (and known issues).
 
@@ -245,12 +246,7 @@ Use this space to list resources you find helpful and would like to give credit 
 
 * [Choose an Open Source License](https://choosealicense.com)
 * [GitHub Emoji Cheat Sheet](https://www.webpagefx.com/tools/emoji-cheat-sheet)
-* [Malven's Flexbox Cheatsheet](https://flexbox.malven.co/)
-* [Malven's Grid Cheatsheet](https://grid.malven.co/)
-* [Img Shields](https://shields.io)
-* [GitHub Pages](https://pages.github.com)
-* [Font Awesome](https://fontawesome.com)
-* [React Icons](https://react-icons.github.io/react-icons/search)
+search)
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 

@@ -20,6 +20,24 @@ class CStree(nx.Graph):
     Args:
         causal_order (list): A causal order of the variables.
 
+    Example:
+        >>> import cstrees.cstree as ct
+        >>> import numpy as np
+        >>> # CStree from Figure 1 in (Duarte & Solus, 2022)
+        >>> np.random.seed(1)
+        >>> p = 4
+        >>> co = range(1, p+1)
+        >>> tree = ct.CStree(co)
+        >>> tree.set_cardinalities([None] + [2] * p)
+        >>> tree.add_stages({
+        >>>     0: [],
+        >>>     1: [],
+        >>>     2: [{(0, 0), (1, 0)}],  # green
+        >>>     3: [{(0, 0, 0), (0, 1, 0)},  # blue
+        >>>         {(0, 0, 1), (0, 1, 1)},  # orange
+        >>>         {(1, 0, 0), (1, 1, 0)}]  # red
+        >>> })
+
     """
 
     def __init__(self, causal_order, data=None, **attr):
@@ -31,6 +49,16 @@ class CStree(nx.Graph):
 
     def add_stages(self, stages: dict):
         """Adds a stage.
+
+        Example:
+            >>> tree.add_stages({
+            >>>     0: [],
+            >>>     1: [],
+            >>>     2: [{(0, 0), (1, 0)}],  # green
+            >>>     3: [{(0, 0, 0), (0, 1, 0)},  # blue
+            >>>         {(0, 0, 1), (0, 1, 1)},  # orange
+            >>>         {(1, 0, 0), (1, 1, 0)}]  # red
+            >>> })
         """
         self.stages = stages
         self.stage_probs = {key: [None]*len(val)
@@ -120,12 +148,14 @@ class CStree(nx.Graph):
         """
         csi_rels = {}
         for key, stage_list in self.stages.items():
-            tmp = []
             for stage in stage_list:
-                path = comp_bit_strings(stage)
-                csi_rel = CSI_relation(path)
-                tmp.append(csi_rel)
-            csi_rels[key] = tmp
+                context_path = comp_bit_strings(stage)
+                csi_rel = CSI_relation(context_path)
+                if csi_rel.context not in csi_rels:
+                    csi_rels[csi_rel.context] = csi_rel
+                else:
+                    csi_rels[csi_rel.context].append(csi_rel)
+
         return csi_rels
 
     def minimal_contexts(self):
@@ -175,24 +205,27 @@ class CI_relation:
         self.b = b
         self.sep = sep
         pass
+    
+    def __eq__(self, o: object) -> bool:
+        return (self.a == o.a) & (self.b == o.b) & (self.sep == o.sep)
 
     def __str__(self) -> str:
         s1 = ""
         for i, j in enumerate(self.a):
             if j:
                 s1 += "X{}, ".format(i)
-        s1 = s1[:-2] 
+        s1 = s1[:-2]
         s2 = ""
         for i, j in enumerate(self.b):
             if j:
                 s2 += "X{}, ".format(i)
-        s2 = s2[:-2] 
+        s2 = s2[:-2]
         s3 = ""
-        if sum(self.sep)>0:
+        if sum(self.sep) > 0:
             for i, j in enumerate(self.sep):
                 if j:
                     s3 += "X{}, ".format(i)
-            s3 = s3[:-2] 
+            s3 = s3[:-2]
             return "{} ⊥ {} | {}".format(s1, s2, s3)
         return "{} ⊥ {}".format(s1, s2)
 
@@ -217,7 +250,7 @@ class CSI_relation:
                 context[i+1] = el
 
         self.ci = CI_relation(sepseta, sepsetb, cond_set)
-        self.context = context
+        self.context = tuple(context)
 
     def __str__(self) -> str:
         context_str = ""
@@ -229,6 +262,19 @@ class CSI_relation:
 
 
 def comp_bit_strings(a):
+    """Takes a set of bit strings,representaing outcome paths in a CStree.
+
+    Args:
+        a (set of paths): Set of outcome strings.
+
+    Returns:
+        list: List telling at which positions the bitstrings are the same and which 
+        value they have (i.e. the context). 
+        
+    Example:
+        >>> {(1,0,2),(1,1,2)} -> (1, False, 2)
+        
+    """
     lev = len(list(a)[0])
     levels = [False]*lev
     for i in range(lev):
@@ -239,6 +285,31 @@ def comp_bit_strings(a):
             levels[i] = tmp.pop()
 
     return levels
+
+
+def csi_relations_to_dags(csi_relations, causal_order):
+    p = len(causal_order)
+    adjmats = {context:None for context in csi_relations}
+    for context, csi in csi_relations.item():
+        adjmat = np.zeros(p*p).reshape(p, p)
+        for j in range(p):
+            for i in range(j):
+                for csi in csi_relations[context]:
+                    # 1. i<j
+                    # 2. no edge if Xi _|_ Xj | Pa1:j \ i
+                    a = [1 if k+1 == i else 0 for k in range(p+1) ]
+                    b = [1 if k+1 == j else 0 for k in range(p+1) ]
+                    sind = [k+1 for k in range(j) if (k != i) and (context[k+1] == None)] 
+                    s = [1 if k in sind else 0 for k in range(p+1) ]
+                    csi_tmp = CSI_relation(a, b, s)
+                    if csi_tmp == csi:
+                    #if csi.is_indep(i+1, j+1, s):
+                        adjmat[i,j] = 0
+                    else:
+                        adjmat[i,j] = 1
+        adjmats[context] = adjmat
+        
+    return adjmats
 
 
 def minimal_context(csi_relations: set) -> set:
