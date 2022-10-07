@@ -3,7 +3,7 @@
 
 import cstrees.cstree as ct
 import numpy as np
-
+import networkx as nx
 # CStree from Figure 1 in (Duarte & Solus, 2022)
 np.random.seed(1)
 p = 4
@@ -21,14 +21,28 @@ tree.add_stages({
 
 tree.create_tree()
 tree.set_random_parameters()
-tree.plot()
+#tree.plot()
 x = tree.sample(5)
-print
-csi_rels = tree.csi_relations()
+#print(x)
+rels = tree.csi_relations()
+#print(rels)
+for key, val in rels.items():
+    print(val)
+    
+adjmats = ct.csi_relations_to_dags(rels, co)
 
-for key, val in csi_rels.items():
-    print("{}".format(val))
-dags = tree.to_minimal_context_graphs()
+for key, graph in adjmats.items():
+    agraph = nx.nx_agraph.to_agraph(graph)
+    agraph.layout("dot")
+    agraph.draw(str(key) + ".png")
+        
+    #print(graph.nodes)
+    #print(graph.edges())
+
+
+
+
+#dags = tree.to_minimal_context_graphs()
 
 #nodes = [("X"+str(i), "X"+str(i+1)) for i in range(1, p)]
 # tree.tree.add_edges_from(nodes)
