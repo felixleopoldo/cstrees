@@ -152,9 +152,9 @@ class CStree(nx.Graph):
             for stage in stage_list:
                 context_path = comp_bit_strings(stage)
                 csi_rel = CSI_relation(context_path)
-                print(csi_rel.context)
-                print(csi_rel)
-                
+                # print(csi_rel.context)
+                # print(csi_rel)
+
                 if csi_rel.context not in csi_rels:
                     csi_rels[csi_rel.context] = csi_rel
                 else:
@@ -210,9 +210,9 @@ class CI_relation:
         self.b = b
         self.sep = sep
         pass
-    
+
     def __eq__(self, o: object) -> bool:
-        return ((((self.a == o.a) & (self.b == o.b)) | 
+        return ((((self.a == o.a) & (self.b == o.b)) |
                 ((self.a == o.b) & (self.b == o.a)))
                 & (self.sep == o.sep))
 
@@ -233,15 +233,23 @@ class CI_relation:
             return "{} ⊥ {} | {}".format(s1, s2, s3)
         return "{} ⊥ {}".format(s1, s2)
 
-class context:
-    def __init__(self) -> None:
-        pass
-    
+
+class Context:
+    def __init__(self, context: dict) -> None:
+        self.context = context 
+
+    def __str__(self) -> str:
+        context_str = ""
+        for key, val in enumerate(self.context):
+            if val != None:
+                context_str += "X{}={}, ".format(key, val)
+        return context_str
+
 class CSI_relation:
     """This is a context specific relation. Itshould be implemented 
        as a context and a CI relation.
     """
-    
+
     def __init__(self, path) -> None:
         sepseta = set()
         cond_set = set()
@@ -250,7 +258,7 @@ class CSI_relation:
 
         for i, el in enumerate(path):
             if el is False:
-                sepseta.add(i+1)                
+                sepseta.add(i+1)
             else:
                 context[i+1] = el
 
@@ -264,7 +272,6 @@ class CSI_relation:
             if sepset[a]:
                 pass
         return itertools.product(*vals)
-        
 
     def __str__(self) -> str:
         context_str = ""
@@ -276,7 +283,8 @@ class CSI_relation:
 
 
 def comp_bit_strings(a):
-    """Takes a set of bit strings,representaing outcome paths in a CStree.
+    """Takes a set of bit strings,representaing outcome paths in a CStree. and returns
+        a tuple representing the CSI relation.
 
     Args:
         a (set of paths): Set of outcome strings.
@@ -284,10 +292,10 @@ def comp_bit_strings(a):
     Returns:
         list: List telling at which positions the bitstrings are the same and which 
         value they have (i.e. the context). 
-        
+
     Example:
         >>> {(1,0,2), (1,1,2)} -> (1, False, 2)
-        
+
     """
     lev = len(list(a)[0])
     levels = [False]*lev
@@ -303,56 +311,61 @@ def comp_bit_strings(a):
 
 def csi_relations_to_dags(csi_relations, causal_order):
     p = len(causal_order)
-    graphs = {context:None for context in csi_relations}
+    graphs = {context: None for context in csi_relations}
     for context, csi in csi_relations.items():
-        print("context {}".format({m:n for m,n in enumerate(context) if n != None}))
-        #print(csi)
+        #print("context {}".format({m:n for m,n in enumerate(context) if n != None}))
+        # print(csi)
         adjmat = np.zeros(p*p).reshape(p, p)
-    
-        for j in range(1,p+1):
-            for i in range(1,j):
+
+        for j in range(1, p+1):
+            for i in range(1, j):
+                #print(i,j)
+                #print(context)
+                #if (j >= len(context)-1):
+                #    continue
                 if (context[i] != None) | (context[j] != None):
                     continue
                 # create temp CI relation to compare with
                 a = {i}
                 b = {j}
-                s = {k for k in range(1,j) if (k != i) and (context[k] == None)}
+                s = {k for k in range(1, j) if (
+                    k != i) and (context[k] == None)}
                 ci_tmp = CI_relation(a, b, s)
-                print("comparing {} and:".format(ci_tmp))
-                #for csi in csi_relations[context]:
+                #print("comparing {} and:".format(ci_tmp))
+                # for csi in csi_relations[context]:
                 csi = csi_relations[context]
                 # 1. i<j
-                # 2. no edge if Xi _|_ Xj | Pa1:j \ i                    
-                print("{}".format(csi.ci))
+                # 2. no edge if Xi _|_ Xj | Pa1:j \ i
+                # print("{}".format(csi.ci))
                 if ci_tmp == csi.ci:
-                    print("Indep")
-                    adjmat[i-1,j-1] = 0
-                    #break               
+                    # print("Indep")
+                    adjmat[i-1, j-1] = 0
+                    # break
                 else:
-                    adjmat[i-1,j-1] = 1
-                print()
+                    adjmat[i-1, j-1] = 1
+                # print()
 
-        
-        context_els = {i-1 for i,j in enumerate(context) if j != None}
-        #print("context_els")
-        #print(context_els)
+        context_els = {i-1 for i, j in enumerate(context) if j != None}
+        # print("context_els")
+        # print(context_els)
         allels = np.array(causal_order)-1
         #print("rest {}".format(allels))
         inds = sorted(set(allels) - context_els)
-        
+
         #print("used matrix inds: {}".format(inds))
-        #print(adjmat)
+        # print(adjmat)
         adjmat = adjmat[np.ix_(inds, inds)]
-        #print(adjmat)    
-        #print()                                 
         
+        print(adjmat)
+        print()
+
         graph = nx.from_numpy_array(adjmat, create_using=nx.DiGraph())
-        labels = {} 
-        for i,j in enumerate(inds):
+        labels = {}
+        for i, j in enumerate(inds):
             labels[i] = j+1
         graph = nx.relabel_nodes(graph, labels)
         graphs[context] = graph
-        
+
     return graphs
 
 

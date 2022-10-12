@@ -10,6 +10,8 @@ p = 4
 co = range(1, p+1)
 tree = ct.CStree(co)
 tree.set_cardinalities([None] + [2] * p)
+# These do not have to be in a dict like this as the levels are 
+# determined from the length of the tuples.
 tree.add_stages({
     0: [],
     1: [],
