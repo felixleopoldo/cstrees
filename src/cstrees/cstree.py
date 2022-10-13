@@ -1,9 +1,9 @@
-from attr import s
+
 from matplotlib.style import context
 import networkx as nx
 import numpy as np
 import matplotlib
-from pydantic import conset
+
 import itertools
 
 
@@ -154,12 +154,10 @@ class CStree(nx.Graph):
                 csi_rel = CSI_relation(context_path)
                 # print(csi_rel.context)
                 # print(csi_rel)
-
                 if csi_rel.context not in csi_rels:
                     csi_rels[csi_rel.context] = csi_rel
                 else:
                     print("context already here")
-                #    csi_rels[csi_rel.context].append(csi_rel)
 
         return csi_rels
 
@@ -240,10 +238,25 @@ class Context:
 
     def __str__(self) -> str:
         context_str = ""
-        for key, val in enumerate(self.context):
-            if val != None:
-                context_str += "X{}={}, ".format(key, val)
+        for key, val in self.context.items():   
+             context_str += "X{}={}, ".format(key, val)
         return context_str
+
+    def __contains__(self, key):
+        return key in self.context
+
+    def __getitem__(self, key):
+        return self.context[key]
+    
+    def __hash__(self) -> int:
+        m = max(self.context)
+        tmp = [None] * (m+1)
+        
+        for i in range(m+1):
+            if i in self.context:
+                tmp[i] = self.context[i] 
+        return hash(tuple(tmp))
+        
 
 class CSI_relation:
     """This is a context specific relation. Itshould be implemented 
@@ -253,7 +266,7 @@ class CSI_relation:
     def __init__(self, path) -> None:
         sepseta = set()
         cond_set = set()
-        context = [None]*(len(path)+3)
+        context = {}#[None]*(len(path)+3)
         sepsetb = {len(path)+1}
 
         for i, el in enumerate(path):
@@ -263,7 +276,7 @@ class CSI_relation:
                 context[i+1] = el
 
         self.ci = CI_relation(sepseta, sepsetb, cond_set)
-        self.context = tuple(context)
+        self.context = Context(context)
 
     def to_cstree_paths(cards: list):
         k = len(sepseta)
@@ -273,13 +286,8 @@ class CSI_relation:
                 pass
         return itertools.product(*vals)
 
-    def __str__(self) -> str:
-        context_str = ""
-        for key, val in enumerate(self.context):
-            if val != None:
-                context_str += "X{}={}, ".format(key, val)
-
-        return "{}, {}".format(self.ci, context_str[:-2])
+    def __str__(self) -> str:        
+        return "{}, {}".format(self.ci, self.context)
 
 
 def comp_bit_strings(a):
@@ -313,51 +321,32 @@ def csi_relations_to_dags(csi_relations, causal_order):
     p = len(causal_order)
     graphs = {context: None for context in csi_relations}
     for context, csi in csi_relations.items():
-        #print("context {}".format({m:n for m,n in enumerate(context) if n != None}))
-        # print(csi)
+
         adjmat = np.zeros(p*p).reshape(p, p)
 
         for j in range(1, p+1):
             for i in range(1, j):
-                #print(i,j)
-                #print(context)
-                #if (j >= len(context)-1):
-                #    continue
-                if (context[i] != None) | (context[j] != None):
+                if (i in context) | (j in context):
                     continue
                 # create temp CI relation to compare with
                 a = {i}
                 b = {j}
                 s = {k for k in range(1, j) if (
-                    k != i) and (context[k] == None)}
+                    k != i) and (k not in context)}
                 ci_tmp = CI_relation(a, b, s)
-                #print("comparing {} and:".format(ci_tmp))
-                # for csi in csi_relations[context]:
+
                 csi = csi_relations[context]
                 # 1. i<j
                 # 2. no edge if Xi _|_ Xj | Pa1:j \ i
-                # print("{}".format(csi.ci))
                 if ci_tmp == csi.ci:
-                    # print("Indep")
                     adjmat[i-1, j-1] = 0
-                    # break
                 else:
                     adjmat[i-1, j-1] = 1
-                # print()
 
-        context_els = {i-1 for i, j in enumerate(context) if j != None}
-        # print("context_els")
-        # print(context_els)
+        context_els = {i-1 for i in context.context.keys()}
         allels = np.array(causal_order)-1
-        #print("rest {}".format(allels))
         inds = sorted(set(allels) - context_els)
-
-        #print("used matrix inds: {}".format(inds))
-        # print(adjmat)
         adjmat = adjmat[np.ix_(inds, inds)]
-        
-        print(adjmat)
-        print()
 
         graph = nx.from_numpy_array(adjmat, create_using=nx.DiGraph())
         labels = {}

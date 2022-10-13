@@ -6,7 +6,7 @@ import numpy as np
 import networkx as nx
 # CStree from Figure 1 in (Duarte & Solus, 2022)
 np.random.seed(1)
-p = 4
+p = 10
 co = range(1, p+1)
 tree = ct.CStree(co)
 tree.set_cardinalities([None] + [2] * p)
