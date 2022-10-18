@@ -5,30 +5,39 @@ import cstrees.cstree as ct
 import numpy as np
 import networkx as nx
 # CStree from Figure 1 in (Duarte & Solus, 2022)
-np.random.seed(1)
+#np.random.seed(1)
 p = 10
-co = range(1, p+1)
+
+co = ct.CausalOrder(range(1, p+1))
 tree = ct.CStree(co)
-tree.set_cardinalities([None] + [2] * p)
+cards = [2] * p
+stage = ct.sample_random_stage(cards[:4])
+print(stage)
+
+tree.set_cardinalities([None] + cards)
+
+
 # These do not have to be in a dict like this as the levels are
 # determined from the length of the tuples.
-Tree.Add_Stages({
+# Tree.Add_Stages({
+#     0: [],
+#     1: [],
+#     2: [{(0, 0), (1, 0)}],       # Green
+#     3: [{(0, 0, 0), (0, 1, 0)},  # Blue
+#         {(0, 0, 1), (0, 1, 1)},  # Orange
+#         {(1, 0, 0), (1, 1, 0)}]  # Red
+# })
+ct.Stage([None, 0])
+tree.add_stages({
     0: [],
     1: [],
-    2: [{(0, 0), (1, 0)}],       # Green
-    3: [{(0, 0, 0), (0, 1, 0)},  # Blue
-        {(0, 0, 1), (0, 1, 1)},  # Orange
-        {(1, 0, 0), (1, 1, 0)}]  # Red
-})
-Tree.Add_Stages({
-    0: [],
-    1: [],
-    2: [ct.Stage([None, 0])],    # Green
-    3: [ct.Stage([0, None, 0]),  # Blue
-        ct.Stage([0, None, 1]),  # Orange
-        ct.Stage([1, None, 0])]  # Red
+    2: [ct.Stage([[0, 1], 0])],    # Green
+    3: [ct.Stage([0, [0, 1], 0]),  # Blue
+        ct.Stage([0, [0, 1], 1]),  # Orange
+        ct.Stage([1, [0, 1], 0])]  # Red
 })
 
+# Context + level + order == stage
 
 tree.create_tree()
 tree.set_random_parameters()
@@ -56,3 +65,12 @@ for key, graph in adjmats.items():
 #nodes = [("X"+str(i), "X"+str(i+1)) for i in range(1, p)]
 # tree.tree.add_edges_from(nodes)
 # tree.tree.add_edge("Ø","X1")
+
+
+# The strategy is to first generate some random stages.
+# Then merge them randomly into new stages in some way.
+# Maybe pick two and merge.
+
+# Note that, one CSI relation can have several stages, as in the
+# paper exapmle. Maybe its more complex than that. We might have to
+# absorb CSI relations and maybe other things as well. Lets see.
