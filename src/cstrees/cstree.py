@@ -61,7 +61,7 @@ class CStree(nx.Graph):
             >>>         {(1, 0, 0), (1, 1, 0)}]  # red
             >>> })
         """
-        self.stages = stages
+        self.stages = stages #{key: Stage(val)  for key, val in stages}
         self.stage_probs = {key: [None]*len(val)
                             for key, val in stages.items()}
 
@@ -150,14 +150,15 @@ class CStree(nx.Graph):
         csi_rels = {}
         for key, stage_list in self.stages.items():
             for stage in stage_list:
-                context_path = comp_bit_strings(stage)
-                csi_rel = CSI_relation(context_path)
+                csi_rel = stage.to_CSI()
+                #context_path = comp_bit_strings(stage)
+                #csi_rel = CSI_relation(context_path)
                 # print(csi_rel.context)
                 # print(csi_rel)
-                if csi_rel.context not in csi_rels:
-                    csi_rels[csi_rel.context] = csi_rel
-                else:
-                    print("context already here")
+                #if csi_rel.context not in csi_rels:
+                csi_rels[csi_rel.context] = csi_rel
+                #else:
+                #    print("context already here")
 
         return csi_rels
 
@@ -231,6 +232,43 @@ class CI_relation:
             return "{} ⊥ {} | {}".format(s1, s2, s3)
         return "{} ⊥ {}".format(s1, s2)
 
+class CausalOrder:
+    def get_level(pass, var):        
+       pass
+   
+   def at_level(pass, level):
+       pass
+
+class Stage:
+    def __init__(self, paths_repr) -> None:
+        self.level = len(paths_repr)
+    
+    def __hash__(self) -> int:
+        return hash(tuple(self.path_resp))
+    
+    def to_csi(self):
+        sepseta = set()
+        cond_set = set()
+        context = {}
+        sepsetb = {self.level+1}
+        
+        for i, el in enumerate(self.paths_repr):
+            if el is False:
+                sepseta.add(i+1)
+            else:
+                context[i+1] = el
+
+        ci = CI_relation(sepseta, sepsetb, cond_set)
+        context = Context(context)
+        return CSI_relation(ci, context)
+
+    def to_cstree_paths(cards: list):
+        k = len(sepseta)
+        vals = []*k
+        for i in range(k):
+            if sepset[a]:
+                pass
+        return itertools.product(*vals)
 
 class Context:
     def __init__(self, context: dict) -> None:
@@ -259,32 +297,16 @@ class Context:
         
 
 class CSI_relation:
-    """This is a context specific relation. Itshould be implemented 
+    """This is a context specific relation. It should be implemented 
        as a context and a CI relation.
     """
 
-    def __init__(self, path) -> None:
-        sepseta = set()
-        cond_set = set()
-        context = {}#[None]*(len(path)+3)
-        sepsetb = {len(path)+1}
+    def __init__(self, ci, context) -> None:
+        self.ci = ci 
+        self.context = context 
 
-        for i, el in enumerate(path):
-            if el is False:
-                sepseta.add(i+1)
-            else:
-                context[i+1] = el
-
-        self.ci = CI_relation(sepseta, sepsetb, cond_set)
-        self.context = Context(context)
-
-    def to_cstree_paths(cards: list):
-        k = len(sepseta)
-        vals = []*k
-        for i in range(k):
-            if sepset[a]:
-                pass
-        return itertools.product(*vals)
+    def to_stages(self):
+        pass
 
     def __str__(self) -> str:        
         return "{}, {}".format(self.ci, self.context)
@@ -314,7 +336,10 @@ def comp_bit_strings(a):
         if len(tmp) == 1:
             levels[i] = tmp.pop()
 
+    Stage()
     return levels
+
+
 
 
 def csi_relations_to_dags(csi_relations, causal_order):
