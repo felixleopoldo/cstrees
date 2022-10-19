@@ -1,5 +1,6 @@
 
 from random import uniform
+from re import S
 import networkx as nx
 import numpy as np
 import matplotlib
@@ -402,7 +403,8 @@ def sample_random_stage(cards, level):
                 vals[i] =  np.random.randint(cards[i])
             if b == 1:
                 vals[i] =  list(range(cards[i]))
-    
+    #print(vals)
+    #print(Stage(vals).to_csi())
     return Stage(vals)
     
 #     r = set()
@@ -517,10 +519,18 @@ def sample_cstree(p: int) -> CStree:
     stages = {}    
     for key, val in enumerate(cards):
         stages[key] = []
+        tmp_paths = []
         for i in range(key): # Number of trees incrases as O(p*level)
             if np.random.randint(2):
                 s = sample_random_stage(cards, level=key)
-                stages[key].append(s)
+                paths = set(s.to_cstree_paths())
+                #print(paths)
+                if all(map(lambda x: len(x & paths) == 0, tmp_paths)):
+                    # check the paths asre disjoint
+                    
+                    tmp_paths.append(paths)
+                    # TODO: check non over-lapping
+                    stages[key].append(s)
             
     ct.add_stages(stages)
     ct.create_tree()
