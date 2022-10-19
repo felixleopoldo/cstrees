@@ -26,7 +26,8 @@ tree.add_stages({
     2: [ct.Stage([[0, 1], 0])],    # Green
     3: [ct.Stage([0, [0, 1], 0]),  # Blue
         ct.Stage([0, [0, 1], 1]),  # Orange
-        ct.Stage([1, [0, 1], 0])]  # Red
+        ct.Stage([1, [0, 1], 0])],  # Red
+    4: [stage]
 })
 
 # Context + level + order == stage
