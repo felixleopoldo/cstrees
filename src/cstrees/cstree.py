@@ -78,19 +78,19 @@ class CStree(nx.Graph):
         """
         pass
 
-    def get_stage(self, node: int):
+    def get_stage(self, node: tuple):
         """ Get the stages of node.
         
 
         Args:
             node (int): node.
         """
-        stage = None
-        for level, stagelist in self.stages.items():
+        
+        for _, stagelist in self.stages.items():
             for s in stagelist:
-                if node in s.to_cstree_paths():
+                if node in s:
                     return s
-        return stage
+        return None
 
 
     def set_random_parameters(self):
@@ -117,15 +117,14 @@ class CStree(nx.Graph):
             probs = np.random.dirichlet([1] * self.cards[len(node)+1])
 
             for i, ch in enumerate(children):
-                node_stage_no = self.get_stage_no(node)
-                node_stage = self.get_stage(node)
-                if node_stage_no != None:
-                    #prob = self.stage_probs[lev][node_stage_no][i]
-                    prob = node_stage.probs[i] 
+                stage = self.get_stage(node)
+                
+                if stage != None:
+                    prob = stage.probs[i] 
                     self.tree[node][ch]["cond_prob"] = prob
                     self.tree[node][ch]["label"] = round(prob, 2)
-                    self.tree[node][ch]["color"] = self.colors[lev][node_stage_no]
-                    self.tree.nodes[node]["color"] = self.colors[lev][node_stage_no]
+                    self.tree[node][ch]["color"] = stage.color 
+                    self.tree.nodes[node]["color"] = stage.color 
                 else:
                     self.tree[node][ch]["cond_prob"] = probs[i]
                     self.tree[node][ch]["label"] = round(probs[i], 2)
@@ -174,15 +173,8 @@ class CStree(nx.Graph):
         csi_rels = {}
         for key, stage_list in self.stages.items():
             for stage in stage_list:
-                csi_rel = stage.to_CSI()
-                #context_path = comp_bit_strings(stage)
-                #csi_rel = CSI_relation(context_path)
-                # print(csi_rel.context)
-                # print(csi_rel)
-                #if csi_rel.context not in csi_rels:
+                csi_rel = stage.to_csi()
                 csi_rels[csi_rel.context] = csi_rel
-                #else:
-                #    print("context already here")
 
         return csi_rels
 
@@ -276,8 +268,8 @@ class Stage:
     def __hash__(self) -> int:
         return hash(tuple([ tuple(i) for i in self.list_resp]))
     
-    def contains_node(self, node):
-        return node in self.to_cstree_paths()            
+    def __contains__(self, node):
+        return node in self.to_cstree_paths()
     
     def to_csi(self):
         sepseta = set()
@@ -286,7 +278,7 @@ class Stage:
         sepsetb = {self.level+1}
         
         for i, el in enumerate(self.list_repr):
-            if type(el) is int: # False?
+            if type(el) is list:
                 sepseta.add(i+1)
             else:
                 context[i+1] = el
@@ -296,34 +288,12 @@ class Stage:
         return CSI_relation(ci, context)
 
     def to_cstree_paths(self):
-        return itertools.product(*self.list_repr)
+        tmp = [[i] if type(i) is int else i for i in self.list_repr]
+        return list(itertools.product(*tmp))
 
     def __str__(self) -> str:
         return str(self.list_repr)
 
-# class Stage(set):
-#     def __init__(self) -> None:
-#         pass
-    
-#     def to_CSI_relation(self, stage_set):
-#         path = comp_bit_strings(stage_set)
-#         sepseta = set()
-#         cond_set = set()
-#         context = {}
-#         sepsetb = {len(path)+1}
-
-#         for i, el in enumerate(path):
-#             if el is False:
-#                 sepseta.add(i+1)
-#             else:
-#                 context[i+1] = el
-
-#         ci = CI_relation(sepseta, sepsetb, cond_set)
-#         context = Context(context)        
-#         return CSI_relation(ci, context)
-    
-#     def __hash__(self):
-#         return hash(comp_bit_strings(self.stage_set))
 class Context:
     def __init__(self, context: dict) -> None:
         self.context = context 
@@ -343,14 +313,10 @@ class Context:
     def __hash__(self) -> int:
         m = max(self.context)
         tmp = [None] * (m+1)
-        
         for i in range(m+1):
             if i in self.context:
-                tmp[i] = self.context[i] 
+                tmp[i] = self.context[i]
         return hash(tuple(tmp))
-        
-
-    
     
 class CSI_relation:
     """This is a context specific relation. Itshould be implemented 
@@ -463,7 +429,7 @@ def comp_bit_strings(a):
     return levels
 
 def csi_relations_to_dags(csi_relations, causal_order):
-    p = len(causal_order)
+    p = causal_order.p
     graphs = {context: None for context in csi_relations}
     for context, csi in csi_relations.items():
 
@@ -489,7 +455,7 @@ def csi_relations_to_dags(csi_relations, causal_order):
                     adjmat[i-1, j-1] = 1
 
         context_els = {i-1 for i in context.context.keys()}
-        allels = np.array(causal_order)-1
+        allels = np.array(causal_order.order )-1
         inds = sorted(set(allels) - context_els)
         adjmat = adjmat[np.ix_(inds, inds)]
 

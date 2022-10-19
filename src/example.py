@@ -6,27 +6,19 @@ import numpy as np
 import networkx as nx
 # CStree from Figure 1 in (Duarte & Solus, 2022)
 #np.random.seed(1)
-p = 10
+p = 5
 
 co = ct.CausalOrder(range(1, p+1))
 tree = ct.CStree(co)
 cards = [2] * p
 stage = ct.sample_random_stage(cards[:4])
-print(stage)
 
 tree.set_cardinalities([None] + cards)
 
 
 # These do not have to be in a dict like this as the levels are
 # determined from the length of the tuples.
-# Tree.Add_Stages({
-#     0: [],
-#     1: [],
-#     2: [{(0, 0), (1, 0)}],       # Green
-#     3: [{(0, 0, 0), (0, 1, 0)},  # Blue
-#         {(0, 0, 1), (0, 1, 1)},  # Orange
-#         {(1, 0, 0), (1, 1, 0)}]  # Red
-# })
+
 ct.Stage([None, 0])
 tree.add_stages({
     0: [],
@@ -41,7 +33,7 @@ tree.add_stages({
 
 tree.create_tree()
 tree.set_random_parameters()
-# tree.plot()
+tree.plot()
 x = tree.sample(5)
 # print(x)
 rels = tree.csi_relations()
