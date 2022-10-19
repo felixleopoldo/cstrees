@@ -1,7 +1,5 @@
 
 from random import uniform
-from attr import has
-from matplotlib.style import context
 import networkx as nx
 import numpy as np
 import matplotlib
@@ -96,7 +94,7 @@ class CStree(nx.Graph):
     def set_random_parameters(self):
         # Set stage prbabilities
 
-        cols = ["red", "blue", "green", "purple"]
+        cols = ["red", "blue", "green", "purple", "yellow", "grey"]
         self.colors = {key: cols[:len(val)]
                        for key, val in self.stages.items()}
         for lev, stages in self.stages.items():
@@ -171,8 +169,11 @@ class CStree(nx.Graph):
             the minmal contexts based on that.
         """
         csi_rels = {}
+        #print(self.stages)
         for key, stage_list in self.stages.items():
+            #print(stage_list)
             for stage in stage_list:
+                #print(stage)
                 csi_rel = stage.to_csi()
                 csi_rels[csi_rel.context] = csi_rel
 
@@ -216,7 +217,8 @@ class CStree(nx.Graph):
     def plot(self, filename="cstree.png"):
         agraph = nx.nx_agraph.to_agraph(self.tree)
         agraph.layout("dot")
-        agraph.draw(filename)
+        return agraph
+        #agraph.draw(filename)
 
 
 class CI_relation:
@@ -302,6 +304,8 @@ class Context:
         context_str = ""
         for key, val in self.context.items():   
              context_str += "X{}={}, ".format(key, val)
+        if context_str != "":
+            context_str = context_str[:-2]
         return context_str
 
     def __contains__(self, key):
@@ -311,6 +315,11 @@ class Context:
         return self.context[key]
     
     def __hash__(self) -> int:
+
+        m = 1  # special case when context is emtpy
+        if len(self.context) == 0:
+            return hash(())
+        
         m = max(self.context)
         tmp = [None] * (m+1)
         for i in range(m+1):
@@ -378,17 +387,21 @@ class CSI_relation:
         """
         return hash(str(self))
 
-    def __str__(self) -> str:        
+    def __str__(self) -> str:
+        if len(self.context.context) == 0:
+            return "{}".format(self.ci)
         return "{}, {}".format(self.ci, self.context)
 
-def sample_random_stage(cards):
-    vals = [None]*len(cards)
-    for i, j in enumerate(cards):
-        b = np.random.randint(2)
-        if b == 0:
-            vals[i] =  np.random.randint(cards[i])
-        if b == 1:
-            vals[i] =  list(range(cards[i]))
+def sample_random_stage(cards, level):
+    vals = [None]*len(cards[:level])
+    # Just to make sure not all variables are context variables.
+    while not any(map(lambda x: type(x) is list, vals)):
+        for i, j in enumerate(cards[:level]):
+            b = np.random.randint(2)
+            if b == 0:
+                vals[i] =  np.random.randint(cards[i])
+            if b == 1:
+                vals[i] =  list(range(cards[i]))
     
     return Stage(vals)
     
@@ -485,7 +498,7 @@ def get_minimal_dag_imaps(causal_order, csi_relations):
     pass
 
 
-def sample_cstree(cardinalities: list) -> CStree:
+def sample_cstree(p: int) -> CStree:
     """ 
        Sample a random CStee with given cardinalities. 
        Since the tree is sampled the order shouldn't matter?
@@ -496,8 +509,22 @@ def sample_cstree(cardinalities: list) -> CStree:
     Returns:
         CStree: a CStree.
     """
-    order = range(len(cardinalities))
-    ct = CStree(order)
+    co = CausalOrder(range(1, p+1))
+    ct = CStree(co)
+    cards = [2] * p
+    ct.set_cardinalities([None] + cards)
+
+    stages = {}    
+    for key, val in enumerate(cards):
+        stages[key] = []
+        for i in range(key): # Number of trees incrases as O(p*level)
+            if np.random.randint(2):
+                s = sample_random_stage(cards, level=key)
+                stages[key].append(s)
+            
+    ct.add_stages(stages)
+    ct.create_tree()
+    ct.set_random_parameters()
     return ct
 
 def generate_random_clusters():
