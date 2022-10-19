@@ -105,13 +105,7 @@ Use the `BLANK_README.md` to get started.
 This section should list any major frameworks/libraries used to bootstrap your project. Leave any add-ons/plugins for the acknowledgements section. Here are a few examples.
 
 * [![Next][Next.js]][Next-url]
-* [![React][React.js]][React-url]
-* [![Vue][Vue.js]][Vue-url]
-* [![Angular][Angular.io]][Angular-url]
-* [![Svelte][Svelte.dev]][Svelte-url]
-* [![Laravel][Laravel.com]][Laravel-url]
-* [![Bootstrap][Bootstrap.com]][Bootstrap-url]
-* [![JQuery][JQuery.com]][JQuery-url]
+
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -126,28 +120,25 @@ To get a local copy up and running follow these simple example steps.
 ### Prerequisites
 
 This is an example of how to list things you need to use the software and how to install them.
-* npm
+* graphviz
   ```sh
-  npm install npm@latest -g
+  conda install graphviz
   ```
-
+Might have to install pygraphviz withconda as well.
 ### Installation
 
-_Below is an example of how you can instruct your audience on installing and setting up your app. This template doesn't rely on any external dependencies or services._
+_The following steps installs the package._
 
-1. Get a free API Key at [https://example.com](https://example.com)
-2. Clone the repo
+1. Clone the repo
    ```sh
-   git clone https://github.com/your_username_/Project-Name.git
+   git clone git@github.com:felixleopoldo/CStrees.git
+   cd CStrees
    ```
-3. Install NPM packages
+2. Install PyPi packages
    ```sh
-   npm install
+   pip install -r requirements.txt
    ```
-4. Enter your API in `config.js`
-   ```js
-   const API_KEY = 'ENTER YOUR API';
-   ```
+
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -156,9 +147,41 @@ _Below is an example of how you can instruct your audience on installing and set
 <!-- USAGE EXAMPLES -->
 ## Usage
 
-Use this space to show useful examples of how a project can be used. Additional screenshots, code examples and demos work well in this space. You may also link to more resources.
+This example crates the CStree from Figure 1 in (Duarte & Solus, 2022).
+
+
+```python
+>>> import cstrees.cstree as ct
+>>> import numpy as np
+>>> # CStree from Figure 1 in (Duarte & Solus, 2022)
+>>> np.random.seed(1)
+>>> p = 4
+>>> co = range(1, p+1)
+>>> tree = ct.CStree(co)
+>>> tree.set_cardinalities([None] + [2] * p)
+>>> tree.add_stages({
+>>>     0: [],
+>>>     1: [],
+>>>     2: [{(0, 0), (1, 0)}],  # green
+>>>     3: [{(0, 0, 0), (0, 1, 0)},  # blue
+>>>         {(0, 0, 1), (0, 1, 1)},  # orange
+>>>         {(1, 0, 0), (1, 1, 0)}]  # red
+>>> })
+>>> tree.create_tree()
+>>> tree.set_random_parameters()
+>>> tree.plot()
+>>> csi_rels = tree.csi_relations()
+>>> for key, val in csi_rels.items():
+>>>     print("{}".format(val))
+>>> X1 ⊥ X3, X2=0
+>>> X2 ⊥ X4, X1=0, X3=0
+>>> X2 ⊥ X4, X1=0, X3=1
+>>> X2 ⊥ X4, X1=1, X3=0   
+   ```
 
 _For more examples, please refer to the [Documentation](https://example.com)_
+
+
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -170,10 +193,7 @@ _For more examples, please refer to the [Documentation](https://example.com)_
 - [x] Add Changelog
 - [x] Add back to top links
 - [ ] Add Additional Templates w/ Examples
-- [ ] Add "components" document to easily copy & paste sections of the readme
-- [ ] Multi-language Support
-    - [ ] Chinese
-    - [ ] Spanish
+- [ ] Add "components" document to easily copy & paste 
 
 See the [open issues](https://github.com/othneildrew/Best-README-Template/issues) for a full list of proposed features (and known issues).
 
@@ -226,12 +246,7 @@ Use this space to list resources you find helpful and would like to give credit 
 
 * [Choose an Open Source License](https://choosealicense.com)
 * [GitHub Emoji Cheat Sheet](https://www.webpagefx.com/tools/emoji-cheat-sheet)
-* [Malven's Flexbox Cheatsheet](https://flexbox.malven.co/)
-* [Malven's Grid Cheatsheet](https://grid.malven.co/)
-* [Img Shields](https://shields.io)
-* [GitHub Pages](https://pages.github.com)
-* [Font Awesome](https://fontawesome.com)
-* [React Icons](https://react-icons.github.io/react-icons/search)
+search)
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
