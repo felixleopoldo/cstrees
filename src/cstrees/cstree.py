@@ -485,6 +485,7 @@ def csi_relations_to_dags(csi_relations, causal_order):
 
                 cis = []
                 for csi in csis:
+                    cis += [csi.ci]
                     cis += decomposition(csi.ci)
                     cis += weak_union(csi.ci)
 
@@ -601,6 +602,8 @@ def decomposition(ci: CI_relation):
     cilist = []
     for x in itertools.product(ci.a, ci.b):
         new_ci = CI_relation({x[0]}, {x[1]}, ci.sep)
+        if new_ci == ci:
+            continue        
         cilist.append(new_ci)
 
     return cilist

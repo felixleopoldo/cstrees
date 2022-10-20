@@ -39,21 +39,22 @@ tree.add_stages({
     2: [ct.Stage([[0, 1], 0])],    # Green
     3: [ct.Stage([0, [0, 1], 0]),  # Blue
         ct.Stage([0, [0, 1], 1]),  # Orange
-        ct.Stage([1, [0, 1], 0])],  # Red
-    4: [stage]
+        ct.Stage([1, [0, 1], 0])]  # Red
 })
 
 # Context + level + order == stage
 
 tree.create_tree()
 tree.set_random_parameters()
-#tree.plot()
+tree.plot()
 x = tree.sample(5)
 # print(x)
 rels = tree.csi_relations()
 # print(rels)
 for key, val in rels.items():
-    print(val)
+    for v in val:
+        print(str(v))
+
 
 adjmats = ct.csi_relations_to_dags(rels, co)
 

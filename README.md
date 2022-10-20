@@ -160,19 +160,20 @@ This example crates the CStree from Figure 1 in (Duarte & Solus, 2022).
 >>> tree = ct.CStree(co)
 >>> tree.set_cardinalities([None] + [2] * p)
 >>> tree.add_stages({
->>>     0: [],
->>>     1: [],
->>>     2: [{(0, 0), (1, 0)}],  # green
->>>     3: [{(0, 0, 0), (0, 1, 0)},  # blue
->>>         {(0, 0, 1), (0, 1, 1)},  # orange
->>>         {(1, 0, 0), (1, 1, 0)}]  # red
+>>>    0: [],
+>>>    1: [],
+>>>    2: [ct.Stage([[0, 1], 0])],    # Green
+>>>    3: [ct.Stage([0, [0, 1], 0]),  # Blue
+>>>        ct.Stage([0, [0, 1], 1]),  # Orange
+>>>        ct.Stage([1, [0, 1], 0])]  # Red
 >>> })
 >>> tree.create_tree()
 >>> tree.set_random_parameters()
 >>> tree.plot()
 >>> csi_rels = tree.csi_relations()
 >>> for key, val in csi_rels.items():
->>>     print("{}".format(val))
+>>>   for v in val:
+>>>     print("{}".format(v))
 >>> X1 ⊥ X3, X2=0
 >>> X2 ⊥ X4, X1=0, X3=0
 >>> X2 ⊥ X4, X1=0, X3=1
