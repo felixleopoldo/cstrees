@@ -174,10 +174,16 @@ class CStree(nx.Graph):
         for key, stage_list in self.stages.items():
             #print(stage_list)
             for stage in stage_list:
-                #print(stage)
+        #       print(stage)
                 csi_rel = stage.to_csi()
-                csi_rels[csi_rel.context] = csi_rel
-
+                
+                if csi_rel.context not in csi_rels.keys(): #should be a list
+                    csi_rels[csi_rel.context] = [csi_rel]
+                else:
+                    csi_rels[csi_rel.context].append(csi_rel)
+                    
+        #print(set([ str(k)  for k in csi_rels.keys()]))
+        
         return csi_rels
 
     def minimal_contexts(self):
@@ -310,22 +316,26 @@ class Context:
         return context_str
 
     def __contains__(self, key):
+        
         return key in self.context
 
     def __getitem__(self, key):
         return self.context[key]
     
+    def __eq__(self, __o: object) -> bool:
+        return hash(__o) == hash(self)
+    
     def __hash__(self) -> int:
-
         m = 1  # special case when context is emtpy
         if len(self.context) == 0:
-            return hash(())
-        
+            return hash(())        
+
         m = max(self.context)
         tmp = [None] * (m+1)
         for i in range(m+1):
             if i in self.context:
                 tmp[i] = self.context[i]
+
         return hash(tuple(tmp))
     
 class CSI_relation:
@@ -393,7 +403,7 @@ class CSI_relation:
             return "{}".format(self.ci)
         return "{}, {}".format(self.ci, self.context)
 
-def sample_random_stage(cards, level):
+def sample_random_stage(cards: list, level: int) -> Stage:
     vals = [None]*len(cards[:level])
     # Just to make sure not all variables are context variables.
     while not any(map(lambda x: type(x) is list, vals)):
@@ -444,14 +454,16 @@ def comp_bit_strings(a):
     return levels
 
 def csi_relations_to_dags(csi_relations, causal_order):
+    
     p = causal_order.p
     graphs = {context: None for context in csi_relations}
-    for context, csi in csi_relations.items():
-
+    for context, csis in csi_relations.items():
+        #print("\nContext: {}".format(context))
         adjmat = np.zeros(p*p).reshape(p, p)
 
         for j in range(1, p+1):
             for i in range(1, j):
+                # This will anyway be disregarded in the matrix slice?
                 if (i in context) | (j in context):
                     continue
                 # create temp CI relation to compare with
@@ -461,10 +473,17 @@ def csi_relations_to_dags(csi_relations, causal_order):
                     k != i) and (k not in context)}
                 ci_tmp = CI_relation(a, b, s)
 
-                csi = csi_relations[context]
+                #print("checking ci: {}".format(ci_tmp))
+                # Check is the ci is in some of the cis of the context.
                 # 1. i<j
                 # 2. no edge if Xi _|_ Xj | Pa1:j \ i
-                if ci_tmp == csi.ci:
+                
+                cis = []
+                for csi in csis:
+                    cis += decomposition(csi.ci)
+                
+                if ci_tmp in cis:
+                    #print("No edge ({},{})".format(i,j))
                     adjmat[i-1, j-1] = 0
                 else:
                     adjmat[i-1, j-1] = 1
@@ -562,5 +581,12 @@ def multivariate_multinomial(probs):
     return x
 
     # make sure the last entry is the same
-    
-    
+
+def decomposition(ci: CI_relation):
+
+    cilist = []
+    for x in itertools.product(ci.a, ci.b):
+        new_ci = CI_relation({x[0]}, {x[1]}, ci.sep)        
+        cilist.append(new_ci)
+        
+    return cilist
