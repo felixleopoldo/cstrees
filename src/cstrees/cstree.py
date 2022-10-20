@@ -4,7 +4,7 @@ from re import S
 import networkx as nx
 import numpy as np
 import matplotlib
-
+from itertools import chain, combinations
 import itertools
 
 from pydantic import NoneIsAllowedError
@@ -65,7 +65,7 @@ class CStree(nx.Graph):
             >>>         {(1, 0, 0), (1, 1, 0)}]  # red
             >>> })
         """
-        self.stages = stages 
+        self.stages = stages
         self.stage_probs = {key: [None]*len(val)
                             for key, val in stages.items()}
 
@@ -79,18 +79,17 @@ class CStree(nx.Graph):
 
     def get_stage(self, node: tuple):
         """ Get the stages of node.
-        
+
 
         Args:
             node (int): node.
         """
-        
+
         for _, stagelist in self.stages.items():
             for s in stagelist:
                 if node in s:
                     return s
         return None
-
 
     def set_random_parameters(self):
         # Set stage prbabilities
@@ -117,13 +116,13 @@ class CStree(nx.Graph):
 
             for i, ch in enumerate(children):
                 stage = self.get_stage(node)
-                
+
                 if stage != None:
-                    prob = stage.probs[i] 
+                    prob = stage.probs[i]
                     self.tree[node][ch]["cond_prob"] = prob
                     self.tree[node][ch]["label"] = round(prob, 2)
-                    self.tree[node][ch]["color"] = stage.color 
-                    self.tree.nodes[node]["color"] = stage.color 
+                    self.tree[node][ch]["color"] = stage.color
+                    self.tree.nodes[node]["color"] = stage.color
                 else:
                     self.tree[node][ch]["cond_prob"] = probs[i]
                     self.tree[node][ch]["label"] = round(probs[i], 2)
@@ -170,20 +169,20 @@ class CStree(nx.Graph):
             the minmal contexts based on that.
         """
         csi_rels = {}
-        #print(self.stages)
+        # print(self.stages)
         for key, stage_list in self.stages.items():
-            #print(stage_list)
+            # print(stage_list)
             for stage in stage_list:
-        #       print(stage)
+                #       print(stage)
                 csi_rel = stage.to_csi()
-                
-                if csi_rel.context not in csi_rels.keys(): #should be a list
+
+                if csi_rel.context not in csi_rels.keys():  # should be a list
                     csi_rels[csi_rel.context] = [csi_rel]
                 else:
                     csi_rels[csi_rel.context].append(csi_rel)
-                    
+
         #print(set([ str(k)  for k in csi_rels.keys()]))
-        
+
         return csi_rels
 
     def minimal_contexts(self):
@@ -225,7 +224,7 @@ class CStree(nx.Graph):
         agraph = nx.nx_agraph.to_agraph(self.tree)
         agraph.layout("dot")
         return agraph
-        #agraph.draw(filename)
+        # agraph.draw(filename)
 
 
 class CI_relation:
@@ -257,35 +256,37 @@ class CI_relation:
             return "{} ⊥ {} | {}".format(s1, s2, s3)
         return "{} ⊥ {}".format(s1, s2)
 
+
 class CausalOrder:
     def __init__(self, order) -> None:
         self.p = len(order)
         self.order = order
-        self.order_inv = {j:i for i, j in enumerate(order)}
-    
-    def get_level(self, var):        
-       return self.order_inv[var]
-       
+        self.order_inv = {j: i for i, j in enumerate(order)}
+
+    def get_level(self, var):
+        return self.order_inv[var]
+
     def at_level(self, k):
-       return self.order[k]
+        return self.order[k]
+
 
 class Stage:
     def __init__(self, list_repr) -> None:
         self.level = len(list_repr)
         self.list_repr = list_repr
-    
+
     def __hash__(self) -> int:
-        return hash(tuple([ tuple(i) for i in self.list_resp]))
-    
+        return hash(tuple([tuple(i) for i in self.list_resp]))
+
     def __contains__(self, node):
         return node in self.to_cstree_paths()
-    
+
     def to_csi(self):
         sepseta = set()
         cond_set = set()
         context = {}
         sepsetb = {self.level+1}
-        
+
         for i, el in enumerate(self.list_repr):
             if type(el) is list:
                 sepseta.add(i+1)
@@ -303,32 +304,33 @@ class Stage:
     def __str__(self) -> str:
         return str(self.list_repr)
 
+
 class Context:
     def __init__(self, context: dict) -> None:
-        self.context = context 
+        self.context = context
 
     def __str__(self) -> str:
         context_str = ""
-        for key, val in self.context.items():   
-             context_str += "X{}={}, ".format(key, val)
+        for key, val in self.context.items():
+            context_str += "X{}={}, ".format(key, val)
         if context_str != "":
             context_str = context_str[:-2]
         return context_str
 
     def __contains__(self, key):
-        
+
         return key in self.context
 
     def __getitem__(self, key):
         return self.context[key]
-    
+
     def __eq__(self, __o: object) -> bool:
         return hash(__o) == hash(self)
-    
+
     def __hash__(self) -> int:
         m = 1  # special case when context is emtpy
         if len(self.context) == 0:
-            return hash(())        
+            return hash(())
 
         m = max(self.context)
         tmp = [None] * (m+1)
@@ -337,7 +339,8 @@ class Context:
                 tmp[i] = self.context[i]
 
         return hash(tuple(tmp))
-    
+
+
 class CSI_relation:
     """This is a context specific relation. Itshould be implemented 
        as a context and a CI relation.
@@ -365,18 +368,17 @@ class CSI_relation:
             _type_: _description_
         """
 
-        level =  len(self.ci.a) + len(self.context.context) + 1
+        level = len(self.ci.a) + len(self.context.context) + 1
         vals = []*level
         for i in self.ci.a:
             vals[i] = range(cards[i])
         for i in self.ci.b:
             vals[i] = range(cards[i])
-        for i,j in self.context.context.items():
+        for i, j in self.context.context.items():
             vals[i] = j
-            
+
         return itertools.product(*vals)
 
-     
     def __add__(self, o):
         """Adding two objects by adding their set of paths and create a new
             CSI_relation.
@@ -403,6 +405,7 @@ class CSI_relation:
             return "{}".format(self.ci)
         return "{}, {}".format(self.ci, self.context)
 
+
 def sample_random_stage(cards: list, level: int) -> Stage:
     vals = [None]*len(cards[:level])
     # Just to make sure not all variables are context variables.
@@ -410,13 +413,13 @@ def sample_random_stage(cards: list, level: int) -> Stage:
         for i, j in enumerate(cards[:level]):
             b = np.random.randint(2)
             if b == 0:
-                vals[i] =  np.random.randint(cards[i])
+                vals[i] = np.random.randint(cards[i])
             if b == 1:
-                vals[i] =  list(range(cards[i]))
-    #print(vals)
-    #print(Stage(vals).to_csi())
+                vals[i] = list(range(cards[i]))
+    # print(vals)
+    # print(Stage(vals).to_csi())
     return Stage(vals)
-    
+
 #     r = set()
 #     for x in itertools.product(*vals):
 #         r.add(x)
@@ -425,6 +428,7 @@ def sample_random_stage(cards: list, level: int) -> Stage:
 # def random_csi(cards):
 #     s = random_csi_path_set(cards)
 #     return CSI_relation(s)
+
 
 def comp_bit_strings(a):
     """Takes a set of bit strings,representaing outcome paths in a CStree. and returns
@@ -453,8 +457,9 @@ def comp_bit_strings(a):
     Stage()
     return levels
 
+
 def csi_relations_to_dags(csi_relations, causal_order):
-    
+
     p = causal_order.p
     graphs = {context: None for context in csi_relations}
     for context, csis in csi_relations.items():
@@ -477,11 +482,12 @@ def csi_relations_to_dags(csi_relations, causal_order):
                 # Check is the ci is in some of the cis of the context.
                 # 1. i<j
                 # 2. no edge if Xi _|_ Xj | Pa1:j \ i
-                
+
                 cis = []
                 for csi in csis:
                     cis += decomposition(csi.ci)
-                
+                    cis += weak_union(csi.ci)
+
                 if ci_tmp in cis:
                     #print("No edge ({},{})".format(i,j))
                     adjmat[i-1, j-1] = 0
@@ -489,7 +495,7 @@ def csi_relations_to_dags(csi_relations, causal_order):
                     adjmat[i-1, j-1] = 1
 
         context_els = {i-1 for i in context.context.keys()}
-        allels = np.array(causal_order.order )-1
+        allels = np.array(causal_order.order)-1
         inds = sorted(set(allels) - context_els)
         adjmat = adjmat[np.ix_(inds, inds)]
 
@@ -535,58 +541,89 @@ def sample_cstree(p: int) -> CStree:
     cards = [2] * p
     ct.set_cardinalities([None] + cards)
 
-    stages = {}    
+    stages = {}
     for key, val in enumerate(cards):
         stages[key] = []
         tmp_paths = []
-        for i in range(key): # Number of trees incrases as O(p*level)
+        for i in range(key):  # Number of trees incrases as O(p*level)
             if np.random.randint(2):
                 s = sample_random_stage(cards, level=key)
                 paths = set(s.to_cstree_paths())
-                #print(paths)
+                # print(paths)
                 if all(map(lambda x: len(x & paths) == 0, tmp_paths)):
                     # check the paths asre disjoint
-                    
+
                     tmp_paths.append(paths)
                     # TODO: check non over-lapping
                     stages[key].append(s)
-            
+
     ct.add_stages(stages)
     ct.create_tree()
     ct.set_random_parameters()
     return ct
+
 
 def generate_random_clusters():
     """Generate random stages by merging existing ones.
        Stages can may have only one node.
     """
     # sample two nodes. ()
-    # check their stages. 
+    # check their stages.
     # (since a stage is sample with prob psoportional to the #nodes in it
     #  this is like sampling a stage, but we dont have to enumerate the stages).
     # merge their stages.
     # Repeat n times.
-    
+
     nodes_to_stage = {}
 
     # uniform sampling
     probs = [[1.0/card]*card for card in cardinalities]
 
-    
+
+def powerset(iterable):
+    "powerset([1,2,3]) --> () (1,) (2,) (3,) (1,2) (1,3) (2,3) (1,2,3)"
+    s = list(iterable)
+    return chain.from_iterable(combinations(s, r) for r in range(len(s)+1))
+
+
 def multivariate_multinomial(probs):
     x = []
-    for dist in probs:                
+    for dist in probs:
         s = np.random.multinomial(1,  dist, size=1)
         x.append(s)
     return x
 
     # make sure the last entry is the same
 
+
 def decomposition(ci: CI_relation):
 
     cilist = []
     for x in itertools.product(ci.a, ci.b):
-        new_ci = CI_relation({x[0]}, {x[1]}, ci.sep)        
+        new_ci = CI_relation({x[0]}, {x[1]}, ci.sep)
         cilist.append(new_ci)
-        
+
     return cilist
+
+
+def weak_union(ci):
+
+    cis = []
+    for d in powerset(ci.b):
+        d = set(d)
+        if (len(d) == 0) | (d == ci.b):
+            continue
+
+        BuD = ci.b
+        cis.append(CI_relation(ci.a, BuD-d, ci.sep | d))
+
+    for d in powerset(ci.a):
+        d = set(d)
+        if (len(d) == 0) | (d == ci.a):
+            continue
+
+        d = set(d)
+        AuD = ci.a
+        cis.append(CI_relation(AuD - d, ci.b, ci.sep | d))
+
+    return cis
