@@ -10,6 +10,11 @@ import itertools
 from pydantic import NoneIsAllowedError
 
 
+def plot(graph, layout="dot"):
+    agraph = nx.nx_agraph.to_agraph(graph)
+    agraph.layout(layout)
+    return agraph
+
 class CStree(nx.Graph):
     """ Naive implementation of a CStree for testing purposes and sanity checks.
 
@@ -86,10 +91,14 @@ class CStree(nx.Graph):
         Args:
             node (int): node.
         """
-
-        for _, stagelist in self.stages.items():
-            for s in stagelist:
-                if node in s:
+        if self.stages is None:
+            return None
+        
+        lev = len(node)
+        
+        if lev in self.stages:
+            for s in self.stages[lev]:
+                if node in s: 
                     return s
         return None
 
@@ -131,7 +140,7 @@ class CStree(nx.Graph):
 
     def get_stage_no(self, node):
         lev = len(node)
-        for lev, stages in self.stages.items():
+        for stages in self.stages[lev]:
             for i, stage_dict in enumerate(stages):
                 if node in stage_dict:
                     return i
@@ -195,7 +204,7 @@ class CStree(nx.Graph):
     def sample(self, n):
         """Draws n random samples from the CStree.
             Dymanocally generates nodes in the underlying tree
-            and associated parameters on the fly in order to avoid 
+            and associated parameters on the fly in order to avoid
             creating the whole tree, which is O(2^p), just to sample data.
 
         Args:
@@ -204,55 +213,55 @@ class CStree(nx.Graph):
 
         if self.tree is None:
             self.tree = nx.DiGraph()
-            
+
         xs = []
         for _ in range(n):
             node = ()
             x = []
-            
-            
+
+
             while len(x) < self.p:
-                print(node, x)
+                #print(node, x)
                 # while self.tree.out_degree(node) != 0:
                 if (node not in self.tree) or len(self.tree.out_edges(node)) == 0:
-                    lev = len(node)                    
+                    lev = len(node)
                     edges = [(node, node + (ind,)) for ind in range(self.cards[lev+1])]
-                    print("adding edges {}".format(edges))
+                    #print("adding edges {}".format(edges))
                     self.tree.add_edges_from(edges)
-                    
+
                     # Sample parameters
                     # 1. Check if in some stage
-                    
-                    # We set the parametres at random. But if the node belongs to a 
+
+                    # We set the parametres at random. But if the node belongs to a
                     # stage we overwrite.
                     probs = np.random.dirichlet([1] * self.cards[lev+1])
-                    if self.stages is not None:
-                        for s in self.stages[lev]:
-                            if node in s:
-                                probs = s.probs
-                    
+
+                    s = self.get_stage(node)
+                    if s is not None:
+                        probs = s.probs
+     
                     edges = list(self.tree.out_edges(node)) # Hope this gets in the right order
-                    print(edges)
+                    #print(edges)
                     # Set parameters
                     for i, e in enumerate(edges):
                         self.tree[e[0]][e[1]]["cond_prob"] = probs[i]
                         self.tree[e[0]][e[1]]["label"] = round(probs[i], 2)
-                
-                    
+
+
                 edges = list(self.tree.out_edges(node))
-                print(self.tree[()][(0,)]["cond_prob"])
+                #print(self.tree[()][(0,)]["cond_prob"])
                 probabilities = [self.tree[e[0]][e[1]]["cond_prob"]
                                 for e in edges]
-                print(probabilities)
+                #print(probabilities)
                 #elements = [str(e[1]) for e in edges]
                 # ind is the index or the outcome of the sampled variable
                 vals = len(edges)
-                print(vals)
+                #print(vals)
                 ind = np.random.choice(len(edges), 1, p=probabilities)[0]
                 node = edges[ind][1] # This is a typle like (0,1,1,0)
                 x.append(node[-1]) # Take the last element, 0, above
-                print("One sample! {}".format(x))
- 
+                #print("One sample! {}".format(x))
+
             xs.append(x)
         return np.array(xs)
 
@@ -264,10 +273,12 @@ class CStree(nx.Graph):
         """
 
     def plot(self, filename="cstree.png"):
-        agraph = nx.nx_agraph.to_agraph(self.tree)
-        agraph.layout("dot")
-        return agraph
+        return plot(self.tree)
+        #agraph = nx.nx_agraph.to_agraph(self.tree)
+        #agraph.layout("dot")
+        #return agraph
         # agraph.draw(filename)
+
 
 
 class CI_relation:
@@ -322,7 +333,16 @@ class Stage:
         return hash(tuple([tuple(i) for i in self.list_resp]))
 
     def __contains__(self, node):
-        return node in self.to_cstree_paths()
+
+        for i, val in enumerate(self.list_repr):
+             # Must chec if list
+            if (type(val) is list) and (node[i] not in val):
+                return False
+            if (type(val) is int) and (node[i] != val):                
+                return False
+            
+        return True
+
 
     def to_csi(self):
         sepseta = set()
