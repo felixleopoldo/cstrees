@@ -13,11 +13,11 @@ from pydantic import NoneIsAllowedError
 class CStree(nx.Graph):
     """ Naive implementation of a CStree for testing purposes and sanity checks.
 
-        One of the main problems is to implement this efficiently, avoiding 
+        One of the main problems is to implement this efficiently, avoiding
         the O(2^p) space complexity.
 
-        However, there can be like O(2^p) differnet minimal contexts, 
-        so maybe its impossible. Then we would need some limit on the number 
+        However, there can be like O(2^p) differnet minimal contexts,
+        so maybe its impossible. Then we would need some limit on the number
         of nodes in the minimal contexts. But even if we limit the number of
         nodes in the context to 1, the are about 2^p such sequences/sets.
 
@@ -46,6 +46,8 @@ class CStree(nx.Graph):
 
     def __init__(self, causal_order, data=None, **attr):
         nx.Graph.__init__(self, data, **attr)
+        self.tree = None
+        self.stages = None
         self.co = causal_order
         self.p = causal_order.p
 
@@ -164,7 +166,7 @@ class CStree(nx.Graph):
         pass
 
     def csi_relations(self):
-        """ Returns all the context specific indepencende (CSI) relations. 
+        """ Returns all the context specific indepencende (CSI) relations.
             These should normally be thinned out using absorption, and then we would extract
             the minmal contexts based on that.
         """
@@ -192,24 +194,65 @@ class CStree(nx.Graph):
 
     def sample(self, n):
         """Draws n random samples from the CStree.
+            Dymanocally generates nodes in the underlying tree
+            and associated parameters on the fly in order to avoid 
+            creating the whole tree, which is O(2^p), just to sample data.
 
         Args:
             n (int): number of random samples.
         """
 
+        if self.tree is None:
+            self.tree = nx.DiGraph()
+            
         xs = []
         for _ in range(n):
             node = ()
             x = []
-            while self.tree.out_degree(node) != 0:
+            
+            
+            while len(x) < self.p:
+                print(node, x)
+                # while self.tree.out_degree(node) != 0:
+                if (node not in self.tree) or len(self.tree.out_edges(node)) == 0:
+                    lev = len(node)                    
+                    edges = [(node, node + (ind,)) for ind in range(self.cards[lev+1])]
+                    print("adding edges {}".format(edges))
+                    self.tree.add_edges_from(edges)
+                    
+                    # Sample parameters
+                    # 1. Check if in some stage
+                    
+                    # We set the parametres at random. But if the node belongs to a 
+                    # stage we overwrite.
+                    probs = np.random.dirichlet([1] * self.cards[lev+1])
+                    if self.stages is not None:
+                        for s in self.stages[lev]:
+                            if node in s:
+                                probs = s.probs
+                    
+                    edges = list(self.tree.out_edges(node)) # Hope this gets in the right order
+                    print(edges)
+                    # Set parameters
+                    for i, e in enumerate(edges):
+                        self.tree[e[0]][e[1]]["cond_prob"] = probs[i]
+                        self.tree[e[0]][e[1]]["label"] = round(probs[i], 2)
+                
+                    
                 edges = list(self.tree.out_edges(node))
+                print(self.tree[()][(0,)]["cond_prob"])
                 probabilities = [self.tree[e[0]][e[1]]["cond_prob"]
-                                 for e in edges]
-                elements = [str(e[1]) for e in edges]
-                ind = np.random.choice(
-                    range(len(edges)), 1, p=probabilities)[0]
-                node = edges[ind][1]
-                x.append(node[-1])
+                                for e in edges]
+                print(probabilities)
+                #elements = [str(e[1]) for e in edges]
+                # ind is the index or the outcome of the sampled variable
+                vals = len(edges)
+                print(vals)
+                ind = np.random.choice(len(edges), 1, p=probabilities)[0]
+                node = edges[ind][1] # This is a typle like (0,1,1,0)
+                x.append(node[-1]) # Take the last element, 0, above
+                print("One sample! {}".format(x))
+ 
             xs.append(x)
         return np.array(xs)
 
@@ -297,6 +340,27 @@ class Stage:
         context = Context(context)
         return CSI_relation(ci, context)
 
+    def intersects(self, stage):
+        """ Checks if tha paths of two stages intersect.
+            Since then they cannot be in the same CStree.
+        """
+
+        # Suffcient with some level with no overlap to return False.
+        for i, lev in enumerate(stage.list_repr):
+            s_lev = self.list_repr[i]
+            # Either same number of both sets. It is always the same sets,
+            # the whole outcome space.
+            if (lev == s_lev):
+                continue
+            if type(s_lev) is list:
+                if (lev in s_lev):
+                    continue
+            if type(lev) is list:
+                if (s_lev in lev):
+                    continue
+            return False
+        return True
+
     def to_cstree_paths(self):
         tmp = [[i] if type(i) is int else i for i in self.list_repr]
         return list(itertools.product(*tmp))
@@ -342,7 +406,7 @@ class Context:
 
 
 class CSI_relation:
-    """This is a context specific relation. Itshould be implemented 
+    """This is a context specific relation. Itshould be implemented
        as a context and a CI relation.
     """
 
@@ -393,7 +457,7 @@ class CSI_relation:
 
     def __hash__(self) -> int:
         """TODO: Check that the order is correct, so tht not 1 CSI can
-        be represented in 2 ways. 
+        be represented in 2 ways.
 
         Returns:
             int: hash of the string representation.
@@ -416,18 +480,8 @@ def sample_random_stage(cards: list, level: int) -> Stage:
                 vals[i] = np.random.randint(cards[i])
             if b == 1:
                 vals[i] = list(range(cards[i]))
-    # print(vals)
-    # print(Stage(vals).to_csi())
+
     return Stage(vals)
-
-#     r = set()
-#     for x in itertools.product(*vals):
-#         r.add(x)
-#     return r
-
-# def random_csi(cards):
-#     s = random_csi_path_set(cards)
-#     return CSI_relation(s)
 
 
 def comp_bit_strings(a):
@@ -438,8 +492,8 @@ def comp_bit_strings(a):
         a (set of paths): Set of outcome strings.
 
     Returns:
-        list: List telling at which positions the bitstrings are the same and which 
-        value they have (i.e. the context). 
+        list: List telling at which positions the bitstrings are the same and which
+        value they have (i.e. the context).
 
     Example:
         >>> {(1,0,2), (1,1,2)} -> (1, False, 2)
@@ -490,7 +544,7 @@ def csi_relations_to_dags(csi_relations, causal_order):
                     cis += weak_union(csi.ci)
 
                 if ci_tmp in cis:
-                    #print("No edge ({},{})".format(i,j))
+                    #print("No edprint(s1)ge ({},{})".format(i,j))
                     adjmat[i-1, j-1] = 0
                 else:
                     adjmat[i-1, j-1] = 1
@@ -527,8 +581,8 @@ def get_minimal_dag_imaps(causal_order, csi_relations):
 
 
 def sample_cstree(p: int) -> CStree:
-    """ 
-       Sample a random CStee with given cardinalities. 
+    """
+       Sample a random CStee with given cardinalities.
        Since the tree is sampled the order shouldn't matter?
 
     Args:
@@ -545,17 +599,15 @@ def sample_cstree(p: int) -> CStree:
     stages = {}
     for key, val in enumerate(cards):
         stages[key] = []
-        tmp_paths = []
         for i in range(key):  # Number of trees incrases as O(p*level)
             if np.random.randint(2):
                 s = sample_random_stage(cards, level=key)
-                paths = set(s.to_cstree_paths())
-                # print(paths)
-                if all(map(lambda x: len(x & paths) == 0, tmp_paths)):
-                    # check the paths asre disjoint
 
-                    tmp_paths.append(paths)
-                    # TODO: check non over-lapping
+                probs = np.random.dirichlet([1] * cards[i+1])
+
+                s.probs = probs
+
+                if all(map(lambda x: x.intersects(s) is False, stages[key])):
                     stages[key].append(s)
 
     ct.add_stages(stages)
@@ -603,7 +655,7 @@ def decomposition(ci: CI_relation):
     for x in itertools.product(ci.a, ci.b):
         new_ci = CI_relation({x[0]}, {x[1]}, ci.sep)
         if new_ci == ci:
-            continue        
+            continue
         cilist.append(new_ci)
 
     return cilist
