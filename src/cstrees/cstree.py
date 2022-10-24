@@ -219,7 +219,6 @@ class CStree(nx.Graph):
             node = ()
             x = []
 
-
             while len(x) < self.p:
                 #print(node, x)
                 # while self.tree.out_degree(node) != 0:
@@ -246,6 +245,7 @@ class CStree(nx.Graph):
                     for i, e in enumerate(edges):
                         self.tree[e[0]][e[1]]["cond_prob"] = probs[i]
                         self.tree[e[0]][e[1]]["label"] = round(probs[i], 2)
+                        self.tree.nodes[e[1]]["label"] = e[1][-1]
 
 
                 edges = list(self.tree.out_edges(node))
