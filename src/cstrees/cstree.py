@@ -6,9 +6,10 @@ import numpy as np
 import matplotlib
 from itertools import chain, combinations
 import itertools
-
+import matplotlib.cm as cm
 from pydantic import NoneIsAllowedError
-
+import matplotlib.colors as mcolors
+import random 
 
 def plot(graph, layout="dot"):
     agraph = nx.nx_agraph.to_agraph(graph)
@@ -55,6 +56,11 @@ class CStree(nx.Graph):
         self.stages = None
         self.co = causal_order
         self.p = causal_order.p
+        random.seed(1)
+        self.colors = list(mcolors.cnames.keys())
+        self.color_no = 0
+        random.shuffle(self.colors)
+        
 
     def set_cardinalities(self, cards):
         self.cards = cards
@@ -73,8 +79,8 @@ class CStree(nx.Graph):
             >>> })
         """
         self.stages = stages
-        self.stage_probs = {key: [None]*len(val)
-                            for key, val in stages.items()}
+        #self.stage_probs = {key: [None]*len(val)
+        #                    for key, val in stages.items()}
 
     def get_stages(self, level: int):
         """ Get all the stages in one level.
@@ -96,6 +102,7 @@ class CStree(nx.Graph):
         
         lev = len(node)
         
+        
         if lev in self.stages:
             for s in self.stages[lev]:
                 if node in s: 
@@ -111,7 +118,7 @@ class CStree(nx.Graph):
         for lev, stages in self.stages.items():
             for i, stage in enumerate(stages):
                 probs = np.random.dirichlet([1] * self.cards[lev+1])
-                self.stage_probs[lev][i] = probs
+                #self.stage_probs[lev][i] = probs
                 stage.probs = probs
                 stage.color = cols[i]
 
@@ -210,15 +217,14 @@ class CStree(nx.Graph):
         Args:
             n (int): number of random samples.
         """
-
+        
         if self.tree is None:
-            self.tree = nx.DiGraph()
-
+            self.tree = nx.DiGraph()        
         xs = []
+        
         for _ in range(n):
             node = ()
             x = []
-
             while len(x) < self.p:
                 #print(node, x)
                 # while self.tree.out_degree(node) != 0:
@@ -229,15 +235,22 @@ class CStree(nx.Graph):
                     self.tree.add_edges_from(edges)
 
                     # Sample parameters
-                    # 1. Check if in some stage
-
+                    
                     # We set the parametres at random. But if the node belongs to a
                     # stage we overwrite.
                     probs = np.random.dirichlet([1] * self.cards[lev+1])
 
+                    # Check if node is in some stage
                     s = self.get_stage(node)
-                    if s is not None:
-                        probs = s.probs
+                    color = ""
+                    if s is not None:                        
+                        probs = s.probs                        
+                        if s.color is None:
+                            s.color = self.colors[self.color_no]
+                            self.color_no += 1
+                            
+                        color = s.color
+                    
      
                     edges = list(self.tree.out_edges(node)) # Hope this gets in the right order
                     #print(edges)
@@ -246,8 +259,9 @@ class CStree(nx.Graph):
                         self.tree[e[0]][e[1]]["cond_prob"] = probs[i]
                         self.tree[e[0]][e[1]]["label"] = round(probs[i], 2)
                         self.tree.nodes[e[1]]["label"] = e[1][-1]
-
-
+                        self.tree[e[0]][e[1]]["color"] = color
+                        self.tree.nodes[e[0]]["color"] = color
+ 
                 edges = list(self.tree.out_edges(node))
                 #print(self.tree[()][(0,)]["cond_prob"])
                 probabilities = [self.tree[e[0]][e[1]]["cond_prob"]
@@ -272,7 +286,12 @@ class CStree(nx.Graph):
             x (array type): a vector.
         """
 
-    def plot(self, filename="cstree.png"):
+    def plot(self, fill=False):
+        
+        if fill or (self.tree is None):            
+            self.create_tree()
+            self.set_random_parameters()
+
         return plot(self.tree)
         #agraph = nx.nx_agraph.to_agraph(self.tree)
         #agraph.layout("dot")
@@ -328,6 +347,7 @@ class Stage:
     def __init__(self, list_repr) -> None:
         self.level = len(list_repr)
         self.list_repr = list_repr
+        self.color = None
 
     def __hash__(self) -> int:
         return hash(tuple([tuple(i) for i in self.list_resp]))
@@ -491,6 +511,10 @@ class CSI_relation:
 
 
 def sample_random_stage(cards: list, level: int) -> Stage:
+    # The las level cannot contain stages
+    
+    #if level >= len(cards):
+    #    return None
     vals = [None]*len(cards[:level])
     # Just to make sure not all variables are context variables.
     while not any(map(lambda x: type(x) is list, vals)):
@@ -501,8 +525,10 @@ def sample_random_stage(cards: list, level: int) -> Stage:
             if b == 1:
                 vals[i] = list(range(cards[i]))
 
-    return Stage(vals)
-
+    s = Stage(vals)
+    #if level < len(cards)-1:
+    s.probs = np.random.dirichlet([1] * cards[level]) # Need to fix this
+    return s
 
 def comp_bit_strings(a):
     """Takes a set of bit strings,representaing outcome paths in a CStree. and returns
@@ -617,22 +643,17 @@ def sample_cstree(p: int) -> CStree:
     ct.set_cardinalities([None] + cards)
 
     stages = {}
-    for key, val in enumerate(cards):
+    for key, val in enumerate(cards): # not the last level
+
         stages[key] = []
         for i in range(key):  # Number of trees incrases as O(p*level)
-            if np.random.randint(2):
+            if np.random.randint(2): 
                 s = sample_random_stage(cards, level=key)
-
-                probs = np.random.dirichlet([1] * cards[i+1])
-
-                s.probs = probs
 
                 if all(map(lambda x: x.intersects(s) is False, stages[key])):
                     stages[key].append(s)
 
     ct.add_stages(stages)
-    ct.create_tree()
-    ct.set_random_parameters()
     return ct
 
 
