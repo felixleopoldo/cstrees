@@ -17,11 +17,7 @@ def plot(graph, layout="dot"):
     return agraph
 
 class CStree(nx.Graph):
-    """ Naive implementation of a CStree for testing purposes and sanity checks.
-
-        One of the main problems is to implement this efficiently, avoiding
-        the O(2^p) space complexity.
-
+    """ 
         However, there can be like O(2^p) differnet minimal contexts,
         so maybe its impossible. Then we would need some limit on the number
         of nodes in the minimal contexts. But even if we limit the number of
@@ -110,7 +106,12 @@ class CStree(nx.Graph):
         return None
 
     def set_random_parameters(self):
-        # Set stage prbabilities
+        """ This is dependent on if one has sampled from the tree already.
+            I.e., if a probablity is already set for an edge, it 
+            should not be overwritten.
+        """
+        
+        # Set stage probabilities
 
         cols = ["red", "blue", "green", "purple", "yellow", "grey"]
         self.colors = {key: cols[:len(val)]
@@ -154,8 +155,10 @@ class CStree(nx.Graph):
         return None
 
     def create_tree(self):
-        self.tree = nx.DiGraph()
+        if self.tree is None:            
+            self.tree = nx.DiGraph()
 
+        ## All the levels of the firs variable
         tovisit = [(i,) for i in range(self.cards[1])]
 
         while len(tovisit) != 0:
@@ -164,11 +167,14 @@ class CStree(nx.Graph):
             lev = len(node)
             fr = node[:lev-1]
             to = node
-            self.tree.add_edge(fr, to)
+            if not self.tree.has_edge(fr,to):
+                self.tree.add_edge(fr, to) # check if exists first
+            else:                
+                pass
             self.tree.nodes[to]["label"] = to[-1]
             # Add more nodes to visit
             if lev < self.p:
-                np.random.dirichlet([1] * lev)
+                #np.random.dirichlet([1] * lev)
                 for i in range(self.cards[lev + 1]):
                     tovisit.append(to + (i,))
 
@@ -181,6 +187,15 @@ class CStree(nx.Graph):
 
         pass
 
+    def likelihood(self, data):
+        pass
+
+    def to_csv(self):
+        pass
+    
+    def read_csv(self,filename):
+        pass
+    
     def csi_relations(self):
         """ Returns all the context specific indepencende (CSI) relations.
             These should normally be thinned out using absorption, and then we would extract
@@ -280,7 +295,7 @@ class CStree(nx.Graph):
         return np.array(xs)
 
     def pdf(self, x):
-        """Density function exaluated at x
+        """Density function evaluated at x.
 
         Args:
             x (array type): a vector.
@@ -628,11 +643,11 @@ def get_minimal_dag_imaps(causal_order, csi_relations):
 
 def sample_cstree(p: int) -> CStree:
     """
-       Sample a random CStee with given cardinalities.
+       Sample a random CStree with given cardinalities.
        Since the tree is sampled the order shouldn't matter?
 
     Args:
-        cardinalities (list): cardinalirties of the variables.
+        cardinalities (list): cardinalities of the variables.
 
     Returns:
         CStree: a CStree.
