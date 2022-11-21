@@ -5,6 +5,7 @@ pytest
 manuel
 pydot
 matplotlib
+pygraphviz
 sphinx_rtd_theme
-
--e .
+ipython
+ipykernel
