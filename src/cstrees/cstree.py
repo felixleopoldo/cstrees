@@ -9,6 +9,7 @@ import itertools
 import matplotlib.cm as cm
 import matplotlib.colors as mcolors
 import random 
+import pandas as pd
 
 def plot(graph, layout="dot"):
     agraph = nx.nx_agraph.to_agraph(graph)
@@ -106,14 +107,17 @@ class CStree(nx.Graph):
     
  
     def to_df(self):
-        import pandas as pd
-        df = pd.DataFrame()
+        
+        # cardinalities header
+        d = {self.co.order[i]:[c] for i,c in enumerate(self.cards[1:])}
+        df = pd.DataFrame(d, columns=self.co.order)
         
         for l, stages in self.stages.items():
             for s in stages:            
-                s.to_df(self.co)
-                
-        
+                dftmp = s.to_df(self.co.order)
+                df = pd.concat([df, dftmp])
+
+        return df        
 
     def set_random_parameters(self):
         """ This is dependent on if one has sampled from the tree already.
@@ -390,21 +394,24 @@ class Stage:
 
     def to_df(self, columns):
         import pandas as pd
-        df = pd.DataFrame()
+        
         d = {}
         
-        
         for i in range(len(columns)):
-            if len(self.list_repr) < i:
-                d[columns[i]] = self.list_repr[i]
+            if i < len(self.list_repr):
+                if type(self.list_repr[i]) == list:
+                    d[columns[i]] = ["*"]
+                else:
+                    d[columns[i]] = [self.list_repr[i]]
             else:
-                d[columns[i]] = "-"
+                d[columns[i]] = ["-"]
                 
                 
-        for l in self.list_repr:
-            print(l)
+        df = pd.DataFrame(d, columns=columns)
         
-        df.columns = columns         
+        return df
+        #df.columns = columns
+        
 
     def to_csi(self):
         sepseta = set()
