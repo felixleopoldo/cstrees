@@ -103,6 +103,17 @@ class CStree(nx.Graph):
                 if node in s: 
                     return s
         return None
+    
+ 
+    def to_df(self):
+        import pandas as pd
+        df = pd.DataFrame()
+        
+        for l, stages in self.stages.items():
+            for s in stages:            
+                s.to_df(self.co)
+                
+        
 
     def set_random_parameters(self):
         """ This is dependent on if one has sampled from the tree already.
@@ -377,6 +388,23 @@ class Stage:
             
         return True
 
+    def to_df(self, columns):
+        import pandas as pd
+        df = pd.DataFrame()
+        d = {}
+        
+        
+        for i in range(len(columns)):
+            if len(self.list_repr) < i:
+                d[columns[i]] = self.list_repr[i]
+            else:
+                d[columns[i]] = "-"
+                
+                
+        for l in self.list_repr:
+            print(l)
+        
+        df.columns = columns         
 
     def to_csi(self):
         sepseta = set()

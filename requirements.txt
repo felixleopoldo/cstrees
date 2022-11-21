@@ -6,6 +6,7 @@ manuel
 pydot
 matplotlib
 pygraphviz
+pandas
 sphinx_rtd_theme
 ipython
 ipykernel
