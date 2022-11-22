@@ -755,7 +755,7 @@ def df_to_cstree(df):
             elif val == "-":
                
                 stages[level].append(Stage(stage_list))
-                continue
+                break
             else:
                 stage_list.append(int(val))
     
