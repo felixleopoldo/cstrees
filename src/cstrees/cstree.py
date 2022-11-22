@@ -117,8 +117,14 @@ class CStree(nx.Graph):
                 dftmp = s.to_df(self.co.order)
                 df = pd.concat([df, dftmp])
 
-        return df        
+        return df
+    
+    def from_df(self, df):
+        
+        for row in df.iterrows():
+            pass
 
+        
     def set_random_parameters(self):
         """ This is dependent on if one has sampled from the tree already.
             I.e., if a probablity is already set for an edge, it 
@@ -410,7 +416,10 @@ class Stage:
         df = pd.DataFrame(d, columns=columns)
         
         return df
-        #df.columns = columns
+
+
+    def from_df(self):
+        pass
         
 
     def to_csi(self):
@@ -728,6 +737,32 @@ def powerset(iterable):
     s = list(iterable)
     return chain.from_iterable(combinations(s, r) for r in range(len(s)+1))
 
+def df_to_cstree(df):
+    
+    co = CausalOrder([x[0] for x in df.columns])
+    
+    cards = [int(x[1]) for x in df.columns]
+    
+    stages = {i:[] for i in range(len(cards)+1)}
+    cstree = CStree(co)
+
+    for row in df.iterrows():
+        stage_list = []
+
+        for level, val in enumerate(row[1]):
+            if val == "*":
+                stage_list.append(list(range(cards[level])))
+            elif val == "-":
+               
+                stages[level].append(Stage(stage_list))
+                continue
+            else:
+                stage_list.append(int(val))
+    
+    cstree.add_stages(stages)
+    cstree.set_cardinalities([None] + cards)
+
+    return cstree
 
 def multivariate_multinomial(probs):
     x = []
