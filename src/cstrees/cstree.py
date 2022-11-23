@@ -124,26 +124,29 @@ class CStree(nx.Graph):
         for row in df.iterrows():
             pass
 
+    
+    def set_random_stage_parameters(self):
+        # Set stage probabilities
+
+        cols = ["red", "blue", "green", "purple", "yellow", "grey"]
+        self.colors = {key: cols[:len(val)]
+                       for key, val in self.stages.items()}
+
+        for lev, stages in self.stages.items():
+            for i, stage in enumerate(stages):
+                probs = np.random.dirichlet([1] * self.cards[lev+1])
+                stage.probs = probs
+                stage.color = cols[i]
         
+    
     def set_random_parameters(self):
         """ This is dependent on if one has sampled from the tree already.
             I.e., if a probablity is already set for an edge, it 
             should not be overwritten.
         """
         
-        # Set stage probabilities
 
-        cols = ["red", "blue", "green", "purple", "yellow", "grey"]
-        self.colors = {key: cols[:len(val)]
-                       for key, val in self.stages.items()}
-        for lev, stages in self.stages.items():
-            for i, stage in enumerate(stages):
-                probs = np.random.dirichlet([1] * self.cards[lev+1])
-                #self.stage_probs[lev][i] = probs
-                stage.probs = probs
-                stage.color = cols[i]
-
-        # Check if the node is part part of a context
+        # Check if the node is part part of a context (stage?) 
         # if so we may overwrite probs. Otherwise, generate new ones.
         for node in self.tree.nodes():
             if len(node) == self.p:
@@ -417,6 +420,8 @@ class Stage:
         
         return df
 
+    def set_random_params(self, cards):
+        self.probs = np.random.dirichlet([1] * cards[self.level]) # Need to fix this
 
     def from_df(self):
         pass
@@ -464,7 +469,7 @@ class Stage:
         return list(itertools.product(*tmp))
 
     def __str__(self) -> str:
-        return str(self.list_repr)
+        return str(self.list_repr) + "; probs: " + str(self.probs)
 
 
 class Context:
@@ -584,8 +589,9 @@ def sample_random_stage(cards: list, level: int) -> Stage:
                 vals[i] = list(range(cards[i]))
 
     s = Stage(vals)
-    #if level < len(cards)-1:
-    s.probs = np.random.dirichlet([1] * cards[level]) # Need to fix this
+    
+    
+    #s.probs = np.random.dirichlet([1] * cards[level]) # Need to fix this
     return s
 
 def comp_bit_strings(a):
@@ -707,11 +713,15 @@ def sample_cstree(p: int) -> CStree:
         for i in range(key):  # Number of trees incrases as O(p*level)
             if np.random.randint(2): 
                 s = sample_random_stage(cards, level=key)
+                #s.set_random_params(cards)
 
                 if all(map(lambda x: x.intersects(s) is False, stages[key])):
                     stages[key].append(s)
 
     ct.add_stages(stages)
+    
+    #ct.set_random_stage_parameters()
+    
     return ct
 
 
@@ -745,7 +755,8 @@ def df_to_cstree(df):
     
     stages = {i:[] for i in range(len(cards)+1)}
     cstree = CStree(co)
-
+    cstree.set_cardinalities([None] + cards)
+    
     for row in df.iterrows():
         stage_list = []
 
@@ -753,15 +764,16 @@ def df_to_cstree(df):
             if val == "*":
                 stage_list.append(list(range(cards[level])))
             elif val == "-":
-               
-                stages[level].append(Stage(stage_list))
+                s = Stage(stage_list)
+                stages[level].append(s)
                 break
             else:
                 stage_list.append(int(val))
     
     cstree.add_stages(stages)
-    cstree.set_cardinalities([None] + cards)
 
+    #cstree.set_random_stage_parameters()
+    
     return cstree
 
 def multivariate_multinomial(probs):

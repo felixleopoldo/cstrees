@@ -9,6 +9,7 @@ import networkx as nx
 p = 6
 
 t = ct.sample_cstree(p)
+t.set_random_stage_parameters()
 t.plot()
 rels = t.csi_relations()
 
@@ -22,8 +23,7 @@ print()
 
 s1 = ct.Stage([[0,1], 0])
 s2 = ct.Stage([[0,1], 1])
-print(s1)
-print(s2)
+
 print(s1.intersects(s2))
 
 co = ct.CausalOrder(range(1, p+1))
@@ -31,6 +31,7 @@ tree = ct.CStree(co)
 
 cards = [2] * p
 stage = ct.sample_random_stage(cards,4)
+stage.set_random_params(cards)
 
 tree.set_cardinalities([None] + cards)
 
@@ -47,9 +48,9 @@ tree.add_stages({
         ct.Stage([1, [0, 1], 0])]  # Red
 })
 
-# Context + level + order == stage
 
 tree.create_tree()
+tree.set_random_stage_parameters()
 tree.set_random_parameters()
 tree.plot()
 x = tree.sample(5)
