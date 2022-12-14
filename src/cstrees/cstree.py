@@ -128,15 +128,15 @@ class CStree(nx.Graph):
     def set_random_stage_parameters(self):
         # Set stage probabilities
 
-        cols = ["red", "blue", "green", "purple", "yellow", "grey"]
-        self.colors = {key: cols[:len(val)]
-                       for key, val in self.stages.items()}
+        #cols = ["red", "blue", "green", "purple", "yellow", "grey"]
+        #self.colors = {key: cols[:len(val)]
+        #               for key, val in self.stages.items()}
 
         for lev, stages in self.stages.items():
             for i, stage in enumerate(stages):
                 probs = np.random.dirichlet([1] * self.cards[lev+1])
                 stage.probs = probs
-                stage.color = cols[i]
+                stage.color = self.colors[i] #cols[i]
         
     
     def set_random_parameters(self):
@@ -248,7 +248,7 @@ class CStree(nx.Graph):
 
     def sample(self, n):
         """Draws n random samples from the CStree.
-            Dymanocally generates nodes in the underlying tree
+            Dynamically generates nodes in the underlying tree
             and associated parameters on the fly in order to avoid
             creating the whole tree, which is O(2^p), just to sample data.
 
@@ -343,7 +343,6 @@ class CI_relation:
         self.a = a
         self.b = b
         self.sep = sep
-        pass
 
     def __eq__(self, o: object) -> bool:
         return ((((self.a == o.a) & (self.b == o.b)) |
@@ -365,7 +364,7 @@ class CI_relation:
                 s3 += "X{}, ".format(i)
             s3 = s3[:-2]
             return "{} ⊥ {} | {}".format(s1, s2, s3)
-        return "{} ⊥ {}".format(s1, s2)
+        return "{} ⊥  {}".format(s1, s2)
 
 
 class CausalOrder:
@@ -469,7 +468,8 @@ class Stage:
         return list(itertools.product(*tmp))
 
     def __str__(self) -> str:
-        return str(self.list_repr) + "; probs: " + str(self.probs)
+        return str(self.to_csi()) + "; probs: " + str(self.probs)
+        #return str(self.list_repr) + "; probs: " + str(self.probs)
 
 
 class Context:
@@ -481,7 +481,9 @@ class Context:
         for key, val in self.context.items():
             context_str += "X{}={}, ".format(key, val)
         if context_str != "":
-            context_str = context_str[:-2]
+            context_str = context_str[:-2]   
+        if context_str == "":
+            context_str = "None"
         return context_str
 
     def __contains__(self, key):
@@ -545,6 +547,34 @@ class CSI_relation:
             vals[i] = j
 
         return itertools.product(*vals)
+
+    def __and__(self, csis, exclude=None):
+        """Return the intersection of the csis, used for absorbing.
+
+
+        Args:
+            csi (CSI_relation): A CSI relation.
+
+        Returns:
+            CSI_relation: A new CSI relation.
+        """
+        cards = [2,2,2,2]
+        levels = []
+        vals = [[]] * len(csis)
+        for l in levels:
+            if l in exclude:
+                continue        
+            for csi in csis:
+                # check if l is a cond variable
+                if l in csi.ci:
+                    vals[l] = set(range(cards[l]))
+                # check if l is a context variable and take its value
+                elif l in csi.context:
+                    vals[l] = {csi.context[l]}               
+
+            intersection = set.intersection(*vals)
+            
+        return None
 
     def __add__(self, o):
         """Adding two objects by adding their set of paths and create a new
@@ -749,7 +779,7 @@ def powerset(iterable):
 
 def df_to_cstree(df):
     
-    co = CausalOrder([x[0] for x in df.columns])
+    co = CausalOrder([int(x[0]) for x in df.columns])
     
     cards = [int(x[1]) for x in df.columns]
     
@@ -771,6 +801,7 @@ def df_to_cstree(df):
                 stage_list.append(int(val))
     
     cstree.add_stages(stages)
+    cstree.co = co
 
     #cstree.set_random_stage_parameters()
     
@@ -798,7 +829,7 @@ def decomposition(ci: CI_relation):
     return cilist
 
 
-def weak_union(ci):
+def weak_union(ci: CI_relation):
 
     cis = []
     for d in powerset(ci.b):
@@ -819,3 +850,66 @@ def weak_union(ci):
         cis.append(CI_relation(AuD - d, ci.b, ci.sep | d))
 
     return cis
+
+def pairwise_cis(ci: CI_relation):
+    
+    cis = []
+    for b in ci.b:
+        b = set(b)
+        d = ci.b - b
+        if (len(d) == 0) | (d == ci.b):
+            continue
+
+        BuD = b
+        cis.append(CI_relation(ci.a, BuD-d, ci.sep | d))
+        
+def get_minimal_csis(csi_list):
+    """
+        1. Group by pairwise relations of same form Xi _|_ Xj | something.
+        2. Find mergeable CSIs by trying to apir everything with everything.
+           To do so, each CSI has a list with the rst of the elements.
+
+    Args:
+        csis (_type_): _description_
+    """
+    csis = csi_list.copy()
+    abs_list = []
+    levels = [2, 2, 2]
+    cards = [2, 2, 2]
+    # Since not all variables have the same cardinality.
+    
+    for l in levels:
+        context_list = [[]] * cards[l]
+        # Create card[l] tuples
+        for val in range(cards):            
+            for csi in csis:
+                if l in csi.context and csi.context[l] == val:
+                    context_list[val].append(csi)
+        # group by context values
+        # combine and see if mergeable
+        # Check if these are absorbable
+        
+        for csi_tuple in itertools.product(*context_list):
+            absorbable_csis(csi_tuple, level=l)
+           
+    for i, csi1 in enumerate(csis[:-1]):
+        for j, csi2 in csis[i+1:]:
+            # is_absorbable(csi1, csi2)
+            # Check if absorbable, i.e. has intersecting contexts/conditioning set
+            # Absorb
+            # csi_abs = absorb(csi1,csi2)
+            pass
+            
+    return
+
+def absorbable_csis(csis, level):
+    """Checks if the csis can be absorbed.
+
+    Args:
+        csis (list): list of csis that may be absorbed.
+    """
+    
+    # 1. Check if there is some context variable where all the csis has differnt values.
+    # If 1. is true: 
+    #   1.1 Check if the csis has nonemtpy intersection for the rest of the cond/cont variables.
+    pass
