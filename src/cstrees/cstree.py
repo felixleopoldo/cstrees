@@ -365,6 +365,9 @@ class CI_relation:
             s3 = s3[:-2]
             return "{} ⊥ {} | {}".format(s1, s2, s3)
         return "{} ⊥  {}".format(s1, s2)
+    
+#    def __contains__(self, v):
+#        return (v in self.a) or (v in self.b) or (v in self.sep)
 
 
 class CausalOrder:
@@ -525,6 +528,22 @@ class CSI_relation:
         stages = []
         pass
 
+    def as_list(self):
+        # Get the level as the max element-1
+        levels = max(max(self.ci.a), max(self.ci.b), max(self.ci.sep), max(self.context.context)) + 1
+        
+        cards = [2] * levels
+        csilist = [None] * levels
+        for l in range(levels):
+            if (l in self.ci.a) or (l in self.ci.b):
+                csilist[l] = None
+            elif l in self.ci.sep:
+                csilist[l] = set(range(cards[l]))
+            elif l in self.context:
+                csilist[l] = {self.context[l]}
+
+        return csilist            
+
     def to_cstree_paths(self, cards: list, order: list):
         """Genreate the set(s) of path defining the CSI relations.
         note that it can be defined by several stages (set of paths).
@@ -548,33 +567,6 @@ class CSI_relation:
 
         return itertools.product(*vals)
 
-    def __and__(self, csis, exclude=None):
-        """Return the intersection of the csis, used for absorbing.
-
-
-        Args:
-            csi (CSI_relation): A CSI relation.
-
-        Returns:
-            CSI_relation: A new CSI relation.
-        """
-        cards = [2,2,2,2]
-        levels = []
-        vals = [[]] * len(csis)
-        for l in levels:
-            if l in exclude:
-                continue        
-            for csi in csis:
-                # check if l is a cond variable
-                if l in csi.ci:
-                    vals[l] = set(range(cards[l]))
-                # check if l is a context variable and take its value
-                elif l in csi.context:
-                    vals[l] = {csi.context[l]}               
-
-            intersection = set.intersection(*vals)
-            
-        return None
 
     def __add__(self, o):
         """Adding two objects by adding their set of paths and create a new
@@ -913,3 +905,40 @@ def absorbable_csis(csis, level):
     # If 1. is true: 
     #   1.1 Check if the csis has nonemtpy intersection for the rest of the cond/cont variables.
     pass
+
+def absorb_csis(csis, exclude=None):
+    """Return the intersection of the csis, used for absorbing.
+
+
+    Args:
+        csi (CSI_relation): A CSI relation.
+
+    Returns:
+        CSI_relation: A new CSI relation.
+    """
+    
+    #Maybe just tur into list repre, and take interseaction 
+    # elementwise is easier.
+    
+    for csi in csis:
+        print(csi)
+    cards = [2,2,2,2,2]
+    levels = [1,2,3,4,5]
+    p = len(cards)
+    # need to, for each csi,s tore the value/values at each level
+    # to get the nonempty intersections at each position.
+    vals = [[set()] * len(csis)] * p
+    for l in levels:
+        if l in exclude:
+            continue    
+        for i, csi in enumerate(csis):
+            # check if l is a cond variable
+            if l in csi.ci.sep:
+                vals[l] = set(range(cards[l]))
+            # check if l is a context variable and take its value
+            elif l in csi.context:
+                vals[l] = {csi.context[l]}               
+            print(vals)
+        intersection = set.intersection(*vals)
+        
+    return None
