@@ -530,6 +530,7 @@ class CSI_relation:
 
     def as_list(self):
         # Get the level as the max element-1
+        # The Nones not at index 0 encode the CI variables.
         levels = max(max(self.ci.a), max(self.ci.b), max(self.ci.sep), max(self.context.context)) + 1
         
         cards = [2] * levels
@@ -858,8 +859,9 @@ def pairwise_cis(ci: CI_relation):
 def get_minimal_csis(csi_list):
     """
         1. Group by pairwise relations of same form Xi _|_ Xj | something.
-        2. Find mergeable CSIs by trying to apir everything with everything.
-           To do so, each CSI has a list with the rst of the elements.
+        2. Find mergeable CSIs by trying to pair everything with everything.
+           To do so, use the list representation of CSIs and merge such. 
+           //..each CSI has a list with the rest of the elements.
 
     Args:
         csis (_type_): _description_
@@ -920,13 +922,31 @@ def absorb_csis(csis, exclude=None):
     #Maybe just tur into list repre, and take interseaction 
     # elementwise is easier.
     
+    
+    csi_lists = [csi.as_list() for csi in csis]
+    
+    # Go through each level/variable see which stages can be merged.
+    # To do so, look only at the ones with a single value and partition 
+    # based on the different values. Then try all combinations from each partion
+    # to see if they can be absorbed.
+    
+    for i in range(p+1):
+        partitions = [[]]*cards[i] # Put the lists here
+        
+        for csi_list in csi_lists:
+            for val in cards[i]:
+                if len(csi_list[i]) == 1:
+                    pass
+    
     for csi in csis:
         print(csi)
     cards = [2,2,2,2,2]
     levels = [1,2,3,4,5]
     p = len(cards)
-    # need to, for each csi,s tore the value/values at each level
+    # need to, for each csi, store the value/values at each level
     # to get the nonempty intersections at each position.
+    ## UPDATE: Its easies to convert to lists first! So the below
+    # is probably a bit messy.
     vals = [[set()] * len(csis)] * p
     for l in levels:
         if l in exclude:
