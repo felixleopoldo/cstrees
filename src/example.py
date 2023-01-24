@@ -83,3 +83,8 @@ for key, graph in adjmats.items():
 # Note that, one CSI relation can have several stages, as in the
 # paper exapmle. Maybe its more complex than that. We might have to
 # absorb CSI relations and maybe other things as well. Lets see.
+
+# Loop through all levels l
+# 1. For each stage in the level do weak union to get the pairs Xi _|_ Xj | something, and group.
+# 2. For each such pair go through all levels and try to find mixable CSI by partition on value.
+# 3. If mixable, mix and put the result in ? but make sure that they are not mixed with the same CSI again.

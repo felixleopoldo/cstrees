@@ -861,7 +861,7 @@ def get_minimal_csis(csi_list):
         1. Group by pairwise relations of same form Xi _|_ Xj | something.
         2. Find mergeable CSIs by trying to pair everything with everything.
            To do so, use the list representation of CSIs and merge such. 
-           //..each CSI has a list with the rest of the elements.
+                      
 
     Args:
         csis (_type_): _description_
@@ -897,7 +897,13 @@ def get_minimal_csis(csi_list):
     return
 
 def absorbable_csis(csis, level):
-    """Checks if the csis can be absorbed.
+    """Checks if the csis can be absorbed. I think mixed is better word, since it doesnt
+        necessarily dissappear after this process. 
+        
+        A CSI is minimal if it is not a subset of (cant be absorbed by) an existing CSI.
+        
+        Note that minimal CSI may be mixed into other minimal CSIs. 
+        
 
     Args:
         csis (list): list of csis that may be absorbed.
