@@ -219,7 +219,7 @@ class CStree(nx.Graph):
     def read_csv(self,filename):
         pass
     
-    def csi_relations(self):
+    def csi_relations(self, level="all"):
         """ Returns all the context specific indepencende (CSI) relations.
             These should normally be thinned out using absorption, and then we would extract
             the minmal contexts based on that.
@@ -227,7 +227,7 @@ class CStree(nx.Graph):
         csi_rels = {}
         # print(self.stages)
         for key, stage_list in self.stages.items():
-            # print(stage_list)
+            print("{} {}".format(key, stage_list))
             for stage in stage_list:
                 #       print(stage)
                 csi_rel = stage.to_csi()
@@ -531,7 +531,15 @@ class CSI_relation:
     def as_list(self):
         # Get the level as the max element-1
         # The Nones not at index 0 encode the CI variables.
-        levels = max(max(self.ci.a), max(self.ci.b), max(self.ci.sep), max(self.context.context)) + 1
+        def mymax(s):
+            
+            if (type(s) is set) and (len(s) > 0):
+                return max(s)
+            else:
+                return 0
+            
+        #print(print(self.ci.sep))
+        levels = max(mymax(self.ci.a), mymax(self.ci.b), mymax(self.ci.sep), mymax(self.context.context)) + 1
         
         cards = [2] * levels
         csilist = [None] * levels

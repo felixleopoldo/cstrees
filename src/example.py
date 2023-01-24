@@ -52,10 +52,13 @@ a.draw("testplot.png")
 x = tree.sample(5)
 # print(x)
 rels = tree.csi_relations()
-# print(rels)
-for key, val in rels.items():
+print(rels)
+for l, val in rels.items():
+    print("level: {}".format(l))
+    csi_lists = []
     for v in val:
-        print(str(v))
+        print(v)
+        print(str(v.as_list()))
 
 
 adjmats = ct.csi_relations_to_dags(rels, co)
@@ -67,6 +70,27 @@ for key, graph in adjmats.items():
 
     # print(graph.nodes)
     # print(graph.edges())
+
+#l5rels = tree.csi_relations(level=1)
+#l5indpairs = makeindpairs(l5rels) # These should be grouped already I guess
+#merged = mergeindpairs(l5indpairs) # This shoudl remove the superfalus pairs. 
+#These can also be subjects for merging but a a different level?.
+# - No, must be at the same level. And the same ind pair.
+# How to check minimail context/csi? 
+# - Its minimal if it cant be merged, without residuals, with anything else in the set. 
+#   Since then a context var would vanish.
+#   minimal does not mean that it cant be absorbed.! Most are minimal I think.
+#   its just if ic can be created from absorbing 2 others in the set, WITHOUT RESIDUALS, i guess. 
+#   I mean exact matching absorbtion. 
+#   Actually, it is minimal if ther doesnt exist any CSI which contians it, 
+#   ie one with a conditioning variable instead of just a context vaariable..
+#   So which I write about is that we do the merging/absorbing first, and then check this.
+#   More generally, we remove one of a pair of CSIs if it is contained in the other. (this i knew before).
+#
+#   Our absorbtion is not only to chek for minimal CSI but also tro create new CSIs, that mey be minimal or not?
+
+# One type of pair (X_j _|_ X_j | something) will only come from
+# level j. But may come from different stages at that level.
 
 
 #dags = tree.to_minimal_context_graphs()
@@ -87,4 +111,9 @@ for key, graph in adjmats.items():
 # Loop through all levels l
 # 1. For each stage in the level do weak union to get the pairs Xi _|_ Xj | something, and group.
 # 2. For each such pair go through all levels and try to find mixable CSI by partition on value.
-# 3. If mixable, mix and put the result in ? but make sure that they are not mixed with the same CSI again.
+# 3. If mixable, mix and put the result in a set woth newly created.
+# 
+# When we loop through al levels again by where the old CSI are not mixed with each other
+# that is, each tuple needs at least one CSI from the new CSIs.
+#
+# Does this stop automatically? Will the set with new CSI eventually be empty?
