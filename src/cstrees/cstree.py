@@ -219,10 +219,16 @@ class CStree(nx.Graph):
     def read_csv(self,filename):
         pass
     
+    def csi_relations_per_level(self, level="all"):
+        
+        return {l:[s.to_csi() for s in stages] for l, stages in self.stages.items()}
+    
     def csi_relations(self, level="all"):
         """ Returns all the context specific indepencende (CSI) relations.
             These should normally be thinned out using absorption, and then we would extract
             the minmal contexts based on that.
+            
+            TODO: This should be returned by level.
         """
         csi_rels = {}
         # print(self.stages)
@@ -853,17 +859,30 @@ def weak_union(ci: CI_relation):
     return cis
 
 def pairwise_cis(ci: CI_relation):
-    
-    cis = []
-    for b in ci.b:
-        b = set(b)
-        d = ci.b - b
-        if (len(d) == 0) | (d == ci.b):
-            continue
+    """ Using weak union just to get pairwise indep relations.
 
-        BuD = b
-        cis.append(CI_relation(ci.a, BuD-d, ci.sep | d))
-        
+        X_a _|_ X_b | X_d 
+    Args:
+        ci (CI_relation): CI relation
+    """
+    cis = []
+    A = ci.a
+    B = ci.b # This will probably just contain one element.
+    for x in itertools.product(A, B):
+        rest = (A - {x[0]}) | (B - {x[1]})
+        cis.append(CI_relation({x[0]}, {x[1]}, ci.sep | rest))
+    return cis
+
+
+def pairwise_csis(csi: CSI_relation):
+    context = csi.context
+    ci_pairs = pairwise_cis(csi.ci)
+    csis = []
+    for ci in ci_pairs:
+        csi = CSI_relation(ci, context=context)
+        csis.append(csi)
+    return csis
+            
 def get_minimal_csis(csi_list):
     """
         1. Group by pairwise relations of same form Xi _|_ Xj | something.

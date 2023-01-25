@@ -14,6 +14,7 @@ t.set_random_stage_parameters()
 t.plot()
 rels = t.csi_relations()
 
+print("level and csis")
 for key, val in rels.items():
     print(val)
 
@@ -41,36 +42,63 @@ tree.add_stages({
     2: [ct.Stage([[0, 1], 0])],    # Green
     3: [ct.Stage([0, [0, 1], 0]),  # Blue
         ct.Stage([0, [0, 1], 1]),  # Orange
-        ct.Stage([1, [0, 1], 0])]  # Red
+        ct.Stage([[0,1], [0, 1], 0])]  # Red
 })
 
 tree.set_random_stage_parameters()
 
-a= tree.plot()
+a = tree.plot()
 a.draw("testplot.png")
 
 x = tree.sample(5)
 # print(x)
 rels = tree.csi_relations()
-print(rels)
-for l, val in rels.items():
-    print("level: {}".format(l))
-    csi_lists = []
-    for v in val:
-        print(v)
-        print(str(v.as_list()))
-
-
 adjmats = ct.csi_relations_to_dags(rels, co)
 
 for key, graph in adjmats.items():
     agraph = nx.nx_agraph.to_agraph(graph)
     agraph.layout("dot")
     agraph.draw(str(key) + ".png")
-
     # print(graph.nodes)
     # print(graph.edges())
 
+rels = tree.csi_relations_per_level()
+paired_csis = [None] * len(rels)
+
+for l, val in rels.items():
+    #print("level: {}".format(l))
+    csi_pairs = [] # X_i _|_ X_j | something
+    for v in val:
+        print(v)
+        csis = ct.pairwise_csis(v)
+        csi_pairs = csi_pairs + csis
+        
+        # Loop though all levels for each of these and try to mix.
+        #print("pairwise")
+        #print("")
+    #print("All pairs")
+    cis_by_pairs = {}
+    for c in csi_pairs:
+        #print(c)
+        clist = c.as_list()
+        #print(clist)
+        
+        pair = tuple([i for i, j in enumerate(clist) if (j is None) and i > 0])
+        #print(pair)
+        if pair in cis_by_pairs:
+            cis_by_pairs[pair].append(clist)
+        else:
+            cis_by_pairs[pair] = [clist]
+        
+        
+    #print(csi_pairs)
+    #print(cis_by_pairs)
+    paired_csis[l] = cis_by_pairs
+    
+    #print("")
+for l, csilist in enumerate(paired_csis):
+    print("level {}:".format(l))
+    print(csilist)
 #l5rels = tree.csi_relations(level=1)
 #l5indpairs = makeindpairs(l5rels) # These should be grouped already I guess
 #merged = mergeindpairs(l5indpairs) # This shoudl remove the superfalus pairs. 
