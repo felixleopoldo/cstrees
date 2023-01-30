@@ -4,6 +4,7 @@
 import cstrees.cstree as ct
 import numpy as np
 import networkx as nx
+import itertools
 # CStree from Figure 1 in (Duarte & Solus, 2022)
 np.random.seed(1)
 
@@ -45,6 +46,7 @@ tree.add_stages({
         ct.Stage([[0,1], [0, 1], 0])]  # Red
 })
 
+p=4
 tree.set_random_stage_parameters()
 
 a = tree.plot()
@@ -99,6 +101,47 @@ for l, val in rels.items():
 for l, csilist in enumerate(paired_csis):
     print("level {}:".format(l))
     print(csilist)
+    
+    
+print("Pairing")
+for level in range(p):
+    for pair, csilist_list in paired_csis[level].items():
+        print(pair)
+        
+        print("going through the levels for partitions")
+        for l in range(1, level+1):            
+            if l in pair:
+                continue
+            print("level {}".format(l))
+            # Put the csis in different sets that can 
+            # possibly be mixed to create new csis.
+            csis_to_mix = [[] for _ in range(cards[l])]
+            for csilist in csilist_list:
+                if len(csilist[l]) > 1: # Only consider those with single value
+                    continue
+                var_val = list(csilist[l])[0] # jsut to get the value from the set
+                #print("varval {}".format(var_val))
+                #print("adding {} to {}".format(csilist, var_val) )
+                csis_to_mix[var_val].append(csilist)
+            print(csis_to_mix)
+            
+            for csilist_tuple in itertools.product(*csis_to_mix):
+                print("mixing")
+                print(csilist_tuple)
+                mix = [None] * (p+1)
+                for i, a in enumerate(zip(*csilist_tuple)):
+                    if a[0] is None:
+                        continue
+                    if i == l:
+                        mix[i] = set(range(cards[l]))
+                    else:
+                        mix[i] = set.intersection(*a)
+                #r = [set.intersection(*a) for a in zip(*csilist_tuple) if a[0] is not None]
+                print("mix: ")
+                print(mix)
+                # Try to mix
+                
+            
 #l5rels = tree.csi_relations(level=1)
 #l5indpairs = makeindpairs(l5rels) # These should be grouped already I guess
 #merged = mergeindpairs(l5indpairs) # This shoudl remove the superfalus pairs. 
