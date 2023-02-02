@@ -74,7 +74,7 @@ for l, val in rels.items():
         print(v)
         csis = ct.pairwise_csis(v)
         csi_pairs = csi_pairs + csis
-        
+
         # Loop though all levels for each of these and try to mix.
         #print("pairwise")
         #print("")
@@ -84,76 +84,95 @@ for l, val in rels.items():
         #print(c)
         clist = c.as_list()
         #print(clist)
-        
+
         pair = tuple([i for i, j in enumerate(clist) if (j is None) and i > 0])
         #print(pair)
         if pair in cis_by_pairs:
             cis_by_pairs[pair].append(clist)
         else:
             cis_by_pairs[pair] = [clist]
-        
-        
+
+
     #print(csi_pairs)
     #print(cis_by_pairs)
     paired_csis[l] = cis_by_pairs
-    
+
     #print("")
 for l, csilist in enumerate(paired_csis):
     print("level {}:".format(l))
     print(csilist)
-    
-    
+
+
+def do_mix(csilist_tuple,l, cards):
+
+    p = len(csilist_tuple[0])-1
+    mix = [None] * (p+1)
+
+    # This should be a function called mix or something.
+    # Going thourg all the levels and mix at all levels.
+    # The result should be stored somewhere.
+    for i, a in enumerate(zip(*csilist_tuple)):
+        #print(i, a)
+        if a[0] is None: # None means that a[0] is either at level 0 or some of the CI tuple.
+                            # So just skip then.
+            continue
+        if i == l: # if at the current level, the values are joined.
+            mix[i] = set(range(cards[l]))
+        else:
+            mix[i] = set.intersection(*a)
+    return mix
+
+def partition_csis(pair, csilist_list, l, cards):
+
+    print("level {}".format(l))
+    # Put the csis in different sets that can
+    # possibly be mixed to create new csis.
+    csis_to_mix = [[] for _ in range(cards[l])]
+    for csilist in csilist_list:
+        if len(csilist[l]) > 1: # Only consider those with single value
+            continue
+        var_val = list(csilist[l])[0] # just to get the value from the set
+        csis_to_mix[var_val].append(csilist)
+    return csis_to_mix
+
 print("Pairing")
 for level in range(p):
     for pair, csilist_list in paired_csis[level].items():
         print(pair)
-        
         print("going through the levels for partitions")
-        for l in range(1, level+1):            
+        # [None,...,l ,None ,...]
+        for l in range(1, level+1):
             if l in pair:
                 continue
-            print("level {}".format(l))
-            # Put the csis in different sets that can 
-            # possibly be mixed to create new csis.
-            csis_to_mix = [[] for _ in range(cards[l])]
-            for csilist in csilist_list:
-                if len(csilist[l]) > 1: # Only consider those with single value
-                    continue
-                var_val = list(csilist[l])[0] # jsut to get the value from the set
-                #print("varval {}".format(var_val))
-                #print("adding {} to {}".format(csilist, var_val) )
-                csis_to_mix[var_val].append(csilist)
+            csis_to_mix = partition_csis(pair, csilist_list, l, cards)
             print(csis_to_mix)
             
+            old_csis[pair][l] = csis_to_mix
+            # Need to separate the newly created csis from the old.
+            # The old should not be re-mixed, i.e., new mixes must contain
+            # at least one new csi. How do we implement that? Just create new to mix
+            # and skip if not containing a new?
+            # E.g. combinations of {a, b, c} X {d, e} 
             for csilist_tuple in itertools.product(*csis_to_mix):
                 print("mixing")
                 print(csilist_tuple)
-                mix = [None] * (p+1)
-                for i, a in enumerate(zip(*csilist_tuple)):
-                    if a[0] is None:
-                        continue
-                    if i == l:
-                        mix[i] = set(range(cards[l]))
-                    else:
-                        mix[i] = set.intersection(*a)
-                #r = [set.intersection(*a) for a in zip(*csilist_tuple) if a[0] is not None]
-                print("mix: ")
+                mix = do_mix(csilist_tuple, l, cards)
+                # mix shul be added somewhere. Or just be part of a set to be considered.
+                print("mix result: ")
                 print(mix)
-                # Try to mix
-                
-            
+
 #l5rels = tree.csi_relations(level=1)
 #l5indpairs = makeindpairs(l5rels) # These should be grouped already I guess
-#merged = mergeindpairs(l5indpairs) # This shoudl remove the superfalus pairs. 
+#merged = mergeindpairs(l5indpairs) # This shoudl remove the superfalus pairs.
 #These can also be subjects for merging but a a different level?.
 # - No, must be at the same level. And the same ind pair.
-# How to check minimail context/csi? 
-# - Its minimal if it cant be merged, without residuals, with anything else in the set. 
+# How to check minimail context/csi?
+# - Its minimal if it cant be merged, without residuals, with anything else in the set.
 #   Since then a context var would vanish.
 #   minimal does not mean that it cant be absorbed.! Most are minimal I think.
-#   its just if ic can be created from absorbing 2 others in the set, WITHOUT RESIDUALS, i guess. 
-#   I mean exact matching absorbtion. 
-#   Actually, it is minimal if ther doesnt exist any CSI which contians it, 
+#   its just if ic can be created from absorbing 2 others in the set, WITHOUT RESIDUALS, i guess.
+#   I mean exact matching absorbtion.
+#   Actually, it is minimal if ther doesnt exist any CSI which contians it,
 #   ie one with a conditioning variable instead of just a context vaariable..
 #   So which I write about is that we do the merging/absorbing first, and then check this.
 #   More generally, we remove one of a pair of CSIs if it is contained in the other. (this i knew before).
@@ -183,7 +202,7 @@ for level in range(p):
 # 1. For each stage in the level do weak union to get the pairs Xi _|_ Xj | something, and group.
 # 2. For each such pair go through all levels and try to find mixable CSI by partition on value.
 # 3. If mixable, mix and put the result in a set woth newly created.
-# 
+#
 # When we loop through al levels again by where the old CSI are not mixed with each other
 # that is, each tuple needs at least one CSI from the new CSIs.
 #
