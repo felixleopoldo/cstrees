@@ -102,14 +102,15 @@ for l, csilist in enumerate(paired_csis):
     print("level {}:".format(l))
     print(csilist)
 
+def compare_csilists():
+    pass
 
 def do_mix(csilist_tuple,l, cards):
-
-    p = len(csilist_tuple[0])-1
+    p = len(csilist_tuple[0]) - 1
     mix = [None] * (p+1)
 
     # This should be a function called mix or something.
-    # Going thourg all the levels and mix at all levels.
+    # Going through all the levels and mix at all levels.
     # The result should be stored somewhere.
     for i, a in enumerate(zip(*csilist_tuple)):
         #print(i, a)
@@ -120,6 +121,8 @@ def do_mix(csilist_tuple,l, cards):
             mix[i] = set(range(cards[l]))
         else:
             mix[i] = set.intersection(*a)
+            
+    
     return mix
 
 def partition_csis(pair, csilist_list, l, cards):
@@ -136,30 +139,74 @@ def partition_csis(pair, csilist_list, l, cards):
     return csis_to_mix
 
 print("Pairing")
+
+ret = [{} for _ in range(p+1)]
 for level in range(p):
+    # initiate nebwies in the first run to be
+    print("\n#### Level {}".format(level))
     for pair, csilist_list in paired_csis[level].items():
-        print(pair)
-        print("going through the levels for partitions")
-        # [None,...,l ,None ,...]
-        for l in range(1, level+1):
-            if l in pair:
-                continue
-            csis_to_mix = partition_csis(pair, csilist_list, l, cards)
-            print(csis_to_mix)
+        print("\n#### CI pair {}".format(pair))
+        oldies = []
+        # This must be here, since we dont know on which variable new mixed will be mixed
+        newbies = csilist_list 
+        
+        iteration = 1
+        while len(newbies) > 0:
+            print("\n#### Iteration {}".format(iteration))
+        #for pair, csilist_list in newbies[level].items():
+            #current[pair] = paired_csis[level]
+            print(pair)
+            print("going through the levels for partitions")
+            # should join with csi_list the oldies?
+
+            tmp = [] # list of created csis
             
-            old_csis[pair][l] = csis_to_mix
-            # Need to separate the newly created csis from the old.
-            # The old should not be re-mixed, i.e., new mixes must contain
-            # at least one new csi. How do we implement that? Just create new to mix
-            # and skip if not containing a new?
-            # E.g. combinations of {a, b, c} X {d, e} 
-            for csilist_tuple in itertools.product(*csis_to_mix):
-                print("mixing")
-                print(csilist_tuple)
-                mix = do_mix(csilist_tuple, l, cards)
-                # mix shul be added somewhere. Or just be part of a set to be considered.
-                print("mix result: ")
-                print(mix)
+            # Go through all levels, potentially many times.
+            for l in range(1, level+1):
+                if l in pair:
+                    continue
+                #csis_to_mix = partition_csis(pair, csilist_list, l, cards)
+                csis_to_mix = partition_csis(pair, newbies + oldies, l, cards)
+                print(csis_to_mix)
+
+                #old_csis[pair][l] = csis_to_mix
+
+                # Need to separate the newly created csis from the old.
+                # The old should not be re-mixed, i.e., new mixes must contain
+                # at least one new csi. How do we implement that? Just create new to mix
+                # and skip if not containing a new?
+                # E.g. combinations of {a, b, c} X {d, e}
+                for csilist_tuple in itertools.product(*csis_to_mix):
+                    # Shoyld check that at least one is in the list of newbies?
+                    print("mixing")
+                    print(csilist_tuple)
+                    
+                    # Check that at least one is a newbie
+                    no_newbies = True
+                    for csi in csilist_tuple:
+                        if csi in newbies:
+                            no_newbies = False
+                    if no_newbies:
+                        print("no newbies, so skip")
+                        continue
+                                                
+                    # Mix
+                    mix = do_mix(csilist_tuple, l, cards) # Dont know where in which level this will be grabbed.
+                    # mix shul be added somewhere. Or just be part of a set to be considered.
+                    print("mix result: ")
+                    print(mix)
+                    tmp.append(mix)
+            # Update the lists
+            oldies += newbies
+            newbies = tmp
+            iteration += 1
+        ret[level][pair] = oldies
+print("ret")
+
+
+for l, csilist in enumerate(ret):
+    print("level {}:".format(l))
+    print(csilist)
 
 #l5rels = tree.csi_relations(level=1)
 #l5indpairs = makeindpairs(l5rels) # These should be grouped already I guess
