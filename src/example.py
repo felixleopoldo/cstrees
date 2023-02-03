@@ -108,8 +108,7 @@ def compare_csilists():
 def do_mix(csilist_tuple,l, cards):
     p = len(csilist_tuple[0]) - 1
     mix = [None] * (p+1)
-
-    # This should be a function called mix or something.
+    
     # Going through all the levels and mix at all levels.
     # The result should be stored somewhere.
     for i, a in enumerate(zip(*csilist_tuple)):
@@ -122,7 +121,6 @@ def do_mix(csilist_tuple,l, cards):
         else:
             mix[i] = set.intersection(*a)
             
-    
     return mix
 
 def partition_csis(pair, csilist_list, l, cards):
@@ -193,6 +191,11 @@ for level in range(p):
                     # Mix
                     mix = do_mix(csilist_tuple, l, cards) # Dont know where in which level this will be grabbed.
                     # mix shul be added somewhere. Or just be part of a set to be considered.
+                    # should also check if some of the csis in csilist_tuple should be removed. 
+                    # In guess from oldies. Otherwise we can also double check in oldies that no csi is 
+                    # contained in any other. I not minimal. (the can be othe non minimals that we dont see
+                    # directly as well, that why we do this process, at least partly).
+                    
                     print("mix result: ")
                     print(mix)
                     tmp.append(mix)
