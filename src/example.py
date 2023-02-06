@@ -8,7 +8,7 @@ import itertools
 # CStree from Figure 1 in (Duarte & Solus, 2022)
 np.random.seed(1)
 
-p = 6
+p = 4
 
 t = ct.sample_cstree(p)
 t.set_random_stage_parameters()
@@ -28,8 +28,8 @@ co = ct.CausalOrder(range(1, p+1))
 tree = ct.CStree(co)
 cards = [2] * p
 
-stage = ct.sample_random_stage(cards,4)
-stage.set_random_params(cards)
+#stage = ct.sample_random_stage(cards,2)
+#stage.set_random_params(cards)
 
 tree.set_cardinalities([None] + cards)
 
@@ -342,7 +342,7 @@ adjmats = ct.csi_relations_to_dags(rels, co)
 for key, graph in adjmats.items():
     agraph = nx.nx_agraph.to_agraph(graph)
     agraph.layout("dot")
-    agraph.draw("minl_cont_dag_"+str(key) + ".png", args="-Glabel="+str(key) +"   ")
+    agraph.draw("minl_cont_dag_"+str(key) + ".png", args="-Glabel="+str(key) +"    ")
 
 #l5rels = tree.csi_relations(level=1)
 #l5indpairs = makeindpairs(l5rels) # These should be grouped already I guess

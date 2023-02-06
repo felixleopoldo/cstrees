@@ -33,11 +33,14 @@
   <a href="https://github.com/othneildrew/Best-README-Template">
     <img src="images/cstree.png" alt="Logo">
   </a>
+      <img src="images/minl_cont_dag_X1=0.png" alt="Logo">
+      <img src="images/minl_cont_dag_X2=0.png" alt="Logo">
+      <img src="images/minl_cont_dag_X3=0.png" alt="Logo">
 
   <h3 align="center">CStrees</h3>
 
   <p align="center">
-    A Python library for working with CStrees.
+    A Python library for CStrees.
     <br />
     <a href="https://github.com/othneildrew/Best-README-Template"><strong>Explore the docs »</strong></a>
     <br />
