@@ -65,16 +65,11 @@ class CStree(nx.Graph):
         """Adds a stage.
 
         Example:
-            >>> tree.add_stages({
-            >>>     0: [],
-            >>>     1: [],
-            >>>     2: [{(0, 0), (1, 0)}],  # green
-            >>>     3: [{(0, 0, 0), (0, 1, 0)},  # blue
-            >>>         {(0, 0, 1), (0, 1, 1)},  # orange
-            >>>         {(1, 0, 0), (1, 1, 0)}]  # red
-            >>> })
+            
         """
         self.stages = stages
+        
+        # Add support for the set format too
         #self.stage_probs = {key: [None]*len(val)
         #                    for key, val in stages.items()}
 

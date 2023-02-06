@@ -26,7 +26,6 @@ print()
 
 co = ct.CausalOrder(range(1, p+1))
 tree = ct.CStree(co)
-
 cards = [2] * p
 
 stage = ct.sample_random_stage(cards,4)
@@ -43,7 +42,7 @@ tree.add_stages({
     2: [ct.Stage([[0, 1], 0])],    # Green
     3: [ct.Stage([0, [0, 1], 0]),  # Blue
         ct.Stage([0, [0, 1], 1]),  # Orange
-        ct.Stage([[0,1], [0, 1], 0])]  # Red
+        ct.Stage([1, [0, 1], 0])]  # Red
 })
 
 p=4
@@ -108,7 +107,7 @@ def compare_csilists():
 def do_mix(csilist_tuple,l, cards):
     p = len(csilist_tuple[0]) - 1
     mix = [None] * (p+1)
-    
+
     # Going through all the levels and mix at all levels.
     # The result should be stored somewhere.
     for i, a in enumerate(zip(*csilist_tuple)):
@@ -120,7 +119,9 @@ def do_mix(csilist_tuple,l, cards):
             mix[i] = set(range(cards[l]))
         else:
             mix[i] = set.intersection(*a)
-            
+            if len(mix[i]) == 0:
+                return None
+
     return mix
 
 def partition_csis(pair, csilist_list, l, cards):
@@ -146,8 +147,8 @@ for level in range(p):
         print("\n#### CI pair {}".format(pair))
         oldies = []
         # This must be here, since we dont know on which variable new mixed will be mixed
-        newbies = csilist_list 
-        
+        newbies = csilist_list
+
         iteration = 1
         while len(newbies) > 0:
             print("\n#### Iteration {}".format(iteration))
@@ -158,7 +159,7 @@ for level in range(p):
             # should join with csi_list the oldies?
 
             tmp = [] # list of created csis
-            
+            csis_to_absorb = [] # remove from the old ones due to mixing
             # Go through all levels, potentially many times.
             for l in range(1, level+1):
                 if l in pair:
@@ -178,7 +179,7 @@ for level in range(p):
                     # Shoyld check that at least one is in the list of newbies?
                     print("mixing")
                     print(csilist_tuple)
-                    
+
                     # Check that at least one is a newbie
                     no_newbies = True
                     for csi in csilist_tuple:
@@ -187,29 +188,98 @@ for level in range(p):
                     if no_newbies:
                         print("no newbies, so skip")
                         continue
-                                                
+
                     # Mix
-                    mix = do_mix(csilist_tuple, l, cards) # Dont know where in which level this will be grabbed.
-                    # mix shul be added somewhere. Or just be part of a set to be considered.
-                    # should also check if some of the csis in csilist_tuple should be removed. 
-                    # In guess from oldies. Otherwise we can also double check in oldies that no csi is 
-                    # contained in any other. I not minimal. (the can be othe non minimals that we dont see
-                    # directly as well, that why we do this process, at least partly).
-                    
+                    mix = do_mix(csilist_tuple, l, cards)
                     print("mix result: ")
                     print(mix)
-                    tmp.append(mix)
+
+                    if mix is None:
+                        print("Not mixeable")
+                        continue
+                    else:
+                        # Check if some of the oldies should be removed.
+                        # Check if som in csilist_tuple is a subset of mix.
+                        # If so, remove it from oldies.
+                        
+                        for csilist in csilist_tuple:
+                           a = [x[0] <= x[1] if x[0] is not None else True for x in zip(csilist, mix)] # O(p*K)
+                           if all(a):                                
+                               print("{} <= {} Its a subset, so will be absorbed/removed later".format(csilist, mix))
+                               csis_to_absorb.append(csilist)
+                               #oldies.remove(csilist)  # O(#csis)
+                                                    
+                        # Dont know where in which level this will be grabbed.
+                        # mix shul be added somewhere. Or just be part of a set to be considered.
+                        # should also check if some of the csis in csilist_tuple should be removed.
+                        # In guess from oldies. Otherwise we can also double check in oldies that no csi is
+                        # contained in any other. I not minimal. (the can be othe non minimals that we dont see
+                        # directly as well, that why we do this process, at least partly).
+                        tmp.append(mix)
             # Update the lists
             oldies += newbies
-            newbies = tmp
+            
+            print("CSIS to absorb/remove (can be duplicates)")
+            print(csis_to_absorb)
+            for csi in csis_to_absorb:
+                print("REMOVING {}".format(csi))
+                if csi in oldies:
+                    oldies.remove(csi)
+
+            newbies = tmp 
+            # check the diplicates here somewhere.
             iteration += 1
         ret[level][pair] = oldies
 print("ret")
+print(ret)
+for l, csilist in enumerate(ret):
+    print("level {} {}:".format(l, csilist))
 
+
+co = ct.CausalOrder(range(1, p+1))
+tree = ct.CStree(co)
+cards = [2] * p
+
+stage = ct.sample_random_stage(cards,4)
+stage.set_random_params(cards)
+
+tree.set_cardinalities([None] + cards)
+
+# These do not have to be in a dict like this as the levels are
+# determined from the length of the tuples.
+
+stages = {[] for _ in range(p)}
+
+def csi_set_to_list_format(csilist):
+    tmp = []
+    for i, e in enumerate(csilist[1:]):
+        if len(e) == 1:
+            tmp.append(list[e][1])
+        if e is None:
+            tmp.append(range(cards[i]))
+        if len(e) > 1:
+            tmp.append(list(e)) # this should be == range(cards[i]))
+        
+    return tmp
 
 for l, csilist in enumerate(ret):
     print("level {}:".format(l))
+    tmp = []
+    # Convert formats
+    for csi in csilist:
+        tmp.append(csi_set_to_list_format(csi))
+    stages[l] = tmp
     print(csilist)
+
+    
+tree.add_stages({
+    0: [],
+    1: [],
+    2: [ct.Stage([[0, 1], 0])],    # Green
+    3: [ct.Stage([0, [0, 1], 0]),  # Blue
+        ct.Stage([0, [0, 1], 1]),  # Orange
+        ct.Stage([1, [0, 1], 0])]  # Red
+})
 
 #l5rels = tree.csi_relations(level=1)
 #l5indpairs = makeindpairs(l5rels) # These should be grouped already I guess
