@@ -54,6 +54,9 @@ a.draw("testplot.png")
 x = tree.sample(5)
 # print(x)
 rels = tree.csi_relations()
+
+print("Initial rels")
+print(rels)
 adjmats = ct.csi_relations_to_dags(rels, co)
 
 for key, graph in adjmats.items():
@@ -235,51 +238,107 @@ print(ret)
 for l, csilist in enumerate(ret):
     print("level {} {}:".format(l, csilist))
 
-
+print(p)
 co = ct.CausalOrder(range(1, p+1))
 tree = ct.CStree(co)
 cards = [2] * p
 
-stage = ct.sample_random_stage(cards,4)
-stage.set_random_params(cards)
 
 tree.set_cardinalities([None] + cards)
 
 # These do not have to be in a dict like this as the levels are
 # determined from the length of the tuples.
 
-stages = {[] for _ in range(p)}
+stages = {l:[] for l in range(p)}
 
 def csi_set_to_list_format(csilist):
     tmp = []
-    for i, e in enumerate(csilist[1:]):
-        if len(e) == 1:
-            tmp.append(list[e][1])
+    print(csilist)
+    for i, e in enumerate(csilist[1:p]):
+        
         if e is None:
-            tmp.append(range(cards[i]))
-        if len(e) > 1:
+            tmp.append(list(range(cards[i])))
+        elif len(e) == 1:
+            tmp.append(list(e)[0])
+        elif len(e) > 1:
             tmp.append(list(e)) # this should be == range(cards[i]))
         
     return tmp
+
+def csilist_to_csi(csilist):
+    
+    print(csilist)
+    context = {}
+    indpair = []
+    sep = set()
+    for i, e in enumerate(csilist):
+        if i == 0:
+            continue
+        elif e is None:
+            indpair.append(i)
+        elif len(e) == 1:
+            context[i] = list(e)[0]
+        elif len(e) > 1:
+            sep.add(i) # this should be == range(cards[i]))
+    
+    context = ct.Context(context)
+    #print(indpair)
+    #print(context)
+    ci = ct.CI_relation({indpair[0]}, {indpair[1]}, sep)
+    csi = ct.CSI_relation(ci, context)
+    print(csi)
+    return csi
 
 for l, csilist in enumerate(ret):
     print("level {}:".format(l))
     tmp = []
     # Convert formats
-    for csi in csilist:
-        tmp.append(csi_set_to_list_format(csi))
+    for pair, csil in csilist.items():
+        print(pair)
+        #print(csil)
+        for csi in csil:
+            #tmplist = csi_set_to_list_format(csi)
+            csiobj = csilist_to_csi(csi)
+            #print(tmplist)
+            #stage = ct.Stage(tmplist)
+            #stage.set_random_params(cards)            
+            #tmp.append(stage)
+            tmp.append(csiobj)
     stages[l] = tmp
     print(csilist)
 
+rels_at_level = stages
+#print(stages)
+
     
-tree.add_stages({
-    0: [],
-    1: [],
-    2: [ct.Stage([[0, 1], 0])],    # Green
-    3: [ct.Stage([0, [0, 1], 0]),  # Blue
-        ct.Stage([0, [0, 1], 1]),  # Orange
-        ct.Stage([1, [0, 1], 0])]  # Red
-})
+# tree.add_stages(stages)
+
+# tree.set_random_stage_parameters()
+
+# a = tree.plot()
+# a.draw("minlcsi.png")
+
+#rels = tree.csi_relations_per_level()
+print(rels_at_level)
+
+# TODO: The keys should be contexts here, not levels.
+
+rels = {}
+for l, r in rels_at_level.items():
+    for rel in r:
+        if rel.context in rels:
+            rels[rel.context].append(rel)
+        else:
+            rels[rel.context] = [rel]
+
+print(rels)
+            
+adjmats = ct.csi_relations_to_dags(rels, co)
+
+for key, graph in adjmats.items():
+    agraph = nx.nx_agraph.to_agraph(graph)
+    agraph.layout("dot")
+    agraph.draw(str(key) + "_minlcsi.png")
 
 #l5rels = tree.csi_relations(level=1)
 #l5indpairs = makeindpairs(l5rels) # These should be grouped already I guess

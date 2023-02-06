@@ -554,6 +554,9 @@ class CSI_relation:
 
         return csilist            
 
+    def from_list(self):
+        pass
+        
     def to_cstree_paths(self, cards: list, order: list):
         """Genreate the set(s) of path defining the CSI relations.
         note that it can be defined by several stages (set of paths).
