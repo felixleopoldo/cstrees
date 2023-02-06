@@ -33,9 +33,9 @@
   <a href="https://github.com/othneildrew/Best-README-Template">
     <img src="images/cstree.png" alt="Logo">
   </a>
-      <img src="images/minl_cont_dag_X1=0.png" alt="Logo">
-      <img src="images/minl_cont_dag_X2=0.png" alt="Logo">
-      <img src="images/minl_cont_dag_X3=0.png" alt="Logo">
+      <img src="images/minl_cont_dag_X1=0.png" alt="Logo" width="40">
+      <img src="images/minl_cont_dag_X2=0.png" alt="Logo" width="80">
+      <img src="images/minl_cont_dag_X3=0.png" alt="Logo"width="80">
 
   <h3 align="center">CStrees</h3>
 
