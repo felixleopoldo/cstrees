@@ -9,7 +9,7 @@ WORKDIR /cstrees
 
 COPY . .
 
-
 RUN pip install -r requirements.txt
-
 RUN pip install -e .
+
+# For vscode, also install packages Python and Python Extension Pack.
