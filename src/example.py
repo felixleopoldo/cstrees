@@ -59,12 +59,16 @@ print("Initial rels")
 print(rels)
 adjmats = ct.csi_relations_to_dags(rels, co)
 
+i = 1
 for key, graph in adjmats.items():
     agraph = nx.nx_agraph.to_agraph(graph)
     agraph.layout("dot")
-    agraph.draw(str(key) + ".png")
+
+    #agraph.draw(str(key) + "_csi.png", args="-Glabel=Context:"+str(key) +"   ")
+    agraph.draw(str(key) + "_csi.png", args='-Glabel="'+str(key)+'"   ')
     # print(graph.nodes)
     # print(graph.edges())
+    i += 1
 
 rels = tree.csi_relations_per_level()
 paired_csis = [None] * len(rels)
@@ -338,7 +342,7 @@ adjmats = ct.csi_relations_to_dags(rels, co)
 for key, graph in adjmats.items():
     agraph = nx.nx_agraph.to_agraph(graph)
     agraph.layout("dot")
-    agraph.draw(str(key) + "_minlcsi.png")
+    agraph.draw("minl_cont_dag_"+str(key) + ".png", args="-Glabel="+str(key) +"   ")
 
 #l5rels = tree.csi_relations(level=1)
 #l5indpairs = makeindpairs(l5rels) # These should be grouped already I guess
