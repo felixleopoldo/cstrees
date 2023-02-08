@@ -8,7 +8,7 @@ from itertools import chain, combinations
 import itertools
 import matplotlib.cm as cm
 import matplotlib.colors as mcolors
-import random 
+import random
 import pandas as pd
 
 def plot(graph, layout="dot"):
@@ -17,7 +17,7 @@ def plot(graph, layout="dot"):
     return agraph
 
 class CStree(nx.Graph):
-    """ 
+    """
         However, there can be like O(2^p) differnet minimal contexts,
         so maybe its impossible. Then we would need some limit on the number
         of nodes in the minimal contexts. But even if we limit the number of
@@ -56,7 +56,7 @@ class CStree(nx.Graph):
         self.colors = list(mcolors.cnames.keys())
         self.color_no = 0
         random.shuffle(self.colors)
-        
+
 
     def set_cardinalities(self, cards):
         self.cards = cards
@@ -65,10 +65,10 @@ class CStree(nx.Graph):
         """Adds a stage.
 
         Example:
-            
+
         """
         self.stages = stages
-        
+
         # Add support for the set format too
         #self.stage_probs = {key: [None]*len(val)
         #                    for key, val in stages.items()}
@@ -90,36 +90,36 @@ class CStree(nx.Graph):
         """
         if self.stages is None:
             return None
-        
+
         lev = len(node)
-        
-        
+
+
         if lev in self.stages:
             for s in self.stages[lev]:
-                if node in s: 
+                if node in s:
                     return s
         return None
-    
- 
+
+
     def to_df(self):
-        
+
         # cardinalities header
         d = {self.co.order[i]:[c] for i,c in enumerate(self.cards[1:])}
         df = pd.DataFrame(d, columns=self.co.order)
-        
+
         for l, stages in self.stages.items():
-            for s in stages:            
+            for s in stages:
                 dftmp = s.to_df(self.co.order)
                 df = pd.concat([df, dftmp])
 
         return df
-    
+
     def from_df(self, df):
-        
+
         for row in df.iterrows():
             pass
 
-    
+
     def set_random_stage_parameters(self):
         # Set stage probabilities
 
@@ -132,16 +132,16 @@ class CStree(nx.Graph):
                 probs = np.random.dirichlet([1] * self.cards[lev+1])
                 stage.probs = probs
                 stage.color = self.colors[i] #cols[i]
-        
-    
+
+
     def set_random_parameters(self):
         """ This is dependent on if one has sampled from the tree already.
-            I.e., if a probablity is already set for an edge, it 
+            I.e., if a probablity is already set for an edge, it
             should not be overwritten.
         """
-        
 
-        # Check if the node is part part of a context (stage?) 
+
+        # Check if the node is part part of a context (stage?)
         # if so we may overwrite probs. Otherwise, generate new ones.
         for node in self.tree.nodes():
             if len(node) == self.p:
@@ -173,7 +173,7 @@ class CStree(nx.Graph):
         return None
 
     def create_tree(self):
-        if self.tree is None:            
+        if self.tree is None:
             self.tree = nx.DiGraph()
 
         ## All the levels of the firs variable
@@ -187,7 +187,7 @@ class CStree(nx.Graph):
             to = node
             if not self.tree.has_edge(fr,to):
                 self.tree.add_edge(fr, to) # check if exists first
-            else:                
+            else:
                 pass
             self.tree.nodes[to]["label"] = to[-1]
             # Add more nodes to visit
@@ -196,14 +196,27 @@ class CStree(nx.Graph):
                 for i in range(self.cards[lev + 1]):
                     tovisit.append(to + (i,))
 
+    def minimal_context_csis(self):
+        """ Returns the minimal contexts.
+        """
+        pass
+
     def to_minimal_context_graphs(self):
         """ This returns a sequence of minimal context graphs (minimal I-maps).
         """
+        print(self.p)
         rels = self.csi_relations_per_level()
+        print(rels)
         paired_csis = csis_by_levels_2_by_pairs(rels)
-        minl_csis = minimal_csis(paired_csis, self.cards)
-        cdags = csi_relations_to_dags(rels, self.co.co)
-                
+        print(paired_csis)
+        print(self.cards)
+        minl_csislists = minimal_csis(paired_csis, self.cards[1:])
+        print(minl_csislists)
+        minl_csis = csi_lists_to_csis_by_level(minl_csislists, self.p)
+        minl_csis_by_context = rels_by_level_2_by_context(minl_csis)
+        print(self.co)
+        cdags = csi_relations_to_dags(minl_csis_by_context, self.co)
+
         return cdags
 
     def likelihood(self, data):
@@ -211,19 +224,19 @@ class CStree(nx.Graph):
 
     def to_csv(self):
         pass
-    
+
     def read_csv(self,filename):
         pass
-    
+
     def csi_relations_per_level(self, level="all"):
-        
+
         return {l:[s.to_csi() for s in stages] for l, stages in self.stages.items()}
-    
+
     def csi_relations(self, level="all"):
         """ Returns all the context specific indepencende (CSI) relations.
             These should normally be thinned out using absorption, and then we would extract
             the minmal contexts based on that.
-            
+
             TODO: This should be returned by level.
         """
         csi_rels = {}
@@ -243,10 +256,6 @@ class CStree(nx.Graph):
 
         return csi_rels
 
-    def minimal_context_csis(self):
-        """ Returns the minimal contexts.
-        """
-        pass
 
     def sample(self, n):
         """Draws n random samples from the CStree.
@@ -257,11 +266,11 @@ class CStree(nx.Graph):
         Args:
             n (int): number of random samples.
         """
-        
+
         if self.tree is None:
-            self.tree = nx.DiGraph()        
+            self.tree = nx.DiGraph()
         xs = []
-        
+
         for _ in range(n):
             node = ()
             x = []
@@ -275,7 +284,7 @@ class CStree(nx.Graph):
                     self.tree.add_edges_from(edges)
 
                     # Sample parameters
-                    
+
                     # We set the parametres at random. But if the node belongs to a
                     # stage we overwrite.
                     probs = np.random.dirichlet([1] * self.cards[lev+1])
@@ -283,15 +292,15 @@ class CStree(nx.Graph):
                     # Check if node is in some stage
                     s = self.get_stage(node)
                     color = ""
-                    if s is not None:                        
-                        probs = s.probs                        
+                    if s is not None:
+                        probs = s.probs
                         if s.color is None:
                             s.color = self.colors[self.color_no]
                             self.color_no += 1
-                            
+
                         color = s.color
-                    
-     
+
+
                     edges = list(self.tree.out_edges(node)) # Hope this gets in the right order
                     #print(edges)
                     # Set parameters
@@ -301,7 +310,7 @@ class CStree(nx.Graph):
                         self.tree.nodes[e[1]]["label"] = e[1][-1]
                         self.tree[e[0]][e[1]]["color"] = color
                         self.tree.nodes[e[0]]["color"] = color
- 
+
                 edges = list(self.tree.out_edges(node))
                 #print(self.tree[()][(0,)]["cond_prob"])
                 probabilities = [self.tree[e[0]][e[1]]["cond_prob"]
@@ -327,8 +336,8 @@ class CStree(nx.Graph):
         """
 
     def plot(self, fill=False):
-        
-        if fill or (self.tree is None):            
+
+        if fill or (self.tree is None):
             self.create_tree()
             self.set_random_parameters()
 
@@ -367,7 +376,7 @@ class CI_relation:
             s3 = s3[:-2]
             return "{} ⊥ {} | {}".format(s1, s2, s3)
         return "{} ⊥  {}".format(s1, s2)
-    
+
 #    def __contains__(self, v):
 #        return (v in self.a) or (v in self.b) or (v in self.sep)
 
@@ -400,16 +409,16 @@ class Stage:
              # Must chec if list
             if (type(val) is list) and (node[i] not in val):
                 return False
-            if (type(val) is int) and (node[i] != val):                
+            if (type(val) is int) and (node[i] != val):
                 return False
-            
+
         return True
 
     def to_df(self, columns):
         import pandas as pd
-        
+
         d = {}
-        
+
         for i in range(len(columns)):
             if i < len(self.list_repr):
                 if type(self.list_repr[i]) == list:
@@ -418,10 +427,10 @@ class Stage:
                     d[columns[i]] = [self.list_repr[i]]
             else:
                 d[columns[i]] = ["-"]
-                
-                
+
+
         df = pd.DataFrame(d, columns=columns)
-        
+
         return df
 
     def set_random_params(self, cards):
@@ -429,7 +438,7 @@ class Stage:
 
     def from_df(self):
         pass
-        
+
 
     def to_csi(self):
         sepseta = set()
@@ -486,7 +495,7 @@ class Context:
         for key, val in self.context.items():
             context_str += "X{}={}, ".format(key, val)
         if context_str != "":
-            context_str = context_str[:-2]   
+            context_str = context_str[:-2]
         if context_str == "":
             context_str = "None"
         return context_str
@@ -534,15 +543,15 @@ class CSI_relation:
         # Get the level as the max element-1
         # The Nones not at index 0 encode the CI variables.
         def mymax(s):
-            
+
             if (type(s) is set) and (len(s) > 0):
                 return max(s)
             else:
                 return 0
-            
+
         #print(print(self.ci.sep))
         levels = max(mymax(self.ci.a), mymax(self.ci.b), mymax(self.ci.sep), mymax(self.context.context)) + 1
-        
+
         cards = [2] * levels
         csilist = [None] * levels
         for l in range(levels):
@@ -553,11 +562,11 @@ class CSI_relation:
             elif l in self.context:
                 csilist[l] = {self.context[l]}
 
-        return csilist            
+        return csilist
 
     def from_list(self):
         pass
-        
+
     def to_cstree_paths(self, cards: list, order: list):
         """Genreate the set(s) of path defining the CSI relations.
         note that it can be defined by several stages (set of paths).
@@ -611,7 +620,7 @@ class CSI_relation:
 
 def sample_random_stage(cards: list, level: int) -> Stage:
     # The las level cannot contain stages
-    
+
     #if level >= len(cards):
     #    return None
     vals = [None]*len(cards[:level])
@@ -625,8 +634,8 @@ def sample_random_stage(cards: list, level: int) -> Stage:
                 vals[i] = list(range(cards[i]))
 
     s = Stage(vals)
-    
-    
+
+
     #s.probs = np.random.dirichlet([1] * cards[level]) # Need to fix this
     return s
 
@@ -747,7 +756,7 @@ def sample_cstree(p: int) -> CStree:
 
         stages[key] = []
         for i in range(key):  # Number of trees incrases as O(p*level)
-            if np.random.randint(2): 
+            if np.random.randint(2):
                 s = sample_random_stage(cards, level=key)
                 #s.set_random_params(cards)
 
@@ -755,9 +764,9 @@ def sample_cstree(p: int) -> CStree:
                     stages[key].append(s)
 
     ct.add_stages(stages)
-    
+
     #ct.set_random_stage_parameters()
-    
+
     return ct
 
 
@@ -784,15 +793,15 @@ def powerset(iterable):
     return chain.from_iterable(combinations(s, r) for r in range(len(s)+1))
 
 def df_to_cstree(df):
-    
+
     co = CausalOrder([int(x[0]) for x in df.columns])
-    
+
     cards = [int(x[1]) for x in df.columns]
-    
+
     stages = {i:[] for i in range(len(cards)+1)}
     cstree = CStree(co)
     cstree.set_cardinalities([None] + cards)
-    
+
     for row in df.iterrows():
         stage_list = []
 
@@ -805,12 +814,12 @@ def df_to_cstree(df):
                 break
             else:
                 stage_list.append(int(val))
-    
+
     cstree.add_stages(stages)
     cstree.co = co
 
     #cstree.set_random_stage_parameters()
-    
+
     return cstree
 
 def multivariate_multinomial(probs):
@@ -860,7 +869,7 @@ def weak_union(ci: CI_relation):
 def pairwise_cis(ci: CI_relation):
     """ Using weak union just to get pairwise indep relations.
 
-        X_a _|_ X_b | X_d 
+        X_a _|_ X_b | X_d
     Args:
         ci (CI_relation): CI relation
     """
@@ -920,18 +929,18 @@ def csi_set_to_list_format(csilist):
     tmp = []
     print(csilist)
     for i, e in enumerate(csilist[1:p]):
-        
+
         if e is None:
             tmp.append(list(range(cards[i])))
         elif len(e) == 1:
             tmp.append(list(e)[0])
         elif len(e) > 1:
             tmp.append(list(e)) # this should be == range(cards[i]))
-        
+
     return tmp
 
 def csilist_to_csi(csilist):
-    
+
     print(csilist)
     context = {}
     indpair = []
@@ -945,7 +954,7 @@ def csilist_to_csi(csilist):
             context[i] = list(e)[0]
         elif len(e) > 1:
             sep.add(i) # this should be == range(cards[i]))
-    
+
     context = Context(context)
 
     ci = CI_relation({indpair[0]}, {indpair[1]}, sep)
@@ -955,7 +964,7 @@ def csilist_to_csi(csilist):
 
 def minimal_csis(paired_csis, cards):
     """ TODO
-    
+
         Loop through all levels l
         1. For each stage in the level do weak union to get the pairs Xi _|_ Xj | something, and group.
         2. For each such pair go through all levels and try to find mixable CSI by partition on value.
@@ -973,7 +982,7 @@ def minimal_csis(paired_csis, cards):
         _type_: _description_
     """
 
-    p = len(cards)            
+    p = len(cards)
 
     ret = [{} for _ in range(p+1)]
     for level in range(p):
@@ -1006,9 +1015,9 @@ def minimal_csis(paired_csis, cards):
                     # The old should not be re-mixed, i.e., the mixes must contain
                     # at least one new csi. How do we implement that? Just create new to mix
                     # and skip if not containing a new?
-                    
+
                     for csilist_tuple in itertools.product(*csis_to_mix): # E.g. combinations like {a, b, c} X {d, e} X ...
-                        
+
                         #print("mixing")
                         #print(csilist_tuple)
                         # Check that at least one is a newbie
@@ -1017,7 +1026,7 @@ def minimal_csis(paired_csis, cards):
                             if csi in newbies:
                                 no_newbies = False
                         if no_newbies:
-                            #print("no newbies, so skip")                            
+                            #print("no newbies, so skip")
                             continue
 
                         # Mix
@@ -1030,16 +1039,16 @@ def minimal_csis(paired_csis, cards):
                             continue
                         else:
                             # Check if some csi of the oldies should be removed.
-                            # I.e. if some in csilist_tuple is a subset of mix.                                                        
+                            # I.e. if some in csilist_tuple is a subset of mix.
                             for csilist in csilist_tuple:
                                 a = [x[0] <= x[1] if x[0] is not None else True for x in zip(csilist, mix)] # O(p*K)
-                                if all(a):                                
+                                if all(a):
                                     #print("{} <= {} Its a subset, so will be absorbed/removed later".format(csilist, mix))
                                     csis_to_absorb.append(csilist)
                             tmp.append(mix)
                 # Update the lists
                 oldies += newbies
-                
+
                 #print("CSIS to absorb/remove (can be duplicates)")
                 #print(csis_to_absorb)
                 for csi in csis_to_absorb:
@@ -1047,7 +1056,7 @@ def minimal_csis(paired_csis, cards):
                     if csi in oldies:
                         oldies.remove(csi)
 
-                newbies = tmp 
+                newbies = tmp
                 # check the diplicates here somewhere.
                 iteration += 1
             ret[level][pair] = oldies
@@ -1112,11 +1121,10 @@ def csi_lists_to_csis_by_level(csi_lists, p):
                 csiobj = csilist_to_csi(csi)
                 #print(tmplist)
                 #stage = ct.Stage(tmplist)
-                #stage.set_random_params(cards)            
+                #stage.set_random_params(cards)
                 #tmp.append(stage)
                 tmp.append(csiobj)
         stages[l] = tmp
         print(csilist)
     return stages
 
-   
