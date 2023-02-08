@@ -35,7 +35,7 @@ class CStree(nx.Graph):
         >>> co = range(1, p+1)
         >>> tree = ct.CStree(co)
         >>> tree.set_cardinalities([None] + [2] * p)
-        >>> tree.add_stages({
+        >>> tree.set_stages({
         >>>     0: [],
         >>>     1: [],
         >>>     2: [{(0, 0), (1, 0)}],  # green
@@ -55,20 +55,21 @@ class CStree(nx.Graph):
         random.seed(1)
         self.colors = list(mcolors.cnames.keys())
         self.color_no = 0
+        self.stages = {i:[] for i in range(self.p)}
         random.shuffle(self.colors)
 
 
     def set_cardinalities(self, cards):
         self.cards = cards
 
-    def add_stages(self, stages: dict):
+    def set_stages(self, stages: dict):
         """Adds a stage.
 
         Example:
 
         """
-        self.stages = stages
-
+        #self.stages = stages
+        self.stages.update(stages)
         # Add support for the set format too
         #self.stage_probs = {key: [None]*len(val)
         #                    for key, val in stages.items()}
@@ -204,20 +205,34 @@ class CStree(nx.Graph):
     def to_minimal_context_graphs(self):
         """ This returns a sequence of minimal context graphs (minimal I-maps).
         """
-        print(self.p)
+        
         rels = self.csi_relations_per_level()
-        print(rels)
+        #print(rels)
         paired_csis = csis_by_levels_2_by_pairs(rels)
-        print(paired_csis)
-        print(self.cards)
+        #print(paired_csis)
+        
         minl_csislists = minimal_csis(paired_csis, self.cards[1:])
-        print(minl_csislists)
+        #print(minl_csislists)
         minl_csis = csi_lists_to_csis_by_level(minl_csislists, self.p)
+        # print(minl_csislists)
+        # for key in minl_csislists:
+        #     print(key)
+        #     for pair, val in key.items():                
+        #         print(pair, val)
+            
         minl_csis_by_context = rels_by_level_2_by_context(minl_csis)
-        print(self.co)
+        #print(minl_csis_by_context)
+        for pair, val in minl_csis_by_context.items(): 
+            for csi in val:
+                print(csi)               
+
+
         cdags = csi_relations_to_dags(minl_csis_by_context, self.co)
 
         return cdags
+    
+    def plot_minl_dags(self):
+        pass
 
     def likelihood(self, data):
         pass
@@ -763,7 +778,7 @@ def sample_cstree(p: int) -> CStree:
                 if all(map(lambda x: x.intersects(s) is False, stages[key])):
                     stages[key].append(s)
 
-    ct.add_stages(stages)
+    ct.set_stages(stages)
 
     #ct.set_random_stage_parameters()
 
@@ -815,7 +830,7 @@ def df_to_cstree(df):
             else:
                 stage_list.append(int(val))
 
-    cstree.add_stages(stages)
+    cstree.set_stages(stages)
     cstree.co = co
 
     #cstree.set_random_stage_parameters()
@@ -927,7 +942,7 @@ def partition_csis(pair, csilist_list, l, cards):
 
 def csi_set_to_list_format(csilist):
     tmp = []
-    print(csilist)
+    #print(csilist)
     for i, e in enumerate(csilist[1:p]):
 
         if e is None:
@@ -941,7 +956,7 @@ def csi_set_to_list_format(csilist):
 
 def csilist_to_csi(csilist):
 
-    print(csilist)
+    #print(csilist)
     context = {}
     indpair = []
     sep = set()
@@ -959,7 +974,7 @@ def csilist_to_csi(csilist):
 
     ci = CI_relation({indpair[0]}, {indpair[1]}, sep)
     csi = CSI_relation(ci, context)
-    print(csi)
+    #print(csi)
     return csi
 
 def minimal_csis(paired_csis, cards):
@@ -1063,6 +1078,8 @@ def minimal_csis(paired_csis, cards):
     return ret
 
 def csis_by_levels_2_by_pairs(rels):
+    
+    
     paired_csis = [None] * len(rels)
 
     for l, val in rels.items():
@@ -1114,7 +1131,7 @@ def csi_lists_to_csis_by_level(csi_lists, p):
         tmp = []
         # Convert formats
         for pair, csil in csilist.items():
-            print(pair)
+            #print(pair)
             #print(csil)
             for csi in csil:
                 #tmplist = csi_set_to_list_format(csi)
@@ -1125,6 +1142,6 @@ def csi_lists_to_csis_by_level(csi_lists, p):
                 #tmp.append(stage)
                 tmp.append(csiobj)
         stages[l] = tmp
-        print(csilist)
+        #print(csilist)
     return stages
 
