@@ -207,10 +207,12 @@ class CStree(nx.Graph):
         """
         
         rels = self.csi_relations_per_level()
+        #print("rels")
         #print(rels)
         paired_csis = csis_by_levels_2_by_pairs(rels)
         #print(paired_csis)
         
+        #print("minl cslisist")
         minl_csislists = minimal_csis(paired_csis, self.cards[1:])
         #print(minl_csislists)
         minl_csis = csi_lists_to_csis_by_level(minl_csislists, self.p)
@@ -990,6 +992,8 @@ def minimal_csis(paired_csis, cards):
 
         Does this stop automatically? Will the set with new CSI eventually be empty?
 
+        BUG: OLDIES and NEWBIES GETS SUPER BIG and has multiple duplicates.
+            Same csi seems to be in boths sets a number of times.
     Args:
         paired_csis (dict): Dict of csis grouped by pairwise indep rels as Xi _|_ Xj.
 
@@ -1040,6 +1044,7 @@ def minimal_csis(paired_csis, cards):
                         for csi in csilist_tuple:
                             if csi in newbies:
                                 no_newbies = False
+                                break
                         if no_newbies:
                             #print("no newbies, so skip")
                             continue
@@ -1070,8 +1075,14 @@ def minimal_csis(paired_csis, cards):
                     #print("REMOVING {}".format(csi))
                     if csi in oldies:
                         oldies.remove(csi)
+                        
+                # Added this to see if it fixes the bug..
+                for csi in tmp:
+                    #print("REMOVING {}".format(csi))
+                    if csi in oldies:
+                        tmp.remove(csi)
 
-                newbies = tmp
+                newbies = tmp # check that the newbies are not in oldies!
                 # check the diplicates here somewhere.
                 iteration += 1
             ret[level][pair] = oldies
