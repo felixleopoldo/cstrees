@@ -635,20 +635,37 @@ class CSI_relation:
         return "{}, {}".format(self.ci, self.context)
 
 
-def sample_random_stage(cards: list, level: int) -> Stage:
+def sample_random_stage(cards: list, level: int, max_contextvars: int, prob: float) -> Stage:
     # The las level cannot contain stages
+
+    # Maybe be able to set maximal the number of context variables first.
+    # Then sample which it will be.
+    # If the number is smaller than the level, then level is max.
+    ncont = max(max_contextvars, level)
+    possible_context_vars = np.random.choice(range(1, ncont+1), replace=False)
+    #np.random.randint(max_contextvars + 1) #sample randomly
+    
+    context_vars = np.random.choice() #sample randomly
 
     #if level >= len(cards):
     #    return None
     vals = [None]*len(cards[:level])
     # Just to make sure not all variables are context variables.
     while not any(map(lambda x: type(x) is list, vals)):
-        for i, j in enumerate(cards[:level]):
-            b = np.random.randint(2)
-            if b == 0:
+        for i, _ in enumerate(cards[:level]): # shouldnt it go one more step?
+            if i in context_vars:
                 vals[i] = np.random.randint(cards[i])
-            if b == 1:
+            else:
                 vals[i] = list(range(cards[i]))
+                        
+            # # Randomly set as context or random variable.
+            # prob = 0.5 # prob of stage
+            # b = np.random.multinomial(1, [prob, 1-prob], size=1)[0][0]            
+            # #b = np.random.randint(2)
+            # if b == 0: # prob
+            #     vals[i] = np.random.randint(cards[i])
+            # if b == 1: # 1-prob
+            #     vals[i] = list(range(cards[i]))
 
     s = Stage(vals)
 
@@ -776,7 +793,7 @@ def sample_cstree(p: int) -> CStree:
             if np.random.randint(2):
                 s = sample_random_stage(cards, level=key)
                 #s.set_random_params(cards)
-
+                # Check that we have disjoint stages (they may still be mergeable).
                 if all(map(lambda x: x.intersects(s) is False, stages[key])):
                     stages[key].append(s)
 
