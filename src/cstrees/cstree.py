@@ -759,11 +759,21 @@ def get_minimal_dag_imaps(causal_order, csi_relations):
     pass
 
 
-def sample_cstree(p: int, max_contextvars: int, prob: int) -> CStree:
+def sample_cstree(p: int, max_contextvars: int, prob_contextvar: int, e_stages_per_level: float) -> CStree:
     """
        Sample a random CStree with given cardinalities.
        Since the tree is sampled the order shouldn't matter?
 
+       K = cardinality at level.
+       Maximal number of stages at a level is K^level.
+       Assume prob_contextvars = 1.
+       max_contextvars = level => #stages = K^level.
+       max_contextvars = 1 => #stages = K^1 * (level choose 1). The size (number of leafs in the tree) if each stage will be K^(l-1).
+       max_contextvars = 2 => #stages = K^2 * (level choose 2). The size if each stage will be K^(l-2).
+       ...
+       We dont want these to overlap. The probability of overlapping is (depends on the exising):
+       We need to have at least one context variable with a different value. If one, it will be merged.
+       
     Args:
         cardinalities (list): cardinalities of the variables.
 
@@ -774,18 +784,17 @@ def sample_cstree(p: int, max_contextvars: int, prob: int) -> CStree:
     ct = CStree(co)
     cards = [2] * p
     ct.set_cardinalities([None] + cards)
-
+    
     stages = {}
-    for key, val in enumerate(cards): # not the last level
-
-        stages[key] = []
-        for i in range(key):  # Number of trees incrases as O(p*level)
+    for level, val in enumerate(cards): # not the last level
+        stages[level] = []
+        for i in range(level):  # Maxl number of stages. Number of trees (stages?) increases as O(p*level).
             if np.random.randint(2):
-                s = sample_random_stage(cards, key, max_contextvars, prob)
-                #s.set_random_params(cards)
-                # Check that we have disjoint stages (they may still be mergeable).
-                if all(map(lambda x: x.intersects(s) is False, stages[key])):
-                    stages[key].append(s)
+                s = sample_random_stage(cards, level, max_contextvars, prob_contextvar)
+                # s.set_random_params(cards)
+                # Check that no stage intersects with s (they may still be mergeable).
+                if all(map(lambda x: x.intersects(s) is False, stages[level])):
+                    stages[level].append(s)
 
     ct.set_stages(stages)
 

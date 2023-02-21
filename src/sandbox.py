@@ -26,7 +26,7 @@ for m in maxs:
         print(p)
         start = time.perf_counter()
         print("Sample tree")
-        t = ct.sample_cstree(p, max_contextvars=m, prob=1)
+        t = ct.sample_cstree(p, max_contextvars=m, prob_contextvar=1)
         t.set_random_stage_parameters()
         stop = time.perf_counter()
         sample_times.append(stop - start)
