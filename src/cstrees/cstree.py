@@ -10,6 +10,9 @@ import matplotlib.cm as cm
 import matplotlib.colors as mcolors
 import random
 import pandas as pd
+import logging, sys
+#logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
+logging.basicConfig(stream=sys.stderr, level=logging.ERROR)
 
 def plot(graph, layout="dot"):
     agraph = nx.nx_agraph.to_agraph(graph)
@@ -205,34 +208,35 @@ class CStree(nx.Graph):
     def to_minimal_context_graphs(self):
         """ This returns a sequence of minimal context graphs (minimal I-maps).
         """
-        
+        logging.debug("getting csirels per level")
         rels = self.csi_relations_per_level()
-        #print("rels")
+        print("rels")
         #print(rels)
         paired_csis = csis_by_levels_2_by_pairs(rels)
         #print(paired_csis)
-        
-        #print("minl cslisist")
+
+        print("minl cslisist")
         minl_csislists = minimal_csis(paired_csis, self.cards[1:])
-        #print(minl_csislists)
+        # print(minl_csislists)
+        print("get minl csis")
         minl_csis = csi_lists_to_csis_by_level(minl_csislists, self.p)
         # print(minl_csislists)
         # for key in minl_csislists:
         #     print(key)
-        #     for pair, val in key.items():                
+        #     for pair, val in key.items():
         #         print(pair, val)
-            
+
         minl_csis_by_context = rels_by_level_2_by_context(minl_csis)
         #print(minl_csis_by_context)
-        for pair, val in minl_csis_by_context.items(): 
-            for csi in val:
-                print(csi)               
+        #for pair, val in minl_csis_by_context.items():
+        #    for csi in val:
+        #        print(csi)
 
 
         cdags = csi_relations_to_dags(minl_csis_by_context, self.co)
 
         return cdags
-    
+
     def plot_minl_dags(self):
         pass
 
@@ -316,7 +320,6 @@ class CStree(nx.Graph):
                             self.color_no += 1
 
                         color = s.color
-
 
                     edges = list(self.tree.out_edges(node)) # Hope this gets in the right order
                     #print(edges)
@@ -636,41 +639,28 @@ class CSI_relation:
 
 
 def sample_random_stage(cards: list, level: int, max_contextvars: int, prob: float) -> Stage:
-    # The las level cannot contain stages
+    # The last level cannot contain stages.
 
-    # Maybe be able to set maximal the number of context variables first.
-    # Then sample which it will be.
     # If the number is smaller than the level, then level is max.
-    ncont = max(max_contextvars, level)
-    possible_context_vars = np.random.choice(range(1, ncont+1), replace=False)
-    #np.random.randint(max_contextvars + 1) #sample randomly
-    
-    context_vars = np.random.choice() #sample randomly
+    ncont = max_contextvars
+    if max_contextvars > level-1: # Since not all can be context variables.
+        ncont = level - 1
 
-    #if level >= len(cards):
-    #    return None
+    possible_context_vars = np.random.choice(range(1, level), ncont, replace=False)
+
+    context_vars = []
+    for i, val in enumerate(possible_context_vars):
+        if np.random.multinomial(1, [prob, 1-prob], size=1)[0][0] == 1:
+            context_vars.append(val)
+
     vals = [None]*len(cards[:level])
-    # Just to make sure not all variables are context variables.
-    while not any(map(lambda x: type(x) is list, vals)):
-        for i, _ in enumerate(cards[:level]): # shouldnt it go one more step?
-            if i in context_vars:
-                vals[i] = np.random.randint(cards[i])
-            else:
-                vals[i] = list(range(cards[i]))
-                        
-            # # Randomly set as context or random variable.
-            # prob = 0.5 # prob of stage
-            # b = np.random.multinomial(1, [prob, 1-prob], size=1)[0][0]            
-            # #b = np.random.randint(2)
-            # if b == 0: # prob
-            #     vals[i] = np.random.randint(cards[i])
-            # if b == 1: # 1-prob
-            #     vals[i] = list(range(cards[i]))
 
+    for i, _ in enumerate(cards[:level]):
+        if i+1 in context_vars:
+            vals[i] = np.random.randint(cards[i])
+        else:
+            vals[i] = list(range(cards[i]))
     s = Stage(vals)
-
-
-    #s.probs = np.random.dirichlet([1] * cards[level]) # Need to fix this
     return s
 
 def comp_bit_strings(a):
@@ -769,7 +759,7 @@ def get_minimal_dag_imaps(causal_order, csi_relations):
     pass
 
 
-def sample_cstree(p: int) -> CStree:
+def sample_cstree(p: int, max_contextvars: int, prob: int) -> CStree:
     """
        Sample a random CStree with given cardinalities.
        Since the tree is sampled the order shouldn't matter?
@@ -791,7 +781,7 @@ def sample_cstree(p: int) -> CStree:
         stages[key] = []
         for i in range(key):  # Number of trees incrases as O(p*level)
             if np.random.randint(2):
-                s = sample_random_stage(cards, level=key)
+                s = sample_random_stage(cards, key, max_contextvars, prob)
                 #s.set_random_params(cards)
                 # Check that we have disjoint stages (they may still be mergeable).
                 if all(map(lambda x: x.intersects(s) is False, stages[key])):
@@ -996,6 +986,17 @@ def csilist_to_csi(csilist):
     #print(csi)
     return csi
 
+def csilist_subset(a, b):
+    """True if a is a sub CSI of b, i.e. if at each level l,
+        a[l] <= b[l].
+
+    Args:
+        a (list): list representation of a CSI
+        b (list): list representation of a CSI
+    """
+    a = [x[0] <= x[1] if x[0] is not None else True for x in zip(a, b)] # O(p*K)
+    return all(a)
+
 def minimal_csis(paired_csis, cards):
     """ TODO
 
@@ -1009,8 +1010,6 @@ def minimal_csis(paired_csis, cards):
 
         Does this stop automatically? Will the set with new CSI eventually be empty?
 
-        BUG: OLDIES and NEWBIES GETS SUPER BIG and has multiple duplicates.
-            Same csi seems to be in boths sets a number of times.
     Args:
         paired_csis (dict): Dict of csis grouped by pairwise indep rels as Xi _|_ Xj.
 
@@ -1023,7 +1022,7 @@ def minimal_csis(paired_csis, cards):
     ret = [{} for _ in range(p+1)]
     for level in range(p):
         # initiate newbies in the first run to be
-        #print("\n#### Level {}".format(level))
+        logging.debug("\n#### Level {}".format(level))
         for pair, csilist_list in paired_csis[level].items():
             #print("\n#### CI pair {}".format(pair))
             oldies = []
@@ -1032,7 +1031,7 @@ def minimal_csis(paired_csis, cards):
 
             iteration = 1
             while len(newbies) > 0:
-                #print("\n#### Iteration {}".format(iteration))
+                logging.debug("\n#### Iteration {}".format(iteration))
                 #print(pair)
                 #print("going through the levels for partitions")
                 # should join with csi_list the oldies?
@@ -1041,11 +1040,13 @@ def minimal_csis(paired_csis, cards):
                 csis_to_absorb = [] # remove from the old ones due to mixing
                 # Go through all levels, potentially many times.
                 for l in range(1, level+1):
+                    logging.debug("level {}".format(l))
                     if l in pair:
                         continue
 
                     csis_to_mix = partition_csis(pair, newbies + oldies, l, cards)
-                    #print(csis_to_mix)
+                    #logging.debug("csis to mix")
+                    #logging.debug(csis_to_mix)
 
                     # Need to separate the newly created csis from the old ones.
                     # The old should not be re-mixed, i.e., the mixes must contain
@@ -1054,11 +1055,11 @@ def minimal_csis(paired_csis, cards):
 
                     for csilist_tuple in itertools.product(*csis_to_mix): # E.g. combinations like {a, b, c} X {d, e} X ...
 
-                        #print("mixing")
-                        #print(csilist_tuple)
+                        #logging.debug(csilist_tuple)
                         # Check that at least one is a newbie
                         no_newbies = True
                         for csi in csilist_tuple:
+                            
                             if csi in newbies:
                                 no_newbies = False
                                 break
@@ -1068,46 +1069,92 @@ def minimal_csis(paired_csis, cards):
 
                         # Mix
                         mix = do_mix(csilist_tuple, l, cards)
-                        #print("mix result: ")
-                        #print(mix)
-
                         if mix is None:
                             #print("Not mixeable")
                             continue
                         else:
-                            # Check if some csi of the oldies should be removed.
-                            # I.e. if some in csilist_tuple is a subset of mix.
-                            for csilist in csilist_tuple:
-                                a = [x[0] <= x[1] if x[0] is not None else True for x in zip(csilist, mix)] # O(p*K)
-                                if all(a):
-                                    #print("{} <= {} Its a subset, so will be absorbed/removed later".format(csilist, mix))
-                                    csis_to_absorb.append(csilist)
-                            tmp.append(mix)
+                            if mix not in (oldies + newbies):
+                                logging.debug("Adding as newly created ******")
+                                tmp.append(mix)
+
+                                logging.debug("mixing")
+                                logging.debug(csilist_tuple)
+                                logging.debug("mix result: ")
+                                logging.debug(mix)
+                                # Check if some csi of the oldies should be removed.
+                                # I.e. if some in csilist_tuple is a subset of mix.
+                                for csilist in csilist_tuple:
+                                    # print wher the csi is from, oldies, or newbies.
+                                    if csilist_subset(csilist, mix): # This sho
+                                        logging.debug("will later absorb {}".format(csilist))
+                                        csis_to_absorb.append(csilist)
+                logging.debug("##### Iterated through all levels. Prepare for next round. ### \n ")
                 # Update the lists
+                logging.debug("Adding the following newbies (newly created in earlier interations) to the oldies.")
+                for nn in newbies:
+                    logging.debug(nn)
                 oldies += newbies
 
-                #print("CSIS to absorb/remove (can be duplicates)")
-                #print(csis_to_absorb)
-                for csi in csis_to_absorb:
-                    #print("REMOVING {}".format(csi))
-                    if csi in oldies:
-                        oldies.remove(csi)
-                        
-                # Added this to see if it fixes the bug..
-                for csi in tmp:
-                    #print("REMOVING {}".format(csi))
-                    if csi in oldies:
-                        tmp.remove(csi)
+                # Check that there are no csis that can be absorbed directly absorbable
+                # remove duplicates
+                res_list = []
+                for item in oldies:
+                    if item not in res_list:
+                        res_list.append(item)
+                oldies = res_list
 
-                newbies = tmp # check that the newbies are not in oldies!
+                logging.debug("CSI to absorb/remove after having been mixed (can be duplicates)")                
+                for csi in csis_to_absorb:
+                    # BUG: this is maybe not ok. Feels bad to alter here. Maybe an absorbtion step after instead.       
+                    if csi in oldies: # Shouldnt it be here? Or somewhere else maybe.. Shouldnt we remove it whereever it is?
+                        # Maybe make this removal after appending the newbies?
+                        logging.debug(csi)
+                        oldies.remove(csi)
+                    # Maybe remove from new mixes as well then.
+
+                # filter duplicates
+                res_list = []
+                for item in tmp:
+                    if item not in res_list:
+                        res_list.append(item)
+                tmp = res_list
+                logging.debug("New mix results:")
+                for t in tmp:
+                    logging.debug(t)
+
+                # Added this to see if it fixes the bug..
+                # logging.debug("Updating newbies with the unique new mix results")
+                logging.debug("Updating mix results by removing if they already are in oldies, or a subset of an oldie.")
+                newbies = [] # check that the newbies are not in oldies!
+                for csi in tmp: # O( #tmp)
+                    #logging.debug("REMOVING {}".format(csi))
+                    if (csi not in oldies) and (csi not in csis_to_absorb): # O(#oldies)
+                        newbies.append(csi)
+                    else:
+                        newbies.append(csi) # Add and then remove maybe :)
+                        for o in oldies: # O(#oldies)
+                            if csilist_subset(csi, o):
+                                #logging.debug("FOUND A SUBSET OF AN OLDIE############")
+                                #logging.debug(csi)
+                                #logging.debug("is a subset of")
+                                #logging.debug(o)
+                                newbies.remove(csi)
+                                break
+
+                logging.debug("newbies (new mixes after the filtering):")
+                for nb in newbies:
+                    logging.debug(nb)
+                logging.debug("oldies")
+                for o in oldies:
+                    logging.debug(o)
                 # check the diplicates here somewhere.
                 iteration += 1
             ret[level][pair] = oldies
     return ret
 
 def csis_by_levels_2_by_pairs(rels):
-    
-    
+
+
     paired_csis = [None] * len(rels)
 
     for l, val in rels.items():

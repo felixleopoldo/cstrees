@@ -10,7 +10,7 @@ np.random.seed(1)
 
 p = 4
 
-t = ct.sample_cstree(p)
+t = ct.sample_cstree(p, 2, 0.5)
 t.set_random_stage_parameters()
 t.plot()
 rels = t.csi_relations()
@@ -36,7 +36,7 @@ tree.set_cardinalities([None] + cards)
 # These do not have to be in a dict like this as the levels are
 # determined from the length of the tuples.
 
-tree.add_stages({
+tree.set_stages({
     0: [],
     1: [],
     2: [ct.Stage([[0, 1], 0])],    # Green
@@ -57,7 +57,7 @@ rels = tree.csi_relations()
 
 print("Initial rels")
 print(rels)
-adjmats = ct.csi_relations_to_dags(rels, co)
+adjmats = tree.to_minimal_context_graphs()
 
 i = 1
 for key, graph in adjmats.items():
@@ -69,53 +69,3 @@ for key, graph in adjmats.items():
     # print(graph.nodes)
     # print(graph.edges())
     i += 1
-
-rels = tree.csi_relations_per_level()
-
-
-for l, csilist in enumerate(paired_csis):
-    print("level {}:".format(l))
-    print(csilist)
-
-print("ret")
-print(ret)
-for l, csilist in enumerate(ret):
-    print("level {} {}:".format(l, csilist))
-
-print(p)
-co = ct.CausalOrder(range(1, p+1))
-tree = ct.CStree(co)
-cards = [2] * p
-
-
-tree.set_cardinalities([None] + cards)
-
-# These do not have to be in a dict like this as the levels are
-# determined from the length of the tuples.
-
-rels_at_level = stages
-#print(stages)
-
-    
-# tree.add_stages(stages)
-
-# tree.set_random_stage_parameters()
-
-# a = tree.plot()
-# a.draw("minlcsi.png")
-
-#rels = tree.csi_relations_per_level()
-print(rels_at_level)
-
-# TODO: The keys should be contexts here, not levels.
-
-
-print(rels)
-            
-cdags = ct.csi_relations_to_dags(rels, co)
-
-for key, graph in cdags.items():
-    agraph = nx.nx_agraph.to_agraph(graph)
-    agraph.layout("dot")
-    agraph.draw("minl_cont_dag_"+str(key) + ".png", args="-Glabel="+str(key) +"    ")
-
