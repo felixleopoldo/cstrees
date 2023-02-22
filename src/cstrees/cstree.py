@@ -1,4 +1,5 @@
-
+import math
+from math import comb
 from random import uniform
 from re import S
 import networkx as nx
@@ -11,6 +12,7 @@ import matplotlib.colors as mcolors
 import random
 import pandas as pd
 import logging, sys
+
 #logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
 logging.basicConfig(stream=sys.stderr, level=logging.ERROR)
 
@@ -759,7 +761,7 @@ def get_minimal_dag_imaps(causal_order, csi_relations):
     pass
 
 
-def sample_cstree(p: int, max_contextvars: int, prob_contextvar: int, e_stages_per_level: float) -> CStree:
+def sample_cstree(p: int, max_contextvars: int, prob_contextvar: int, frac_stages_per_level: float) -> CStree:
     """
        Sample a random CStree with given cardinalities.
        Since the tree is sampled the order shouldn't matter?
@@ -787,14 +789,29 @@ def sample_cstree(p: int, max_contextvars: int, prob_contextvar: int, e_stages_p
     
     stages = {}
     for level, val in enumerate(cards): # not the last level
-        stages[level] = []
-        for i in range(level):  # Maxl number of stages. Number of trees (stages?) increases as O(p*level).
-            if np.random.randint(2):
-                s = sample_random_stage(cards, level, max_contextvars, prob_contextvar)
-                # s.set_random_params(cards)
-                # Check that no stage intersects with s (they may still be mergeable).
-                if all(map(lambda x: x.intersects(s) is False, stages[level])):
-                    stages[level].append(s)
+        # fix max_context_vars if higher than level
+        mc = max_contextvars
+        if level < mc:
+            mc = level+1
+        #print(mc)       
+        
+        max_n_stages = comb(level+1, mc) * (cards[level]**mc)
+        logging.debug("Max # stages with {} context variables: {}".format(mc, max_n_stages))
+        stages[level+1] = []
+        m = math.ceil(max_n_stages * frac_stages_per_level)
+        logging.debug("Trying to add max of {} stages".format(m))
+        j = 0
+        while j < m:
+#        for i in range(m):  # Maxl number of stages. Number of trees (stages?) increases as O(p*level).            
+            s = sample_random_stage(cards, level+1, max_contextvars, prob_contextvar)
+            # s.set_random_params(cards)
+            # Check that no stage intersects with s (they may still be mergeable).
+            if all(map(lambda x: x.intersects(s) is False, stages[level+1])):
+                stages[level+1].append(s)
+                j += 1 
+        logging.debug("Added {} stages".format(len(stages[level+1])))
+
+    print(stages)
 
     ct.set_stages(stages)
 
