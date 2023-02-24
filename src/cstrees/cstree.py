@@ -417,6 +417,9 @@ class CausalOrder:
 
 
 class Stage:
+    """A stage should actually be a CSI and a probabilty.
+    """
+    
     def __init__(self, list_repr) -> None:
         self.level = len(list_repr)
         self.list_repr = list_repr
@@ -479,7 +482,7 @@ class Stage:
         return CSI_relation(ci, context)
 
     def intersects(self, stage):
-        """ Checks if tha paths of two stages intersect.
+        """ Checks if the paths of two stages intersect.
             Since then they cannot be in the same CStree.
         """
 
@@ -586,6 +589,20 @@ class CSI_relation:
 
         return csilist
 
+    def __and__(self, other):
+        a = self.as_list()
+        b = other.as_list()
+        c_list = []
+
+        for el in zip(a, b):
+            pass
+        
+        return CSI_relation(c_list)
+
+    def __sub__(self, csi):
+        pass
+
+    
     def from_list(self):
         pass
 
@@ -1246,3 +1263,36 @@ def csi_lists_to_csis_by_level(csi_lists, p):
         #print(csilist)
     return stages
 
+def sample_csi_rest_by_csi(csi: CSI_relation, n_context_vars: int):
+    space = csi.as_list()
+    p = len(space) + 1
+    print(space)
+    csilist = [None] * len(space)
+    # None means all :)
+    # note that it can also be a subset.. like {1,2} of {0,1,2}
+    # no, than iw would be several instea, since one can anyway not
+    # choose a subset for a CSI in the end.
+    cont_var_counter = 0
+    # maybe take a random order here, to not favor low levels.
+    randorder = random.shuffle(range(p))
+    
+    for i in range(p):
+        ind = randorder[i]
+        s = space[ind]
+        if type(s) is int:
+            csilist[ind] = s
+            cont_var_counter += 1
+        else:            
+            # Ensure not low levels are preferred.
+            if cont_var_counter < n_context_vars:   
+                csilist[ind]
+                
+        
+    
+    
+    
+def sample_csi_on_csispace(csi_space):    
+    # 1. Select a subspace c.
+    # 2. Sample on c.
+    # 3. Update c.
+    pass
