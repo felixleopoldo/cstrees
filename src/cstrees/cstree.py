@@ -1274,18 +1274,23 @@ def sample_csi_rest_by_csi(csi: CSI_relation, n_context_vars: int):
     # choose a subset for a CSI in the end.
     cont_var_counter = 0
     # maybe take a random order here, to not favor low levels.
-    randorder = random.shuffle(range(p))
-    
+    randorder = list(range(p))    
+    # randorder = random.shuffle(randorder) # Ignore this to begin with.
+     
     for i in range(p):
         ind = randorder[i]
         s = space[ind]
         if type(s) is int:
             csilist[ind] = s
             cont_var_counter += 1
-        else:            
-            # Ensure not low levels are preferred.
+        else:                        
             if cont_var_counter < n_context_vars:   
-                csilist[ind]
+                if space[ind] is None:
+                    pass
+                    #(i.e. a cond var), pick either one or all.
+                else:
+                    pass
+                    csilist[ind]
                 
         
     
