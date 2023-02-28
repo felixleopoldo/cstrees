@@ -554,9 +554,10 @@ class CSI_relation:
        as a context and a CI relation.
     """
 
-    def __init__(self, ci: CI_relation, context: Context) -> None:
+    def __init__(self, ci: CI_relation, context: Context, cards=None) -> None:
         self.ci = ci
         self.context = context
+        self.cards = cards
 
     def to_stages(self):
         """Returns a list of stages defining the CSI relation.
@@ -600,21 +601,63 @@ class CSI_relation:
         return CSI_relation(c_list)
 
     def __sub__(self, csi):
+        """ b is typically a sample from the space self.
+
+        Args:
+            csi (CSI_rel): The CSI relation to subract.
+
+        Returns:
+            list: A list of CSI relations representing the new space.
+        """
         a = self
-        b = csi        
+        b = csi
+        
+        
+        
+        p = len(a.context.context) + len(a.ci.a) + len(a.ci.b) + len(a.ci.sep)
+
+        print(p)            
+        cards = [2] * p
         # Keep all context vars from a. (this is already ok if b was sampled on a).
         # For each created csi, keep 1 of the context vars from b, 
-        # vary the rest outside the context vars of b (exept from those that were restricetd by a).
-        for key, val in b.context.context.items():
-            print(a)
-            print(key, val)
-            c = {key: val}
-            # Add all context variables from a
-            print("before and after update with {}".format(a.context.context))
-            print(c)
-            c.update(a.context.context)
-            print(c)
-        return 1
+        # vary the rest outside the context vars of b (or opposite??) (exept from those that were restricetd by a).
+
+        
+    
+        result = []
+        a_list = a.as_list()[1:]
+        b_list = b.as_list()[1:]
+
+        print("Remove")
+        print([None]  +b_list)
+        print("From")
+        print([None] + a_list)
+    
+
+        print(b_list)
+        for level, val in enumerate(b_list):
+            #print(level)
+            
+            if val is None:
+                # If not a context variable.
+                continue
+            val = list(val)[0]
+            #print(val)
+            if level+1 in a.context.context: 
+                # if the variable is also in the original space.
+                continue
+            else:
+                # Cor the context varibles we create new csis.
+                for v in range(cards[level-1]):
+                    if v == val:
+                        continue 
+                    # Create the new space               
+                    l = [None] + b_list[:level] + [{v}] + [None] * (p-(level+1))
+                    #print("new space")
+                    #print(l)
+                    result.append(l)
+
+        return result
 
     def to_cstree_paths(self, cards: list, order: list):
         """Genreate the set(s) of path defining the CSI relations.
