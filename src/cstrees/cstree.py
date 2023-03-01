@@ -444,22 +444,30 @@ class Stage:
 
         return True
 
-    def to_df(self, columns):
+    def to_df(self, column_labels):
+        """Write sthe stage to dataframe. columns is..?
+
+        Args:
+            columns (_type_): _description_
+
+        Returns:
+            _type_: _description_
+        """
         import pandas as pd
 
         d = {}
 
-        for i in range(len(columns)):
+        for i in range(len(column_labels)):
             if i < len(self.list_repr):
-                if type(self.list_repr[i]) == list:
-                    d[columns[i]] = ["*"]
+                if type(self.list_repr[i]) == set:
+                    d[column_labels[i]] = ["*"]
                 else:
-                    d[columns[i]] = [self.list_repr[i]]
+                    d[column_labels[i]] = [self.list_repr[i]]
             else:
-                d[columns[i]] = ["-"]
+                d[column_labels[i]] = ["-"]
 
 
-        df = pd.DataFrame(d, columns=columns)
+        df = pd.DataFrame(d, columns=column_labels)
 
         return df
 
@@ -537,8 +545,8 @@ class Stage:
         sepseta = set()
         cond_set = set()
         context = {}
-        sepsetb = {self.level}
-        #sepsetb = {self.level+1}
+        #sepsetb = {self.level}
+        sepsetb = {self.level+1}
 
         for i, el in enumerate(self.list_repr):
             if type(el) is set:
