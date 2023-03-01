@@ -417,16 +417,21 @@ class CausalOrder:
 
 
 class Stage:
-    """A stage should actually be a CSI and a probabilty.
+    """
+       A Stage is a CSI of form 
+       X_a:b _|_ Xj | S_s, X_c=x_c, 
+       with an order and mayube an associated cond prob dist.
+
     """
 
     def __init__(self, list_repr) -> None:
-        self.level = len(list_repr)
+        self.level = len(list_repr)-1
         self.list_repr = list_repr
         self.color = None
+        self.csi = self.to_csi()
 
     def __hash__(self) -> int:
-        return hash(tuple([tuple(i) for i in self.list_resp]))
+        return hash(tuple([tuple(i) for i in self.list_repr]))
 
     def __contains__(self, node):
 
@@ -464,18 +469,84 @@ class Stage:
     def from_df(self):
         pass
 
+    # def as_list(self):
+
+    #     # Get the level as the max element-1
+    #     # The Nones not at index 0 encode the CI variables.
+    #     def mymax(s):
+
+    #         if (type(s) is set) and (len(s) > 0):
+    #             return max(s)
+    #         else:
+    #             return 0
+
+    #     #print(print(self.ci.sep))
+    #     levels = max(mymax(self.csi.ci.a), mymax(self.csi.ci.b), mymax(self.csi.ci.sep), mymax(self.context.context)) + 1
+    #     cards = [2] * levels
+    #     csilist = [None] * levels
+    #     for l in range(levels):
+    #         if (l in self.csi.ci.a) or (l in self.csi.ci.b):
+    #             csilist[l] = None
+    #         elif l in self.csi.ci.sep:
+    #             csilist[l] = set(range(cards[l]))
+    #         elif l in self.context:
+    #             csilist[l] = {self.context[l]}
+
+    #     return csilist
+    
+    def __sub__(self, stage):
+        """ b is typically a sample from the space self.
+
+        Args:
+            csi (CSI_rel): The CSI relation to subract.
+
+        Returns:
+            list: A list of CSI relations representing the new space.
+        """
+        a = self
+        b = stage
+        p = self.level                  
+        cards = [2] * (p+1)
+        # Keep all context vars from a. (this is already ok if b was sampled on a).
+        # For each created csi, keep 1 of the context vars from b, 
+        # vary the rest outside the context vars of b (or opposite??) (exept from those that were restricetd by a).
+
+        result = []
+        a_list = a.list_repr
+        b_list = b.list_repr
+    
+        for level, val in enumerate(b_list):
+            if type(val) is not int:
+                # If not a context variable.
+                continue
+            if level in a.csi.context.context: 
+                # if the variable is also in the original space.
+                continue
+            else:
+                # Cor the context varibles we create new csis.
+                for v in range(cards[level]):
+                    if v == val:
+                        continue 
+                    # Create the new space               
+                    l = b_list[:level] + [v] + a_list[level+1:] # # This takes care of the fixed ones.
+                    result.append(Stage(l))
+
+        return result
 
     def to_csi(self):
         sepseta = set()
         cond_set = set()
         context = {}
-        sepsetb = {self.level+1}
+        sepsetb = {self.level}
+        #sepsetb = {self.level+1}
 
         for i, el in enumerate(self.list_repr):
-            if type(el) is list:
-                sepseta.add(i+1)
+            if type(el) is set:
+                #sepseta.add(i+1) # +1
+                sepseta.add(i) # +1
             else:
-                context[i+1] = el
+                #context[i+1] = el
+                context[i] = el
 
         ci = CI_relation(sepseta, sepsetb, cond_set)
         context = Context(context)
@@ -507,8 +578,9 @@ class Stage:
         return list(itertools.product(*tmp))
 
     def __str__(self) -> str:
-        return str(self.to_csi()) + "; probs: " + str(self.probs)
+        #return str(self.to_csi()) + "; probs: " + str(self.probs)
         #return str(self.list_repr) + "; probs: " + str(self.probs)
+        return str(self.list_repr) 
 
 
 class Context:
@@ -541,8 +613,8 @@ class Context:
             return hash(())
 
         m = max(self.context)
-        tmp = [None] * (m+1)
-        for i in range(m+1):
+        tmp = [None] * (m+1)         
+        for i in range(m+1): 
             if i in self.context:
                 tmp[i] = self.context[i]
 
@@ -565,31 +637,6 @@ class CSI_relation:
         stages = []
         pass
 
-    def as_list(self):
-        # Get the level as the max element-1
-        # The Nones not at index 0 encode the CI variables.
-        def mymax(s):
-
-            if (type(s) is set) and (len(s) > 0):
-                return max(s)
-            else:
-                return 0
-
-        #print(print(self.ci.sep))
-        levels = max(mymax(self.ci.a), mymax(self.ci.b), mymax(self.ci.sep), mymax(self.context.context)) + 1
-
-        cards = [2] * levels
-        csilist = [None] * levels
-        for l in range(levels):
-            if (l in self.ci.a) or (l in self.ci.b):
-                csilist[l] = None
-            elif l in self.ci.sep:
-                csilist[l] = set(range(cards[l]))
-            elif l in self.context:
-                csilist[l] = {self.context[l]}
-
-        return csilist
-
     def __and__(self, other):
         a = self.as_list()
         b = other.as_list()
@@ -600,64 +647,6 @@ class CSI_relation:
 
         return CSI_relation(c_list)
 
-    def __sub__(self, csi):
-        """ b is typically a sample from the space self.
-
-        Args:
-            csi (CSI_rel): The CSI relation to subract.
-
-        Returns:
-            list: A list of CSI relations representing the new space.
-        """
-        a = self
-        b = csi
-        
-        
-        
-        p = len(a.context.context) + len(a.ci.a) + len(a.ci.b) + len(a.ci.sep)
-
-        print(p)            
-        cards = [2] * p
-        # Keep all context vars from a. (this is already ok if b was sampled on a).
-        # For each created csi, keep 1 of the context vars from b, 
-        # vary the rest outside the context vars of b (or opposite??) (exept from those that were restricetd by a).
-
-        
-    
-        result = []
-        a_list = a.as_list()[1:]
-        b_list = b.as_list()[1:]
-
-        print("Remove")
-        print([None]  +b_list)
-        print("From")
-        print([None] + a_list)
-    
-
-        print(b_list)
-        for level, val in enumerate(b_list):
-            #print(level)
-            
-            if val is None:
-                # If not a context variable.
-                continue
-            val = list(val)[0]
-            #print(val)
-            if level+1 in a.context.context: 
-                # if the variable is also in the original space.
-                continue
-            else:
-                # Cor the context varibles we create new csis.
-                for v in range(cards[level-1]):
-                    if v == val:
-                        continue 
-                    # Create the new space               
-                    l = [None] + b_list[:level] + [{v}] + [None] * (p-(level+1))
-                    #print("new space")
-                    #print(l)
-                    result.append(l)
-
-        return result
 
     def to_cstree_paths(self, cards: list, order: list):
         """Genreate the set(s) of path defining the CSI relations.
@@ -1323,12 +1312,11 @@ def csi_lists_to_csis_by_level(csi_lists, p):
         #print(csilist)
     return stages
 
-def sample_csi_restr_by_csi(csi: CSI_relation, n_context_vars: int, cards: list):
-    space = csi.as_list()[1:]
+def sample_stage_restr_by_stage(stage: Stage, n_context_vars: int, cards: list):
+    space = stage.list_repr
     p = len(space)
-    print(space)
     csilist = [None] * p
-    # None means all :)
+
     # note that it can also be a subset.. like {1,2} of {0,1,2}. - NO.
     # no, than it would be several instead, since one can anyway not
     # choose a subset for a CSI in the end.
@@ -1341,20 +1329,22 @@ def sample_csi_restr_by_csi(csi: CSI_relation, n_context_vars: int, cards: list)
         ind = randorder[i]
         s = space[ind]
                         
-        if s is not None: # This is a restriction of the space.
+        if type(s) is int: # This is a restriction of the space.
             csilist[ind] = s
             cont_var_counter += 1
         else: 
             if cont_var_counter < n_context_vars:
                 # (i.e. a cond var), pick either one or all.
                 if np.random.randint(2) == 0:
-                    csilist[ind] = None
+                    csilist[ind] = set(range(cards[i]))
                 else:
                     v = np.random.randint(cards[ind])
                     cont_var_counter += 1
-                    csilist[ind] = {v}
+                    csilist[ind] = v
+            else:
+                csilist[ind] = set(range(cards[i]))
 
-    return [None] + csilist
+    return Stage(csilist)
 
 def sample_csi_on_csispace(csi_space):
     # 1. Select a subspace c.
@@ -1368,8 +1358,8 @@ def csilist_to_csi_2(csilist):
     s = set()
     c = {}
     for i, e in enumerate(csilist):
-        if i == 0:
-            continue
+        #if i == 0:
+        #    continue
         if e is None:
             a |= {i}
         else:
