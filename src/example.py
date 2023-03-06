@@ -9,8 +9,9 @@ import itertools
 np.random.seed(1)
 
 p = 4
-
-t = ct.sample_cstree(p, 2, 0.5)
+cards = [2] * p
+t = ct.sample_cstree(cards, 2, 0.9, 0.5)
+t.plot()
 t.set_random_stage_parameters()
 t.plot()
 rels = t.csi_relations()
@@ -24,14 +25,14 @@ print(x)
 print()
 
 
-co = ct.CausalOrder(range(1, p+1))
+co = ct.CausalOrder(range(p))
 tree = ct.CStree(co)
-cards = [2] * p
+
 
 #stage = ct.sample_random_stage(cards,2)
 #stage.set_random_params(cards)
 
-tree.set_cardinalities([None] + cards)
+tree.set_cardinalities(cards)
 
 # These do not have to be in a dict like this as the levels are
 # determined from the length of the tuples.
