@@ -11,8 +11,10 @@ np.random.seed(1)
 p = 4
 cards = [2] * p
 t = ct.sample_cstree(cards, 2, 0.9, 0.5)
-t.plot()
+#t.plot()
 t.set_random_stage_parameters()
+
+x = t.sample(5)
 t.plot()
 rels = t.csi_relations()
 
@@ -23,50 +25,3 @@ for key, val in rels.items():
 x = t.sample(5)
 print(x)
 print()
-
-
-co = ct.CausalOrder(range(p))
-tree = ct.CStree(co)
-
-
-#stage = ct.sample_random_stage(cards,2)
-#stage.set_random_params(cards)
-
-tree.set_cardinalities(cards)
-
-# These do not have to be in a dict like this as the levels are
-# determined from the length of the tuples.
-
-tree.set_stages({
-    0: [],
-    1: [],
-    2: [ct.Stage([[0, 1], 0])],    # Green
-    3: [ct.Stage([0, [0, 1], 0]),  # Blue
-        ct.Stage([0, [0, 1], 1]),  # Orange
-        ct.Stage([1, [0, 1], 0])]  # Red
-})
-
-p=4
-tree.set_random_stage_parameters()
-
-a = tree.plot()
-a.draw("testplot.png")
-
-x = tree.sample(5)
-# print(x)
-rels = tree.csi_relations()
-
-print("Initial rels")
-print(rels)
-adjmats = tree.to_minimal_context_graphs()
-
-i = 1
-for key, graph in adjmats.items():
-    agraph = nx.nx_agraph.to_agraph(graph)
-    agraph.layout("dot")
-
-    #agraph.draw(str(key) + "_csi.png", args="-Glabel=Context:"+str(key) +"   ")
-    agraph.draw(str(key) + "_csi.png", args='-Glabel="'+str(key)+'"   ')
-    # print(graph.nodes)
-    # print(graph.edges())
-    i += 1

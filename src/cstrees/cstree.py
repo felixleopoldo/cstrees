@@ -97,7 +97,7 @@ class CStree(nx.Graph):
         if self.stages is None:
             return None
 
-        lev = len(node)
+        lev = len(node)-1 # changed
 
 
         if lev in self.stages:
@@ -213,13 +213,15 @@ class CStree(nx.Graph):
         """ This returns a sequence of minimal context graphs (minimal I-maps).
         """
         logging.debug("getting csirels per level")
+        print(self.stages)
         rels = self.csi_relations_per_level()
         print("rels")
+        print(rels)
         for k, rs in rels.items():
             for r in rs:
                 print(r)
         paired_csis = csis_by_levels_2_by_pairs(rels)
-        
+        print("paired_csis")
         print(paired_csis)
 
 
@@ -240,7 +242,6 @@ class CStree(nx.Graph):
         for pair, val in minl_csis_by_context.items():
            for csi in val:
                print(csi)
-
 
         cdags = csi_relations_to_dags(minl_csis_by_context, self.co)
 
@@ -298,6 +299,7 @@ class CStree(nx.Graph):
         """
 
         if self.tree is None:
+            print("Creating tree on the fly on sampling.")
             self.tree = nx.DiGraph()
         xs = []
 
@@ -305,12 +307,12 @@ class CStree(nx.Graph):
             node = ()
             x = []
             while len(x) < self.p:
-                #print(node, x)
-                # while self.tree.out_degree(node) != 0:
+                print(node, x)
+                # Create tree dynamically.
                 if (node not in self.tree) or len(self.tree.out_edges(node)) == 0:
-                    lev = len(node)
+                    lev = len(node)-1 # changed to -1
                     edges = [(node, node + (ind,)) for ind in range(self.cards[lev+1])]
-                    #print("adding edges {}".format(edges))
+                    print("adding edges {}".format(edges))
                     self.tree.add_edges_from(edges)
 
                     # Sample parameters
@@ -334,6 +336,7 @@ class CStree(nx.Graph):
                     #print(edges)
                     # Set parameters
                     for i, e in enumerate(edges):
+                        #print(i)
                         self.tree[e[0]][e[1]]["cond_prob"] = probs[i]
                         self.tree[e[0]][e[1]]["label"] = round(probs[i], 2)
                         self.tree.nodes[e[1]]["label"] = e[1][-1]
@@ -341,7 +344,7 @@ class CStree(nx.Graph):
                         self.tree.nodes[e[0]]["color"] = color
 
                 edges = list(self.tree.out_edges(node))
-                #print(self.tree[()][(0,)]["cond_prob"])
+                #print(self.tree[()][(0,)])
                 probabilities = [self.tree[e[0]][e[1]]["cond_prob"]
                                 for e in edges]
                 #print(probabilities)
@@ -540,7 +543,8 @@ class Stage:
         sepsetb = {self.level+1}
 
         for i, el in enumerate(self.list_repr):
-            if type(el) is set:
+            if type(el) is set: # list or set?
+            #if type(el) is list: # list or set?
                 #sepseta.add(i+1) # +1
                 sepseta.add(i) # +1
             else:
@@ -738,20 +742,21 @@ def sample_random_stage(cards: list, level: int, max_contextvars: int, prob: flo
     if max_contextvars > level-1: # Since not all can be context variables.
         ncont = level - 1
 
-    possible_context_vars = np.random.choice(range(1, level), ncont, replace=False)
+    possible_context_vars = np.random.choice(range(level+1), ncont, replace=False)
 
     context_vars = []
     for i, val in enumerate(possible_context_vars):
         if np.random.multinomial(1, [prob, 1-prob], size=1)[0][0] == 1:
             context_vars.append(val)
 
-    vals = [None]*len(cards[:level])
+    vals = [None]*len(cards[:level+1])
 
-    for i, _ in enumerate(cards[:level]):
-        if i+1 in context_vars:
+    for i, _ in enumerate(cards[:level+1]):
+        if i in context_vars: # changed
             vals[i] = np.random.randint(cards[i])
         else:
-            vals[i] = list(range(cards[i]))
+            #vals[i] = list(range(cards[i])) #use set here!
+            vals[i] = set(range(cards[i])) #use set here!
     s = Stage(vals)
     return s
 
