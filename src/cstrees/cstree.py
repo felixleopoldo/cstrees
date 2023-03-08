@@ -13,8 +13,8 @@ import random
 import pandas as pd
 import logging, sys
 
-#logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
-logging.basicConfig(stream=sys.stderr, level=logging.ERROR)
+logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
+#logging.basicConfig(stream=sys.stderr, level=logging.ERROR)
 
 def plot(graph, layout="dot"):
     agraph = nx.nx_agraph.to_agraph(graph)
@@ -57,8 +57,9 @@ class CStree(nx.Graph):
         self.stages = None
         self.co = causal_order
         self.p = causal_order.p
-        random.seed(1)
+        #random.seed(5) # For the colors
         self.colors = list(mcolors.cnames.keys())
+        #random.shuffle(self.colors)
         self.color_no = 0
         self.stages = {i:[] for i in range(self.p)}
         random.shuffle(self.colors)
@@ -156,8 +157,9 @@ class CStree(nx.Graph):
 
             children = self.tree.successors(node)
             probs = np.random.dirichlet([1] * self.cards[len(node)])
-            print(list(children))
-            print(probs)
+            #print(list(children))
+            #print(probs)
+            
             for i, ch in enumerate(children):
                 stage = self.get_stage(node)
 
@@ -213,35 +215,37 @@ class CStree(nx.Graph):
         """ This returns a sequence of minimal context graphs (minimal I-maps).
         """
         logging.debug("getting csirels per level")
-        print(self.stages)
+        logging.debug(self.stages)
         rels = self.csi_relations_per_level()
-        print("rels")
-        print(rels)
+        logging.debug("rels")
+        logging.debug(rels)
         for k, rs in rels.items():
             for r in rs:
-                print(r)
+                logging.debug(r)
         paired_csis = csis_by_levels_2_by_pairs(rels)
-        print("paired_csis")
-        print(paired_csis)
+        logging.debug("###### paired_csis")
+        logging.debug(paired_csis)
 
 
-        print("minl cslisist")
+        logging.debug("\n ######### minl cslisist")
         minl_csislists = minimal_csis(paired_csis, self.cards[1:])
-        print(minl_csislists)
-        print("get minl csis")
+        logging.debug(minl_csislists)
+        
+        logging.debug("\n ############### get minl csis in list fomat")
         minl_csis = csi_lists_to_csis_by_level(minl_csislists, self.p)
-        print(minl_csislists)
+        logging.debug(minl_csislists)
         for key in minl_csislists:
-            print(key)
+            #logging.debug(key)
             for pair, val in key.items():
-                print(pair, val)
+                logging.debug("{}: {}".format(pair, val))
+                #logging.debug("{} {}".format(val))
 
-        print("minimal csis")
+        logging.debug("#### minimal csis")
         minl_csis_by_context = rels_by_level_2_by_context(minl_csis)
-        print(minl_csis_by_context)
+        logging.debug(minl_csis_by_context)
         for pair, val in minl_csis_by_context.items():
            for csi in val:
-               print(csi)
+               logging.debug(csi)
 
         cdags = csi_relations_to_dags(minl_csis_by_context, self.co)
 
@@ -273,7 +277,7 @@ class CStree(nx.Graph):
         csi_rels = {}
         # print(self.stages)
         for key, stage_list in self.stages.items():
-            print("{} {}".format(key, stage_list))
+            #print("{} {}".format(key, stage_list))
             for stage in stage_list:
                 #       print(stage)
                 csi_rel = stage.to_csi()
@@ -307,7 +311,7 @@ class CStree(nx.Graph):
             node = ()
             x = []
             while len(x) < self.p:
-                print(node, x)
+                #print(node, x)
                 # Create tree dynamically.
                 if (node not in self.tree) or len(self.tree.out_edges(node)) == 0:
                     lev = len(node)-1 # changed to -1
@@ -796,16 +800,21 @@ def csi_relations_to_dags(csi_relations, causal_order):
         #print("\nContext: {}".format(context))
         adjmat = np.zeros(p*p).reshape(p, p)
 
-        for j in range(1, p+1):
-            for i in range(1, j):
+        #for j in range(1, p+1):
+        for j in range(p):
+            #for i in range(1, j):
+            for i in range(j):
                 # This will anyway be disregarded in the matrix slice?
                 if (i in context) | (j in context):
                     continue
                 # create temp CI relation to compare with
                 a = {i}
                 b = {j}
-                s = {k for k in range(1, j) if (
+                #s = {k for k in range(1, j) if (
+                #    k != i) and (k not in context)}
+                s = {k for k in range(j) if (
                     k != i) and (k not in context)}
+
                 ci_tmp = CI_relation(a, b, s)
 
                 #print("checking ci: {}".format(ci_tmp))
@@ -821,20 +830,28 @@ def csi_relations_to_dags(csi_relations, causal_order):
 
                 if ci_tmp in cis:
                     #print("No edprint(s1)ge ({},{})".format(i,j))
-                    adjmat[i-1, j-1] = 0
+                    #adjmat[i-1, j-1] = 0
+                    adjmat[i, j] = 0
                 else:
-                    adjmat[i-1, j-1] = 1
+                    #adjmat[i-1, j-1] = 1
+                    adjmat[i, j] = 1
 
-        context_els = {i-1 for i in context.context.keys()}
-        allels = np.array(causal_order.order)-1
+        #context_els = {i-1 for i in context.context.keys()}
+        #allels = np.array(causal_order.order)-1
+        #inds = sorted(set(allels) - context_els)
+        #adjmat = adjmat[np.ix_(inds, inds)]
+
+        context_els = {i for i in context.context.keys()}
+        allels = np.array(causal_order.order)
         inds = sorted(set(allels) - context_els)
         adjmat = adjmat[np.ix_(inds, inds)]
 
         graph = nx.from_numpy_array(adjmat, create_using=nx.DiGraph())
-        labels = {}
-        for i, j in enumerate(inds):
-            labels[i] = j+1
-        graph = nx.relabel_nodes(graph, labels)
+        
+        #labels = {}
+        #for i, j in enumerate(inds):
+        #    labels[i] = j+1
+        #graph = nx.relabel_nodes(graph, labels)
         graphs[context] = graph
 
     return graphs
@@ -1053,22 +1070,21 @@ def pairwise_csis(csi: CSI_relation):
     return csis
 
 def do_mix(csilist_tuple,l, cards):
-    p = len(csilist_tuple[0]) - 1
-    mix = [None] * (p+1)
+    p = len(csilist_tuple[0]) 
+    mix = [None] * p 
 
     # Going through all the levels and mix at all levels.
     # The result should be stored somewhere.
     for i, a in enumerate(zip(*csilist_tuple)):
         #print(i, a)
-        if a[0] is None: # None means that a[0] is either at level 0 or some of the CI tuple.
-                            # So just skip then.
-            continue
+        if a[0] is None: # None means that a[0] is some of the CI tuple. So just skip.
+            continue 
         if i == l: # if at the current level, the values are joined.
             mix[i] = set(range(cards[l]))
-        else:
+        else: # do the intersection
             mix[i] = set.intersection(*a)
-            if len(mix[i]) == 0:
-                return None
+            if len(mix[i]) == 0: 
+                return None # The CSIs are disjoint, so return None.
 
     return mix
 
@@ -1182,7 +1198,7 @@ def minimal_csis(paired_csis, cards):
                 tmp = [] # list of created csis
                 csis_to_absorb = [] # remove from the old ones due to mixing
                 # Go through all levels, potentially many times.
-                for l in range(level):
+                for l in range(level+1): # Added +1 after refactorization
                     logging.debug("level {}".format(l))
                     if l in pair:
                         continue
@@ -1217,13 +1233,14 @@ def minimal_csis(paired_csis, cards):
                             continue
                         else:
                             if mix not in (oldies + newbies):
-                                logging.debug("Adding as newly created ******")
-                                tmp.append(mix)
+                                
 
                                 logging.debug("mixing")
                                 logging.debug(csilist_tuple)
                                 logging.debug("mix result: ")
                                 logging.debug(mix)
+                                logging.debug("Adding {} as newly created ******".format(mix))
+                                tmp.append(mix)
                                 # Check if some csi of the oldies should be removed.
                                 # I.e. if some in csilist_tuple is a subset of mix.
                                 for csilist in csilist_tuple:
