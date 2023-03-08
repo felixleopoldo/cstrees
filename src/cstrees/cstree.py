@@ -848,10 +848,11 @@ def csi_relations_to_dags(csi_relations, causal_order):
 
         graph = nx.from_numpy_array(adjmat, create_using=nx.DiGraph())
         
-        #labels = {}
-        #for i, j in enumerate(inds):
-        #    labels[i] = j+1
-        #graph = nx.relabel_nodes(graph, labels)
+        # Label from 1 instead of 0
+        labels = {}
+        for i, j in enumerate(inds):
+            labels[i] = j #+1
+        graph = nx.relabel_nodes(graph, labels)
         graphs[context] = graph
 
     return graphs
