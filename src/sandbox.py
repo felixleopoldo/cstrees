@@ -13,8 +13,12 @@ import logging, sys
 seed = 1
 np.random.seed(seed)#9
 random.seed(seed)
-ps = range(15,35,5)
-maxs = range(1, 4) 
+ps = range(15, 35, 5)
+#ps = [1]
+#maxs = [2] #range(1, 4)
+maxs = range(1, 5)
+prob_cvar=0.9
+prop_nonsingleton=0.5
 
 df = pd.DataFrame(columns=["p", "contvars", "time"])
 
@@ -26,7 +30,8 @@ for m in maxs:
         print(p)
         start = time.perf_counter()
         print("Sample tree")
-        t = ct.sample_cstree(p, max_contextvars=m, prob_contextvar=1)
+        cards = [2]*p
+        t = ct.sample_cstree(cards, m, prob_cvar, prop_nonsingleton)
         t.set_random_stage_parameters()
         stop = time.perf_counter()
         sample_times.append(stop - start)
@@ -37,7 +42,7 @@ for m in maxs:
         
         tmp = pd.DataFrame({"p": [p], "contvars": [m], "time": [stop-start]})
         
-        df = pd.concat([df, tmp])        
+        df = pd.concat([df, tmp]).reset_index(drop=True)      
         to_mindag_times.append(stop - start)
         
         print(stop-start)

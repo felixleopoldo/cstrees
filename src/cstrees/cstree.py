@@ -13,8 +13,8 @@ import random
 import pandas as pd
 import logging, sys
 
-logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
-#logging.basicConfig(stream=sys.stderr, level=logging.ERROR)
+#logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
+logging.basicConfig(stream=sys.stderr, level=logging.ERROR)
 
 def plot(graph, layout="dot"):
     agraph = nx.nx_agraph.to_agraph(graph)
@@ -204,7 +204,7 @@ class CStree(nx.Graph):
                 #np.random.dirichlet([1] * lev)
                 for i in range(self.cards[lev + 1]):
                     tovisit.append(to + (i,))
-        print(self.tree.edges)
+        
 
     def minimal_context_csis(self):
         """ Returns the minimal contexts.
@@ -913,7 +913,7 @@ def sample_cstree(cards: list, max_cvars: int, prob_cvar: int, prop_nonsingleton
         
         #print(mc)
         #max_n_stages = comb(level+1, mc) * (cards[level]**mc)
-        #logging.debug("Max # stages with {} context variables: {}".format(mc, max_n_stages))        
+        #logging.debug("Max # stages with {} context variables: {}".format(mc, max_n_stages))
         stages[level] = []
         #m = math.ceil(max_n_stages * frac_stages_per_level)
         #logging.debug("Trying to add max of {} stages".format(m))
@@ -924,13 +924,21 @@ def sample_cstree(cards: list, max_cvars: int, prob_cvar: int, prop_nonsingleton
             stage_restr = stage_space.pop(space_int)
             #print("stage restr: {}".format(stage_restr))
             #print(mc, prob_cvar)
+            
+            if level == 0: # Cant sample context here
+                # in general it is a problemwith granularity. 
+                # There cen be at most ~2^l stages at level l of size 2.
+                # Cant have th treshold lower than 1/2^(l-mc)?, then it gets overflow directly.
+                # So if this is the case, do something else. Maybe ad a stage or not with some prob.
+                pass
+            
             new_stage = sample_stage_restr_by_stage(stage_restr, mc, prob_cvar, cards)
             #print("proposed new stage: {}".format(new_stage))
 
             new_space = stage_restr - new_stage
             stage_space += new_space
             space_left -= new_stage.size()
-
+            # Problem with level 0 since then the whole level is always filled.
             if (1- (space_left / full_state_space_size)) > prop_nonsingleton:                
                 break
             else:
@@ -1377,7 +1385,7 @@ def csi_lists_to_csis_by_level(csi_lists, p):
         #print(csilist)
     return stages
 
-def sample_stage_restr_by_stage(stage: Stage, n_cvars: int, cvar_prob: float, cards: list):
+def sample_stage_restr_by_stage(stage: Stage, max_cvars: int, cvar_prob: float, cards: list):
     """
         Samples a Stage on the space restricted by the arggument stage.
         Not allow singleton stages.
@@ -1396,7 +1404,7 @@ def sample_stage_restr_by_stage(stage: Stage, n_cvars: int, cvar_prob: float, ca
     space = stage.list_repr
     p = len(space)
 
-    assert(n_cvars < p) # Since at least one cannot be a cvar.
+    assert(max_cvars < p) # Since at least one cannot be a cvar.
     fixed_cvars = len(stage.csi.context.context)
     csilist = [None] * p
 
@@ -1413,10 +1421,10 @@ def sample_stage_restr_by_stage(stage: Stage, n_cvars: int, cvar_prob: float, ca
             csilist[ind] = s
             cont_var_counter += 1
         else: 
-            if cont_var_counter < n_cvars-fixed_cvars: # Make sure not too many context vars
+            if cont_var_counter < max_cvars-fixed_cvars: # Make sure not too many context vars
                 # (i.e. a cond var), pick either one or all.
                 b = np.random.multinomial(1, [cvar_prob, 1-cvar_prob], size=1)[0][0]
-                if b == 0:
+                if b == 0: # TODO: this should be able to happen anyway
                     csilist[ind] = set(range(cards[ind]))
                 else:
                     v = np.random.randint(cards[ind])
