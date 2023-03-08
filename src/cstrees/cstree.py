@@ -111,7 +111,7 @@ class CStree(nx.Graph):
     def to_df(self):
 
         # cardinalities header
-        d = {self.co.order[i]:[c] for i,c in enumerate(self.cards[1:])}
+        d = {self.co.order[i]:[c] for i,c in enumerate(self.cards)}
         df = pd.DataFrame(d, columns=self.co.order)
 
         for l, stages in self.stages.items():
@@ -135,11 +135,10 @@ class CStree(nx.Graph):
         #               for key, val in self.stages.items()}
 
         for lev, stages in self.stages.items():
-            for i, stage in enumerate(stages):
+            for i, stage in enumerate(stages):                
                 probs = np.random.dirichlet([1] * self.cards[lev+1])
                 stage.probs = probs
-                stage.color = self.colors[i] #cols[i]
-
+                stage.color = self.colors[i] 
 
     def set_random_parameters(self):
         """ This is dependent on if one has sampled from the tree already.
@@ -153,8 +152,7 @@ class CStree(nx.Graph):
         for node in self.tree.nodes():
             if len(node) == self.p:
                 continue
-            #lev = len(node)-1
-
+                        
             children = self.tree.successors(node)
             probs = np.random.dirichlet([1] * self.cards[len(node)])
             #print(list(children))
@@ -162,6 +160,8 @@ class CStree(nx.Graph):
             
             for i, ch in enumerate(children):
                 stage = self.get_stage(node)
+
+                
 
                 if stage != None:
                     prob = stage.probs[i]
@@ -543,16 +543,12 @@ class Stage:
         sepseta = set()
         cond_set = set()
         context = {}
-        #sepsetb = {self.level}
         sepsetb = {self.level+1}
 
         for i, el in enumerate(self.list_repr):
-            if type(el) is set: # list or set?
-            #if type(el) is list: # list or set?
-                #sepseta.add(i+1) # +1
-                sepseta.add(i) # +1
+            if type(el) is set:
+                sepseta.add(i)
             else:
-                #context[i+1] = el
                 context[i] = el
 
         ci = CI_relation(sepseta, sepsetb, cond_set)
