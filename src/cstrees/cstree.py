@@ -898,6 +898,8 @@ def sample_cstree(cards: list, max_cvars: int, prob_cvar: int, prop_nonsingleton
 
     stages = {}
     for level, val in enumerate(cards[:-1]): # not the last level
+        
+        
         # fix max_context_vars if higher than level
         #print("level {}".format(level))
         stage_space = [Stage([set(range(cards[l])) for l in cards[:level+1]])]
@@ -911,6 +913,27 @@ def sample_cstree(cards: list, max_cvars: int, prob_cvar: int, prop_nonsingleton
         if level < mc:
             mc = level
         
+        minimal_stage_size = 2**(level+1-mc) # for binary..
+        #print("space left")
+        #print(space_left)
+        #print("minimal stage size")
+        #print(minimal_stage_size)
+        #print("prop non singleton")
+        #print(prop_nonsingleton)
+        
+        # The special case when the granularity is to coarse.
+        # Randomly add anyway?
+        if prop_nonsingleton < minimal_stage_size / full_state_space_size:
+            logging.info("The size (proportion {}) of a minimal is larger than {}.".format(minimal_stage_size / full_state_space_size, prop_nonsingleton)) 
+            b = np.random.multinomial(1, [prob_cvar, 1-prob_cvar], size=1)[0][0]
+            stages[level] = []
+            if b == 0:
+                print(b)
+                stage_restr = stage_space.pop(0) # it should be the whole space to begin with            
+                new_stage = sample_stage_restr_by_stage(stage_restr, mc, 1.0, cards)            
+                stages[level].append(new_stage)
+            continue # cant add anything anyway so just go to the next level.
+            
         #print(mc)
         #max_n_stages = comb(level+1, mc) * (cards[level]**mc)
         #logging.debug("Max # stages with {} context variables: {}".format(mc, max_n_stages))
@@ -918,19 +941,19 @@ def sample_cstree(cards: list, max_cvars: int, prob_cvar: int, prop_nonsingleton
         #m = math.ceil(max_n_stages * frac_stages_per_level)
         #logging.debug("Trying to add max of {} stages".format(m))
         
-        while True: 
+        while len(stage_space) > 0: 
             #print(space_left)
             space_int = np.random.randint(len(stage_space)) # Choose randomly a stage space
             stage_restr = stage_space.pop(space_int)
             #print("stage restr: {}".format(stage_restr))
             #print(mc, prob_cvar)
             
-            if level == 0: # Cant sample context here
+            #if level == 0: # Cant sample context here
                 # in general it is a problemwith granularity. 
                 # There cen be at most ~2^l stages at level l of size 2.
                 # Cant have th treshold lower than 1/2^(l-mc)?, then it gets overflow directly.
                 # So if this is the case, do something else. Maybe ad a stage or not with some prob.
-                pass
+             #   pass
             
             new_stage = sample_stage_restr_by_stage(stage_restr, mc, prob_cvar, cards)
             #print("proposed new stage: {}".format(new_stage))
@@ -941,8 +964,7 @@ def sample_cstree(cards: list, max_cvars: int, prob_cvar: int, prop_nonsingleton
             # Problem with level 0 since then the whole level is always filled.
             if (1- (space_left / full_state_space_size)) > prop_nonsingleton:                
                 break
-            else:
-                
+            else:                
                 stages[level].append(new_stage)
             #print("proportion left")
             #print(space_left / full_state_space_size)
