@@ -913,20 +913,19 @@ def sample_cstree(cards: list, max_cvars: int, prob_cvar: int, prop_nonsingleton
         if level < mc:
             mc = level
         
-        minimal_stage_size = 2**(level+1-mc) # for binary..
-        #print("space left")
-        #print(space_left)
-        #print("minimal stage size")
-        #print(minimal_stage_size)
-        #print("prop non singleton")
-        #print(prop_nonsingleton)
-        
+        minimal_stage_size = 2**(level+1-mc) # BUG: for binary.. take max of mc elements in cards.
+
         # The special case when the granularity is to coarse.
         # Randomly add anyway?
+        # Setting the upper boudn likje this may generalize. However, the stage should not
+        # always be accepted..
+        #prop_nonsingleton = max(prop_nonsingleton, minimal_stage_size / full_state_space_size)
+        
         if prop_nonsingleton < minimal_stage_size / full_state_space_size:
             logging.info("The size (proportion {}) of a minimal is larger than {}.".format(minimal_stage_size / full_state_space_size, prop_nonsingleton)) 
             b = np.random.multinomial(1, [prob_cvar, 1-prob_cvar], size=1)[0][0]
             stages[level] = []
+            
             if b == 0:
                 print(b)
                 stage_restr = stage_space.pop(0) # it should be the whole space to begin with            
@@ -941,7 +940,8 @@ def sample_cstree(cards: list, max_cvars: int, prob_cvar: int, prop_nonsingleton
         #m = math.ceil(max_n_stages * frac_stages_per_level)
         #logging.debug("Trying to add max of {} stages".format(m))
         
-        while len(stage_space) > 0: 
+        while space_left >= minimal_stage_size:
+        #while len(stage_space) > 0: 
             #print(space_left)
             space_int = np.random.randint(len(stage_space)) # Choose randomly a stage space
             stage_restr = stage_space.pop(space_int)
@@ -963,7 +963,8 @@ def sample_cstree(cards: list, max_cvars: int, prob_cvar: int, prop_nonsingleton
             space_left -= new_stage.size()
             # Problem with level 0 since then the whole level is always filled.
             if (1- (space_left / full_state_space_size)) > prop_nonsingleton:                
-                break
+                pass
+                #break
             else:                
                 stages[level].append(new_stage)
             #print("proportion left")
@@ -1443,9 +1444,10 @@ def sample_stage_restr_by_stage(stage: Stage, max_cvars: int, cvar_prob: float, 
             csilist[ind] = s
             cont_var_counter += 1
         else: 
+            b = np.random.multinomial(1, [cvar_prob, 1-cvar_prob], size=1)[0][0]
             if cont_var_counter < max_cvars-fixed_cvars: # Make sure not too many context vars
                 # (i.e. a cond var), pick either one or all.
-                b = np.random.multinomial(1, [cvar_prob, 1-cvar_prob], size=1)[0][0]
+                
                 if b == 0: # TODO: this should be able to happen anyway
                     csilist[ind] = set(range(cards[ind]))
                 else:
@@ -1453,6 +1455,9 @@ def sample_stage_restr_by_stage(stage: Stage, max_cvars: int, cvar_prob: float, 
                     cont_var_counter += 1
                     csilist[ind] = v
             else:
+                # maybe we should add some randomness here
+                # like if b == 1:                
+                # but then it mighe be nothing.. which is bad.
                 csilist[ind] = set(range(cards[ind]))
 
     return Stage(csilist)

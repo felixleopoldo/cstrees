@@ -13,10 +13,11 @@ import logging, sys
 seed = 1
 np.random.seed(seed)#9
 random.seed(seed)
-ps = range(15, 35, 5)
-#ps = [1]
-#maxs = [2] #range(1, 4)
-maxs = range(1, 5)
+ps = range(10, 20, 1)
+#ps = [15]
+maxs = [4] #range(1, 4)
+#maxs = range(1, 5)
+
 prob_cvar=0.9
 prop_nonsingleton=0.5
 
@@ -40,7 +41,7 @@ for m in maxs:
         cdags = t.to_minimal_context_graphs()
         stop = time.perf_counter()
         
-        tmp = pd.DataFrame({"p": [p], "contvars": [m], "time": [stop-start]})
+        tmp = pd.DataFrame({"p": [p], "contvars": [m], "cvar_prob": [prob_cvar], "prop_colored": [prop_nonsingleton], "time": [stop-start]})
         
         df = pd.concat([df, tmp]).reset_index(drop=True)      
         to_mindag_times.append(stop - start)
