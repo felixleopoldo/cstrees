@@ -231,7 +231,7 @@ class CStree(nx.Graph):
         minl_csislists = minimal_csis(paired_csis, self.cards[1:])
         logging.debug(minl_csislists)
         
-        logging.debug("\n ############### get minl csis in list fomat")
+        logging.debug("\n ############### get minl csis in list format")
         minl_csis = csi_lists_to_csis_by_level(minl_csislists, self.p)
         logging.debug(minl_csislists)
         for key in minl_csislists:
@@ -903,10 +903,10 @@ def sample_cstree(cards: list, max_cvars: int, prob_cvar: int, prop_nonsingleton
         # fix max_context_vars if higher than level
         #print("level {}".format(level))
         stage_space = [Stage([set(range(cards[l])) for l in cards[:level+1]])]
-        full_state_space_size = stage_space[0].size()
+        full_stage_space_size = stage_space[0].size()
         
         #proportion_left = 1.0 # stage_space.size() / full_state_space_size
-        space_left = full_state_space_size
+        singleton_space_size = full_stage_space_size
         #print(proportion_left)
         
         mc = max_cvars
@@ -914,15 +914,15 @@ def sample_cstree(cards: list, max_cvars: int, prob_cvar: int, prop_nonsingleton
             mc = level
         
         minimal_stage_size = 2**(level+1-mc) # BUG: for binary.. take max of mc elements in cards.
-
+        minimal_stage_prop = minimal_stage_size / full_stage_space_size
         # The special case when the granularity is to coarse.
         # Randomly add anyway?
         # Setting the upper boudn likje this may generalize. However, the stage should not
         # always be accepted..
         #prop_nonsingleton = max(prop_nonsingleton, minimal_stage_size / full_state_space_size)
         
-        if prop_nonsingleton < minimal_stage_size / full_state_space_size:
-            logging.info("The size (proportion {}) of a minimal is larger than {}.".format(minimal_stage_size / full_state_space_size, prop_nonsingleton)) 
+        if prop_nonsingleton < minimal_stage_size / full_stage_space_size:
+            logging.info("The size (proportion {}) of a minimal is larger than {}.".format(minimal_stage_size / full_stage_space_size, prop_nonsingleton)) 
             b = np.random.multinomial(1, [prob_cvar, 1-prob_cvar], size=1)[0][0]
             stages[level] = []
             
@@ -940,31 +940,35 @@ def sample_cstree(cards: list, max_cvars: int, prob_cvar: int, prop_nonsingleton
         #m = math.ceil(max_n_stages * frac_stages_per_level)
         #logging.debug("Trying to add max of {} stages".format(m))
         
-        while space_left >= minimal_stage_size:
-        #while len(stage_space) > 0: 
-            #print(space_left)
+        while (1 - (singleton_space_size / full_stage_space_size)) < prop_nonsingleton:
+            colored_size_old = full_stage_space_size - singleton_space_size
             space_int = np.random.randint(len(stage_space)) # Choose randomly a stage space
             stage_restr = stage_space.pop(space_int)
             #print("stage restr: {}".format(stage_restr))
-            #print(mc, prob_cvar)
-            
-            #if level == 0: # Cant sample context here
-                # in general it is a problemwith granularity. 
-                # There cen be at most ~2^l stages at level l of size 2.
-                # Cant have th treshold lower than 1/2^(l-mc)?, then it gets overflow directly.
-                # So if this is the case, do something else. Maybe ad a stage or not with some prob.
-             #   pass
-            
+            #print(mc, prob_cvar)            
             new_stage = sample_stage_restr_by_stage(stage_restr, mc, prob_cvar, cards)
             #print("proposed new stage: {}".format(new_stage))
 
-            new_space = stage_restr - new_stage
-            stage_space += new_space
-            space_left -= new_stage.size()
+            new_space = stage_restr - new_stage # this is a list of substages after removal
+            stage_space += new_space # adds a list of stages
+            singleton_space_size -= new_stage.size() # subtract the size of the sampled stage
             # Problem with level 0 since then the whole level is always filled.
-            if (1- (space_left / full_state_space_size)) > prop_nonsingleton:                
-                pass
-                #break
+            new_stage_size = new_stage.size()
+            colored_prop = 1- singleton_space_size / full_stage_space_size
+            # Check it its over full after adding the new space
+            if colored_prop > prop_nonsingleton:                
+                # Check if it would be possible to add the smallest stage.
+                # Restore the old space and maybe try again   
+
+                if (minimal_stage_size + colored_size_old)/full_stage_space_size <= prop_nonsingleton:                
+                    stage_space = stage_space[:-len(new_space)]                 
+                    stage_space += [stage_restr]               
+                    singleton_space_size += new_stage.size()
+
+                    continue
+                else:
+                    # This is when it is impossible to push in a new stages since all wil be too big.
+                    break
             else:                
                 stages[level].append(new_stage)
             #print("proportion left")
@@ -1342,7 +1346,6 @@ def minimal_csis(paired_csis, cards):
 
 def csis_by_levels_2_by_pairs(rels):
 
-
     paired_csis = [None] * len(rels)
 
     for l, val in rels.items():
@@ -1369,7 +1372,6 @@ def csis_by_levels_2_by_pairs(rels):
                 cis_by_pairs[pair].append(clist)
             else:
                 cis_by_pairs[pair] = [clist]
-
 
         #print(csi_pairs)
         #print(cis_by_pairs)
