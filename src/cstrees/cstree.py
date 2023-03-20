@@ -257,11 +257,6 @@ class CStree(nx.Graph):
     def likelihood(self, data):
         pass
 
-    def to_csv(self):
-        pass
-
-    def read_csv(self,filename):
-        pass
 
     def csi_relations_per_level(self, level="all"):
 
@@ -964,10 +959,8 @@ def sample_cstree(cards: list, max_cvars: int, prob_cvar: int, prop_nonsingleton
                     stage_space = stage_space[:-len(new_space)]                 
                     stage_space += [stage_restr]               
                     singleton_space_size += new_stage.size()
-
-                    continue
                 else:
-                    # This is when it is impossible to push in a new stages since all wil be too big.
+                    # This is when it is impossible to push in a new stages since all are be too big.
                     break
             else:                
                 stages[level].append(new_stage)
@@ -1227,7 +1220,7 @@ def minimal_csis(paired_csis, cards):
                 #print("going through the levels for partitions")
                 # should join with csi_list the oldies?
 
-                tmp = [] # list of created csis
+                fresh = [] # list of created csis
                 csis_to_absorb = [] # remove from the old ones due to mixing
                 # Go through all levels, potentially many times.
                 for l in range(level+1): # Added +1 after refactorization
@@ -1264,15 +1257,15 @@ def minimal_csis(paired_csis, cards):
                             #print("Not mixeable")
                             continue
                         else:
+                            #print(mix)
+                            #assert(sum([len(el)==1 for el in mix if el is not None]) <= 3)
                             if mix not in (oldies + newbies):
-                                
-
                                 logging.debug("mixing")
                                 logging.debug(csilist_tuple)
                                 logging.debug("mix result: ")
                                 logging.debug(mix)
                                 logging.debug("Adding {} as newly created ******".format(mix))
-                                tmp.append(mix)
+                                fresh.append(mix)
                                 # Check if some csi of the oldies should be removed.
                                 # I.e. if some in csilist_tuple is a subset of mix.
                                 for csilist in csilist_tuple:
@@ -1282,12 +1275,12 @@ def minimal_csis(paired_csis, cards):
                                         csis_to_absorb.append(csilist)
                 logging.debug("##### Iterated through all levels. Prepare for next round. ### \n ")
                 # Update the lists
-                logging.debug("Adding the following newbies (newly created in earlier interations) to the oldies.")
+                logging.debug("Adding the following newbies (just used for mixing) to the oldies.")
                 for nn in newbies:
                     logging.debug(nn)
                 oldies += newbies
 
-                # Check that there are no csis that can be absorbed directly absorbable
+                
                 # remove duplicates
                 res_list = []
                 for item in oldies:
@@ -1306,19 +1299,19 @@ def minimal_csis(paired_csis, cards):
 
                 # filter duplicates
                 res_list = []
-                for item in tmp:
+                for item in fresh:
                     if item not in res_list:
                         res_list.append(item)
-                tmp = res_list
+                fresh = res_list
                 logging.debug("New mix results:")
-                for t in tmp:
+                for t in fresh:
                     logging.debug(t)
 
                 # Added this to see if it fixes the bug..
                 # logging.debug("Updating newbies with the unique new mix results")
                 logging.debug("Updating mix results by removing if they already are in oldies, or a subset of an oldie.")
                 newbies = [] # check that the newbies are not in oldies!
-                for csi in tmp: # O( #tmp)
+                for csi in fresh: # O( #tmp)
                     #logging.debug("REMOVING {}".format(csi))
                     if (csi not in oldies) and (csi not in csis_to_absorb): # O(#oldies)
                         newbies.append(csi)
@@ -1340,6 +1333,7 @@ def minimal_csis(paired_csis, cards):
                 for o in oldies:
                     logging.debug(o)
                 # check the diplicates here somewhere.
+                fresh = []
                 iteration += 1
             ret[level][pair] = oldies
     return ret

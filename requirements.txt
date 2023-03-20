@@ -10,3 +10,4 @@ pandas
 sphinx_rtd_theme
 ipython
 ipykernel
+mpl-tools
