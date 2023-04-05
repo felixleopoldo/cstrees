@@ -77,6 +77,7 @@ class CStree(nx.Graph):
         n_singleton = 0
         size_colored = np.sum([s.size() for s in self.stages[l]])
         
+        return 1
 
     def set_stages(self, stages: dict):
         """Adds a stage.
@@ -100,7 +101,7 @@ class CStree(nx.Graph):
 
     def get_stage(self, node: tuple):
         """ Get the stages of node.
-
+            TODO: It should probably also give the singteton stage if so.
 
         Args:
             node (int): node.
@@ -441,12 +442,24 @@ class Stage:
         self.csi = self.to_csi()
 
     def __hash__(self) -> int:
-        return hash(tuple([tuple(i) for i in self.list_repr]))
+        #return hash(tuple([tuple(i) for i in self.list_repr]))
+        return hash(self.csi.context)
+
+    def __eq__(self, __o: object) -> bool:
+        return hash(__o) == hash(self)
 
     def __contains__(self, node):
+        """Checks is a node is contained in a stage. 
+
+        Args:
+            node (_type_): A vector of values for each level.
+
+        Returns:
+            _type_: _description_
+        """
 
         for i, val in enumerate(self.list_repr):
-            # Must chec if list
+            # Must check if list
             if (type(val) is list) and (node[i] not in val):
                 return False
             if (type(val) is int) and (node[i] != val):
