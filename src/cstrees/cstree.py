@@ -313,7 +313,7 @@ class CStree(nx.Graph):
                     lev = len(node)-1  # changed to -1
                     edges = [(node, node + (ind,))
                              for ind in range(self.cards[lev+1])]
-                    print("adding edges {}".format(edges))
+                    #print("adding edges {}".format(edges))
                     self.tree.add_edges_from(edges)
 
                     # Sample parameters
@@ -715,7 +715,7 @@ class CSI_relation:
         for i, j in self.context.context.items():
             vals[i] = j
 
-        return itertools.product(*vals)
+        return 
 
     def __add__(self, o):
         """Adding two objects by adding their set of paths and create a new
