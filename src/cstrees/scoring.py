@@ -97,11 +97,8 @@ def score_level(t, l, level_counts, alpha_tot=1.0, method="BDeu"):
 def score(t: ct.CStree, data: list, alpha_tot=1.0, method="BDeu"):
     # reorder the columns in data according to t.order.
  
- 
     ord = list(t.co.order)
-    print(ord)
     data_ordered = data[:, ord]
-    print(data_ordered)
     
     score = 0  # log score
     for l in range(t.p):
@@ -114,7 +111,7 @@ def score(t: ct.CStree, data: list, alpha_tot=1.0, method="BDeu"):
         score += score_level(t, l, level_counts, alpha_tot, method)
     return score
 
-
+  
 def score_order(order, cards, data, max_cvars=1, alpha_tot=1.0, method="BDeu"):
     score = 0  # log score
 
@@ -136,15 +133,27 @@ def score_order(order, cards, data, max_cvars=1, alpha_tot=1.0, method="BDeu"):
     vals = [list(range(cards[l])) for l in range(p)]
 
     for l in range(len(order)):
-        if l == 0:
-            print("level 0 is special I think so skip.")
-            continue
+        level_counts = counts_at_level(tree, l, data)
+        if l == 0:            
+            # There are only 2 stagings at level 0
+            # singletons
+                        
+            tree.set_stages({})
+            score += score_level(tree, l, level_counts, alpha_tot, method)
+            print(score)
+            # one stage
+            st = ct.Stage([set(vals[0])])
+            print(st)
+            tree.set_stages({l: [st]}) 
+            score += score_level(tree, l, level_counts, alpha_tot, method)
+            print(score)
+
         print("level: {}".format(l))
         # Generate the possible stagings and att the score.
         
         # loop through all possible combinations.
         # use iter tools to go trough posssible values and the mask in cards.
-        level_counts = counts_at_level(tree, l, data)
+        
         for k  in range(l+1): # all variables up to l can be context variables
             
             prodset = [[True, False]] * cards[k]
@@ -153,25 +162,31 @@ def score_order(order, cards, data, max_cvars=1, alpha_tot=1.0, method="BDeu"):
                 stlist = []
                 cvars = [vals[k][ind] for ind, val in enumerate(binarray) if val]
                 print("value to use as contexts: {}".format(cvars)) 
-                #if cvars == []:
-                    
-                for v in cvars:
-                    
-                    left = [set(vals[i]) for i in range(k)]
-                    right = [set(vals[j]) for j in range(k+1,l+1)]
-                    stagelistrep = left + [v] +  right
-                    st = ct.Stage(stagelistrep)
-                    
-                    stlist += [st]
-                print("Staging")
-                for st in stlist:
-                    print("stage: {}".format(st))
+                if cvars == []: #only singletons case treated separately.
+                    print("only singletons")
+                    tree.set_stages({}) 
+                    score += score_level(tree, l, level_counts, alpha_tot, method)
+                else: 
+                    for v in cvars:
+                        
+                        left = [set(vals[i]) for i in range(k)]
+                        right = [set(vals[j]) for j in range(k+1,l+1)]
+                        stagelistrep = left + [v] +  right
+                        st = ct.Stage(stagelistrep)
+                        
+                        stlist += [st]
+                    print("Staging")
+                    for st in stlist:
+                        print("stage: {}".format(st))
 
-                
-                tree.set_stages({l: stlist}) # This is a bit clumsy but shoud work. 
-                
-                
-                score += score_level(tree, l, level_counts, alpha_tot, method)
+                    
+                    tree.set_stages({l: stlist}) # This is a bit clumsy but shoud work. 
+                    
+                    
+                    score += score_level(tree, l, level_counts, alpha_tot, method)
                 print(score)
-        
+
     return score
+
+    def score_tables_order():
+        pass
