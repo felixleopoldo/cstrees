@@ -10,9 +10,9 @@ logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
 
 
 np.random.seed(2)
-p=4
-cards = [2] * p
-co = ct.CausalOrder(range(p))
+levelplus1=4
+cards = [2] * levelplus1
+co = ct.CausalOrder(range(levelplus1))
 tree = ct.CStree(co)
 
 

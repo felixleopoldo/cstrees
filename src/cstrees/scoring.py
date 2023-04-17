@@ -60,6 +60,7 @@ def score_level(t, l, level_counts, alpha_tot=1.0, method="BDeu"):
     # stages, counting the singleton ones, so the used alphas would be very small.
     # To make it consistent with BNs we might have to do so though.
 
+
     if method == "K2":
         assert (alpha_tot == 1)
         alpha_obs = alpha_tot
@@ -72,12 +73,10 @@ def score_level(t, l, level_counts, alpha_tot=1.0, method="BDeu"):
     #    alpha_stage = alpha_tot / t.n_stages_at_level(l) # TODO: is this ok?
 
     elif method == "BDeu":
-        # assert(alpha_tot==1)
-        # alpha_obs = alpha_tot / (len(level_counts) * t.cards[l]) # TODO: is this ok?
-        # alpha_stage = alpha_tot / len(level_counts) # TODO: is this ok?
+        # TODO: assert that all stages are colored.        
         alpha_obs = alpha_tot / (t.n_stages_at_level(l)
                                  * t.cards[l])  # TODO: is this ok?
-        alpha_stage = alpha_tot / t.n_stages_at_level(l)  # TODO: is this ok?
+        alpha_stage = alpha_tot / t.n_stages_at_level(l)  # TODO: is this ok? Yes, if all colored.
 
     score = 0  # log score
     for stage, counts in level_counts.items():
@@ -94,9 +93,21 @@ def score_level(t, l, level_counts, alpha_tot=1.0, method="BDeu"):
     return score
 
 
+
 def score(t: ct.CStree, data: list, alpha_tot=1.0, method="BDeu"):
-    # reorder the columns in data according to t.order.
- 
+    """Score a CStree.
+
+    Args:
+        t (ct.CStree): CStree.
+        data (list): _description_
+        alpha_tot (float, optional): _description_. Defaults to 1.0.
+        method (str, optional): _description_. Defaults to "BDeu".
+
+    Returns:
+        _type_: _description_
+    """
+    
+    # reorder the columns in data according to t.order. 
     ord = list(t.co.order)
     data_ordered = data[:, ord]
     
@@ -115,15 +126,25 @@ def score(t: ct.CStree, data: list, alpha_tot=1.0, method="BDeu"):
 def score_order(order, cards, data, max_cvars=1, alpha_tot=1.0, method="BDeu"):
     score = 0  # log score
 
-    # With max_cvars = 1, for each each level can have 4 stagings:
+    # With max_cvars = 1, for each each level can have 4 stagings, including the singletons:
     # val1 side colored rest uncolored
     # val2 side colored rest uncolored
     # both colored
     # none colored
     # so there are 4*level stagings at level level.
 
+    # Without singletons, there are 2*level stagings at level level.
+    # val1 side and val2 side colored in different ways
+    # val1 side and val2 side colored in the same way
+
     if max_cvars != 1:
+        print("Only max_cvars = 1 implemented")
         return None
+    # For max_cvars = 2 we have the combinations:
+    # 1 == one stage, with 0 cvars
+    # 0.5, 0.5 == two stages, with 1 cvar each
+    # 0.5, 0.25, 0.25 == three stages, one with 1 cvar, two with 2 cvars 
+    # 0.25, 0.25, 0.25, 0.25 == four stages, all with 2 cvars
         
     p = len(order)
     co = ct.CausalOrder(range(p))
@@ -136,13 +157,13 @@ def score_order(order, cards, data, max_cvars=1, alpha_tot=1.0, method="BDeu"):
         level_counts = counts_at_level(tree, l, data)
         if l == 0:            
             # There are only 2 stagings at level 0
+            
             # singletons
-                        
             tree.set_stages({})
             score += score_level(tree, l, level_counts, alpha_tot, method)
             print(score)
             # one stage
-            st = ct.Stage([set(vals[0])])
+            st = ct.Stage([set(vals[l])])
             print(st)
             tree.set_stages({l: [st]}) 
             score += score_level(tree, l, level_counts, alpha_tot, method)
@@ -156,33 +177,32 @@ def score_order(order, cards, data, max_cvars=1, alpha_tot=1.0, method="BDeu"):
         
         for k  in range(l+1): # all variables up to l can be context variables
             
-            prodset = [[True, False]] * cards[k]
+            prodset = [[True, False]] * cards[k] 
             print("cvar level: {}".format(k))
             for binarray in itertools.product(*prodset): # each represents a staging
                 stlist = []
                 cvars = [vals[k][ind] for ind, val in enumerate(binarray) if val]
                 print("value to use as contexts: {}".format(cvars)) 
-                if cvars == []: #only singletons case treated separately.
-                    print("only singletons")
-                    tree.set_stages({}) 
-                    score += score_level(tree, l, level_counts, alpha_tot, method)
+                if cvars == []: #only singletons case treated separately. We dont allow for singletons.                                        
+                    print("only singletons -> skip")
+                    continue
+                    #tree.set_stages({}) 
+                    #score += score_level(tree, l, level_counts, alpha_tot, method)
                 else: 
                     for v in cvars:
                         
                         left = [set(vals[i]) for i in range(k)]
                         right = [set(vals[j]) for j in range(k+1,l+1)]
-                        stagelistrep = left + [v] +  right
+                        stagelistrep = left + [v] +  right # For example: [[0,1], [0,1], 0, [0, 1]]
                         st = ct.Stage(stagelistrep)
                         
                         stlist += [st]
                     print("Staging")
                     for st in stlist:
                         print("stage: {}".format(st))
-
-                    
+        
                     tree.set_stages({l: stlist}) # This is a bit clumsy but shoud work. 
-                    
-                    
+                                        
                     score += score_level(tree, l, level_counts, alpha_tot, method)
                 print(score)
 

@@ -745,28 +745,39 @@ class CSI_relation:
 
 
 def sample_random_stage(cards: list, level: int, max_contextvars: int, prob: float) -> Stage:
+    """Sample a random non-singleton stage.
+
+    Args:
+        cards (list): _description_
+        level (int): _description_
+        max_contextvars (int): _description_
+        prob (float): _description_
+
+    Returns:
+        Stage: a random stage.
+    """
     # The last level cannot contain stages.
 
     # If the number is smaller than the level, then level is max.
     ncont = max_contextvars
-    if max_contextvars > level-1:  # Since not all can be context variables.
+    if max_contextvars > level-1:  # Since not all can be context variables. (i.e. singleton stage)
         ncont = level - 1
 
     possible_context_vars = np.random.choice(
         range(level+1), ncont, replace=False)
 
     context_vars = []
+    # among the possible context variables, choose some of them.
     for i, val in enumerate(possible_context_vars):
         if np.random.multinomial(1, [prob, 1-prob], size=1)[0][0] == 1:
             context_vars.append(val)
 
+    # for each of the context variables, choose a random value. For the rest, use the whole set.
     vals = [None]*len(cards[:level+1])
-
     for i, _ in enumerate(cards[:level+1]):
         if i in context_vars:  # changed
             vals[i] = np.random.randint(cards[i])
         else:
-            # vals[i] = list(range(cards[i])) #use set here!
             vals[i] = set(range(cards[i]))  # use set here!
     s = Stage(vals)
     return s
@@ -922,7 +933,13 @@ def sample_cstree(cards: list, max_cvars: int, prob_cvar: int, prop_nonsingleton
 
         mc = max_cvars
         if level < mc:
-            mc = level
+            mc = level + 1 # should allow for "singleton" stages at level 0 as this
+                       # this correponds to the half of the space.
+        # in general, when the level is the liming factor, the number of stages
+        # should be as many as possible. Hence, mc = level +1                   
+    
+
+        print("level: {}, mc: {}".format(level, mc))
 
         # BUG: for binary.. take max of mc elements in cards.
         minimal_stage_size = 2**(level+1-mc)
@@ -933,6 +950,7 @@ def sample_cstree(cards: list, max_cvars: int, prob_cvar: int, prop_nonsingleton
         # always be accepted..
         #prop_nonsingleton = max(prop_nonsingleton, minimal_stage_size / full_state_space_size)
 
+        # Allowing only non-singleton stages, this should never happen.
         if prop_nonsingleton < minimal_stage_size / full_stage_space_size:
             logging.info("The size (proportion {}) of a minimal is larger than {}.".format(
                 minimal_stage_size / full_stage_space_size, prop_nonsingleton))
@@ -1465,50 +1483,42 @@ def sample_stage_restr_by_stage(stage: Stage, max_cvars: int, cvar_prob: float, 
     """
 
     space = stage.list_repr
-    p = len(space)
+    levelplus1 = len(space) # this is not the full p?    
+    print("levelplus1: {}".format(levelplus1))
 
-    assert (max_cvars < p)  # Since at least one cannot be a cvar.
+    assert (max_cvars < levelplus1)  # Since at least one cannot be a cvar.
     fixed_cvars = len(stage.csi.context.context)
-    csilist = [None] * p
+    csilist = [None] * levelplus1
 
     cont_var_counter = 0
     # random order here, to not favor low levels.
-    randorder = list(range(p))
-    random.shuffle(randorder)  # Ignore this to begin with.
+    randorder = list(range(levelplus1))
+    random.shuffle(randorder)  
 
-    for i in range(p):
+    # TODO: at level 0, it should be possible to have two singleton stages.
+    for i in range(levelplus1):
         ind = randorder[i]
-        s = space[ind]
+        s = space[ind] # a context value (int) or the full set of values.
 
         if type(s) is int:  # This is a restriction of the space.
             csilist[ind] = s
             cont_var_counter += 1
-        else:
-            b = np.random.multinomial(
-                1, [cvar_prob, 1-cvar_prob], size=1)[0][0]
+        else:            
             if cont_var_counter < max_cvars-fixed_cvars:  # Make sure not too many context vars
                 # (i.e. a cond var), pick either one or all.
 
-                if b == 0:  # TODO: this should be able to happen anyway
+                b = np.random.multinomial(
+                    1, [cvar_prob, 1-cvar_prob], size=1)[0][0]
+                if b == 0:  # TODO: this should be able to happen anyway?
                     csilist[ind] = set(range(cards[ind]))
                 else:
-                    v = np.random.randint(cards[ind])
+                    v = np.random.randint(cards[ind]) # choose a random context value
                     cont_var_counter += 1
                     csilist[ind] = v
-            else:
-                # maybe we should add some randomness here
-                # like if b == 1:
-                # but then it mighe be nothing.. which is bad.
+            else: # no more context vars allowed.                
                 csilist[ind] = set(range(cards[ind]))
 
     return Stage(csilist)
-
-
-def sample_csi_on_csispace(csi_space):
-    # 1. Select a subspace c.
-    # 2. Sample on c.
-    # 3. Update c.
-    pass
 
 
 def csilist_to_csi_2(csilist):

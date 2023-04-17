@@ -10,7 +10,7 @@ np.random.seed(1)
 
 p = 4
 cards = [2] * p
-t = ct.sample_cstree(cards, 2, 0.9, 0.5)
+t = ct.sample_cstree(cards, 2, 0.5, 1)
 #t.plot()
 t.set_random_stage_parameters()
 
