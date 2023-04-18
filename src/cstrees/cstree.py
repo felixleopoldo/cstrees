@@ -70,8 +70,10 @@ class CStree(nx.Graph):
     def set_cardinalities(self, cards):
         self.cards = cards
 
-    def n_stages_at_level(self, l):
-        n_colored = len(self.stages[l])
+    def n_colored_stages_at_level(self, l):
+        # n_colored may include singleton stages, on low levels.
+        n_colored = len(self.stages[l]) 
+        
         # Count the colored size and subtract it from the total number of nodes.
         # This gives the number of singleton stages.
         n_singleton = 0
@@ -937,9 +939,12 @@ def sample_cstree(cards: list, max_cvars: int, prob_cvar: int, prop_nonsingleton
                        # this correponds to the half of the space.
         # in general, when the level is the liming factor, the number of stages
         # should be as many as possible. Hence, mc = level +1                   
-    
-
-        print("level: {}, mc: {}".format(level, mc))
+        # It should not make abig difference. But in this way, we actually show
+        # all the stages expicitly, even when saving to file, without risking
+        # to blow up the space.
+        
+            
+        #print("level: {}, mc: {}".format(level, mc))
 
         # BUG: for binary.. take max of mc elements in cards.
         minimal_stage_size = 2**(level+1-mc)
@@ -1484,9 +1489,10 @@ def sample_stage_restr_by_stage(stage: Stage, max_cvars: int, cvar_prob: float, 
 
     space = stage.list_repr
     levelplus1 = len(space) # this is not the full p?    
-    print("levelplus1: {}".format(levelplus1))
+    #print("levelplus1: {}".format(levelplus1))
 
-    assert (max_cvars < levelplus1)  # Since at least one cannot be a cvar.
+    assert (max_cvars <= levelplus1)  # < Since at least one cannot be a cvar.
+    # This may not be true if wa are at very low levels where the level in sthe constraint.
     fixed_cvars = len(stage.csi.context.context)
     csilist = [None] * levelplus1
 
