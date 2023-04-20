@@ -11,8 +11,14 @@ def counts_at_level(t, l, data):
     stage_counts = {}  # maybe context counts..
     for i in range(len(data)):  # iterate over the samples
         pred_vals = data[i, :l]
-        #print("possible context values {}".format(parents_vals))
+        
         stage = t.get_stage(pred_vals)  # or context
+        if l>0:
+            print("stages at level {}: {}".format(l-1, t.stages[l-1]))
+        if i>0:
+            
+            print("possible context values at row {}: {}".format(i, pred_vals))        
+            print("{} is in the stage {}".format(pred_vals, stage))
         if stage == None:  # singleton stage
             stage = ct.Stage(list(data[i, :l]))  # Singleton stage
         if stage not in stage_counts:
@@ -119,28 +125,6 @@ def score(t: ct.CStree, data: list, alpha_tot=1.0, method="BDeu"):
         score += score_level(t, l, level_counts, alpha_tot, method)
     return score
 
-
-def all_stagings(order, cards, l, max_cvars=1):
-    p = len(order)
-    # all possible values for each variable
-    vals = [list(range(cards[l])) for l in range(p)]
-
-    for k in range(l+1):  # all variables up to l can be context variables
-        print("\ncvar level: {}".format(k))
-        # When we restrict to max_cvars = 1, we have two cases:
-        # Either all are in one color or all are in different colors.
-        for cvars in [vals[k], [set(vals[k])]]:  # each represents a staging
-            stlist = []
-            for v in cvars:  # Loop through the values of the context variables.
-                left = [set(vals[i]) for i in range(k)]
-                right = [set(vals[j]) for j in range(k+1, l+1)]
-                # For example: [[0,1], [0,1], 0, [0, 1]]
-                stagelistrep = left + [v] + right
-                st = ct.Stage(stagelistrep)
-                stlist += [st]
-            yield stlist
-
-
 def score_order(order, cards, data, max_cvars=1, alpha_tot=1.0, method="BDeu"):
     """ Without singletons, there are 2*level stagings at level level.
         val1 side and val2 side colored in different ways
@@ -175,17 +159,21 @@ def score_order(order, cards, data, max_cvars=1, alpha_tot=1.0, method="BDeu"):
     tree = ct.CStree(co)
     tree.set_cardinalities(cards)
 
-    vals = [list(range(cards[l])) for l in range(p)]
-
     for l in range(len(order)):
-        level_counts = counts_at_level(tree, l, data)
-        stagings = all_stagings(order, cards, l, max_cvars=max_cvars)
-                        # This is a bit clumsy but shoud work.
+        print("level {}".format(l))
+        stagings = ct.all_stagings(order, cards, l, max_cvars=max_cvars)
+        # This is a bit clumsy but shoud work.
+        
         for stlist in stagings:
+            print("stlist: {}".format(stlist))
             tree.set_stages({l: stlist})
-
+            level_counts = counts_at_level(tree, l, data)
+            
+            for s, cnt in level_counts.items():
+                print("{}: {}".format(s, cnt))
+            
+            #print(score_level(tree, l, level_counts, alpha_tot, method))
             score += score_level(tree, l, level_counts, alpha_tot, method)
-            print(score)
 
     return score
 

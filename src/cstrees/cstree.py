@@ -13,7 +13,7 @@ import random
 import pandas as pd
 import logging
 import sys
-
+import cstrees.scoring as sc
 #logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
 logging.basicConfig(stream=sys.stderr, level=logging.ERROR)
 
@@ -927,6 +927,7 @@ def sample_cstree(cards: list, max_cvars: int, prob_cvar: int, prop_nonsingleton
         # fix max_context_vars if higher than level
         #print("level {}".format(level))
         stage_space = [Stage([set(range(cards[l])) for l in cards[:level+1]])]
+        
         full_stage_space_size = stage_space[0].size()
 
         # proportion_left = 1.0 # stage_space.size() / full_state_space_size
@@ -948,7 +949,11 @@ def sample_cstree(cards: list, max_cvars: int, prob_cvar: int, prop_nonsingleton
 
         # BUG: for binary.. take max of mc elements in cards.
         minimal_stage_size = 2**(level+1-mc)
-        minimal_stage_prop = minimal_stage_size / full_stage_space_size
+        
+        print("full_stage_space_size: {}".format(full_stage_space_size))
+        print("level: {}, mc: {}, minimal_stage_size: {}".format(level, mc, minimal_stage_size))
+        
+        #minimal_stage_prop = minimal_stage_size / full_stage_space_size
         # The special case when the granularity is to coarse.
         # Randomly add anyway?
         # Setting the upper boudn likje this may generalize. However, the stage should not
@@ -1544,3 +1549,64 @@ def csilist_to_csi_2(csilist):
     ci = CI_relation(a, b, s)
     cont = Context(c)
     return CSI_relation(ci, cont)
+
+
+def all_stagings(order, cards, l, max_cvars=1):
+    assert(max_cvars == 1)
+    p = len(order)
+    # all possible values for each variable
+    vals = [list(range(cards[l])) for l in range(p)]
+    for k in range(l+1):  # all variables up to l can be context variables
+        # When we restrict to max_cvars = 1, we have two cases:
+        # Either all are in one color or all are in different colors.
+#        for cvars in [vals[k], [set(vals[k])]]:  # each represents a staging
+#            stlist = []
+        stlist = []
+        for v in vals[k]:  # Loop through the values of the context variables.
+            left = [set(vals[i]) for i in range(k)]
+            right = [set(vals[j]) for j in range(k+1, l+1)]
+            # For example: [[0,1], [0,1], 0, [0, 1]]
+            stagelistrep = left + [v] + right
+            st = Stage(stagelistrep)
+            stlist += [st]
+        yield stlist
+    
+    # no context variables
+    stagelistrep = [set(v) for v in vals][:l+1]
+    
+    st = Stage(stagelistrep)
+    yield [st]
+    
+def n_stagings(order, cards, l, max_cvars=1):
+    stagings = all_stagings(order, cards, l, max_cvars)
+    return sum(len(staging) for staging in stagings)
+
+def max_score_staging(order, cards, data, l, max_cvars=1, alpha_tot=None, method="BDeu"):
+    p = len(order)
+    co = CausalOrder(range(p))
+    tree = CStree(co)
+    tree.set_cardinalities(cards)
+    
+    stagings = all_stagings(order, cards, l, max_cvars)
+    max_staging = None
+    max_staging_score = -100000000
+    print("l: {}".format(l))
+    for stlist in stagings:
+        print("staging")
+        for st in stlist:
+            print(st)
+        #print("staging: {}".format(stlist))
+        tree.set_stages({l: stlist})
+        level_counts = sc.counts_at_level(tree, l, data)
+        for k, v in level_counts.items():
+            print("{}: {}".format(k, v))
+        print("level_counts: {}".format(level_counts))
+        score = sc.score_level(tree, l, level_counts, alpha_tot, method)
+        print("score: {}".format(score))
+        if score > max_staging_score:
+            max_staging_score = score
+            max_staging = stlist
+    return max_staging, max_staging_score
+
+
+    
