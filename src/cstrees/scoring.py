@@ -12,15 +12,17 @@ def counts_at_level(t, l, data):
     for i in range(len(data)):  # iterate over the samples
         pred_vals = data[i, :l]
         
-        stage = t.get_stage(pred_vals)  # or context
-        if l>0:
-            print("stages at level {}: {}".format(l-1, t.stages[l-1]))
-        if i>0:
-            
-            print("possible context values at row {}: {}".format(i, pred_vals))        
-            print("{} is in the stage {}".format(pred_vals, stage))
-        if stage == None:  # singleton stage
-            stage = ct.Stage(list(data[i, :l]))  # Singleton stage
+        stage = t.get_stage(pred_vals)  # or context        
+        
+        #print("stages at level {}: {}".format(l-1, t.stages[l-1]))
+        if stage == None:  # singleton stage. Shold note be any of these in our setting.
+            print("singleton stage")
+            print(stage)
+        #    stage = ct.Stage(list(data[i, :l]))  # Singleton stage
+
+        #print("conditioning values at row {}: {} is in stage {}".format(i, pred_vals, stage))        
+        #print("{} is in the stage {}".format(pred_vals, stage))
+
         if stage not in stage_counts:
             # only save the observed ones #[0] * t.cards[l]  # initiate with zeros.x
             stage_counts[stage] = {}
@@ -79,8 +81,10 @@ def score_level(t, l, level_counts, alpha_tot=1.0, method="BDeu"):
 
     elif method == "BDeu":
         # TODO: assert that all stages are colored.
-        alpha_obs = alpha_tot / (len(t.stages[l]) * t.cards[l])
-        alpha_stage = alpha_tot / len(t.stages[l])
+        
+        n_stages = max(len(t.stages[l-1]), 1) # level 0 has no stages
+        alpha_obs = alpha_tot / (n_stages * t.cards[l])
+        alpha_stage = alpha_tot / n_stages
 
     score = 0  # log score
     for stage, counts in level_counts.items():
@@ -116,7 +120,7 @@ def score(t: ct.CStree, data: list, alpha_tot=1.0, method="BDeu"):
 
     score = 0  # log score
     for l in range(t.p):
-        print("level {}".format(l))
+        print("level {} in the tree scoring procedure".format(l))
         level_counts = counts_at_level(t, l, data)
 
         for s, cnt in level_counts.items():
@@ -126,6 +130,16 @@ def score(t: ct.CStree, data: list, alpha_tot=1.0, method="BDeu"):
     return score
 
 def score_order(order, cards, data, max_cvars=1, alpha_tot=1.0, method="BDeu"):
+    score = 0  # log score
+        
+    for l in range(len(order)):
+        s = score_order_at_level(order, l, cards, data, max_cvars, alpha_tot, method)
+        print("level {} score: {}".format(l, s))
+        score += s
+    print("total score: {}".format(score))
+    return score
+
+def score_order_at_level(order, l, cards, data, max_cvars=1, alpha_tot=1.0, method="BDeu"):
     """ Without singletons, there are 2*level stagings at level level.
         val1 side and val2 side colored in different ways
         val1 side and val2 side colored in the same way
@@ -159,21 +173,25 @@ def score_order(order, cards, data, max_cvars=1, alpha_tot=1.0, method="BDeu"):
     tree = ct.CStree(co)
     tree.set_cardinalities(cards)
 
-    for l in range(len(order)):
-        print("level {}".format(l))
-        stagings = ct.all_stagings(order, cards, l, max_cvars=max_cvars)
-        # This is a bit clumsy but shoud work.
+    # for l in range(len(order)):
+    print("level {}".format(l))
+    stagings = ct.all_stagings(order, cards, l-1, max_cvars=max_cvars)
+    # This is a bit clumsy but shoud work.
+    
+    print("stagings at level {}:".format(l-1))
+    
+    for stlist in stagings:
+        print("stages: {}".format(stlist))                        
+        tree.set_stages({l-1: stlist}) # Need to set the stagings in order to count.
         
-        for stlist in stagings:
-            print("stlist: {}".format(stlist))
-            tree.set_stages({l: stlist})
-            level_counts = counts_at_level(tree, l, data)
-            
-            for s, cnt in level_counts.items():
-                print("{}: {}".format(s, cnt))
-            
-            #print(score_level(tree, l, level_counts, alpha_tot, method))
-            score += score_level(tree, l, level_counts, alpha_tot, method)
+        level_counts = counts_at_level(tree, l, data)
+        
+        for s, cnt in level_counts.items():
+            print("{}: {}".format(s, cnt))
+        
+        tmp = score_level(tree, l, level_counts, alpha_tot, method)
+        print("staging score: {}".format(tmp))
+        score += tmp
 
     return score
 

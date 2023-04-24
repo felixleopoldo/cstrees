@@ -14,6 +14,7 @@ import pandas as pd
 import logging
 import sys
 import cstrees.scoring as sc
+from itertools import permutations
 #logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
 logging.basicConfig(stream=sys.stderr, level=logging.ERROR)
 
@@ -145,6 +146,7 @@ class CStree(nx.Graph):
         #               for key, val in self.stages.items()}
 
         for lev, stages in self.stages.items():
+            print(lev, stages)
             for i, stage in enumerate(stages):
                 probs = np.random.dirichlet([1] * self.cards[lev+1])
                 stage.probs = probs
@@ -1553,14 +1555,17 @@ def csilist_to_csi_2(csilist):
 
 def all_stagings(order, cards, l, max_cvars=1):
     assert(max_cvars == 1)
+    
+    if l == -1:
+        yield [Stage([])]
+        return
+    
     p = len(order)
     # all possible values for each variable
     vals = [list(range(cards[l])) for l in range(p)]
     for k in range(l+1):  # all variables up to l can be context variables
         # When we restrict to max_cvars = 1, we have two cases:
         # Either all are in one color or all are in different colors.
-#        for cvars in [vals[k], [set(vals[k])]]:  # each represents a staging
-#            stlist = []
         stlist = []
         for v in vals[k]:  # Loop through the values of the context variables.
             left = [set(vals[i]) for i in range(k)]
@@ -1581,32 +1586,75 @@ def n_stagings(order, cards, l, max_cvars=1):
     stagings = all_stagings(order, cards, l, max_cvars)
     return sum(len(staging) for staging in stagings)
 
-def max_score_staging(order, cards, data, l, max_cvars=1, alpha_tot=None, method="BDeu"):
+def optimal_staging_at_level(order, cards, data, l, max_cvars=1, alpha_tot=None, method="BDeu"):
     p = len(order)
     co = CausalOrder(range(p))
     tree = CStree(co)
     tree.set_cardinalities(cards)
     
-    stagings = all_stagings(order, cards, l, max_cvars)
+    stagings = all_stagings(order, cards, l-1, max_cvars)
     max_staging = None
     max_staging_score = -100000000
-    print("l: {}".format(l))
+    #print("level: {}".format(l))
     for stlist in stagings:
-        print("staging")
-        for st in stlist:
-            print(st)
+        #print("stages in the staging")
+        #for st in stlist:
+        #    print(st)
         #print("staging: {}".format(stlist))
-        tree.set_stages({l: stlist})
+        tree.set_stages({l-1: stlist})
         level_counts = sc.counts_at_level(tree, l, data)
-        for k, v in level_counts.items():
-            print("{}: {}".format(k, v))
-        print("level_counts: {}".format(level_counts))
+        #for k, v in level_counts.items():
+        #    print("{}: {}".format(k, v))
+        #print("level_counts: {}".format(level_counts))
         score = sc.score_level(tree, l, level_counts, alpha_tot, method)
-        print("score: {}".format(score))
+        #print("score: {}".format(score))
         if score > max_staging_score:
             max_staging_score = score
             max_staging = stlist
+
     return max_staging, max_staging_score
 
-
+def optimal_cstree(order, cards, data, max_cvars=1, alpha_tot=None, method="BDeu"):
+    p = len(order)
+    co = CausalOrder(order)
+    tree = CStree(co)
+    tree.set_cardinalities(cards)
+    
+    stages = {}
+    for level in range(p-1): # dont stage the last variable
+        max_staging, max_staging_score = optimal_staging_at_level(order, cards, data, level, max_cvars, alpha_tot, method)
+        stages[level] = max_staging        
+        for s in max_staging:
+            print(s)
+    tree.set_stages(stages)
+    print(tree.stages)
+    return tree
+    
+    
+def find_optimal_order(data, alpha_tot=1, method="BDeu"):
+    """ Find the optimal causal order for the data.
+    """
+    
+    p = data.shape[1]
+    perms = permutations(list(range(p)))
+ 
+    optimal_orders = []
+    max_score = -np.inf
+    
+    # iterate over all permutations
+    for perm in list(perms):
+        order = list(perm)[:-1] #dont stage the last variable
+        score = sc.score_order(data, order, alpha_tot=alpha_tot, method=method)
+        if score > max_score:
+            max_score = score
+            optimal_orders.append(order)
+            
+    return optimal_orders, max_score
+        
+        
+def find_optimal_cstree(data, alpha_tot=1, method="BDeu"):
+    opt_order = find_optimal_order(data, alpha_tot=alpha_tot, method=method)[0][0]
+    
+    
+    optimal_staging = optimal_staging_at_level(opt_order, data, 0, alpha_tot=alpha_tot, method=method)[0]
     
