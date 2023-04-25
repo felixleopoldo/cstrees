@@ -112,7 +112,7 @@ class CStree(nx.Graph):
         if self.stages is None:
             return None
 
-        lev = len(node)-1  # changed
+        lev = len(node)-1  
 
         if lev in self.stages:
             for s in self.stages[lev]:
@@ -169,10 +169,12 @@ class CStree(nx.Graph):
             # print(list(children))
             # print(probs)
 
+
+            # Seems like a stage at level l holds the probtable for the variabel at level l+1.
             for i, ch in enumerate(children):
                 stage = self.get_stage(node)
 
-                if stage != None:
+                if stage != None: # not a singleton stage
                     prob = stage.probs[i]
                     self.tree[node][ch]["cond_prob"] = prob
                     self.tree[node][ch]["label"] = round(prob, 2)
