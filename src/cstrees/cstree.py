@@ -138,19 +138,29 @@ class CStree(nx.Graph):
         for row in df.iterrows():
             pass
 
-    def set_random_stage_parameters(self):
+    def set_random_stage_parameters(self, alpha=1):
         # Set stage probabilities
-
-        #cols = ["red", "blue", "green", "purple", "yellow", "grey"]
-        # self.colors = {key: cols[:len(val)]
-        #               for key, val in self.stages.items()}
-
         for lev, stages in self.stages.items():
             print(lev, stages)
             for i, stage in enumerate(stages):
-                probs = np.random.dirichlet([1] * self.cards[lev+1])
+                probs = np.random.dirichlet([alpha] * self.cards[lev+1])
                 stage.probs = probs
                 stage.color = self.colors[i]
+
+    def estimate_stage_parameters(self, data, method="BDeu", alpha_tot=1):
+        # Set stage probabilities
+
+        for lev, stages in self.stages.items():
+            print("Level", lev)
+            stage_counts = sc.counts_at_level(self.tree, lev, data) # lev = node?
+            
+            for i, stage in enumerate(stages):
+                probs = sc.estimate_parameters(self, stage, stage_counts, method, alpha_tot)
+                #probs = np.random.dirichlet([1] * self.cards[lev+1])                
+                stage.probs = probs
+                stage.color = self.colors[i]
+                
+    
 
     def set_random_parameters(self):
         """ This is dependent on if one has sampled from the tree already.
@@ -183,6 +193,42 @@ class CStree(nx.Graph):
                 else:
                     self.tree[node][ch]["cond_prob"] = probs[i]
                     self.tree[node][ch]["label"] = round(probs[i], 2)
+                    
+    def estmate_parameters(self, data, method="BDeu", alpha_tot=1):
+        
+        
+        # node is equal to level I think.. we treat the labelling outside.
+        for node in self.tree.nodes():
+            if len(node) == self.p:
+                continue
+
+            stage_counts = sc.counts_at_level(self.tree, node, data)
+
+            children = self.tree.successors(node)
+            #probs = np.random.dirichlet([1] * self.cards[len(node)])
+            
+            # estimatest the probabilites for the nodes having this stage.
+            # actually the nodes should have the distribution of the stage but
+            # since can be quite many we assign it to ste stage instead for convenience.
+            probs = sc.estimate_parameters(self, stage, stage_counts, method, alpha_tot)
+            
+            # print(list(children))
+            # print(probs)
+
+            for i, ch in enumerate(children):
+                stage = self.get_stage(node)
+
+                if stage != None:
+                    prob = stage.probs[i] # the probs ar already set here..
+                    self.tree[node][ch]["cond_prob"] = prob
+                    self.tree[node][ch]["label"] = round(prob, 2)
+                    self.tree[node][ch]["color"] = stage.color
+                    self.tree.nodes[node]["color"] = stage.color
+                else:
+                    self.tree[node][ch]["cond_prob"] = probs[i]
+                    self.tree[node][ch]["label"] = round(probs[i], 2)
+        
+        
 
     def get_stage_no(self, node):
         lev = len(node)
