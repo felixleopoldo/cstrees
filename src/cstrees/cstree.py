@@ -178,27 +178,31 @@ class CStree(nx.Graph):
             if len(node) == self.p:
                 continue
 
-            children = self.tree.successors(node)
+            children = sorted(list(self.tree.successors(node)))
             probs = np.random.dirichlet([1] * self.cards[len(node)])
-            # print(list(children))
+            print(list(children))
             # print(probs)
 
 
             # Seems like a stage at level l holds the probtable for the variabel at level l+1.
             for i, ch in enumerate(children):
+                print("i ", i, "ch ", ch, "node ", node)
                 stage = self.get_stage(node)
 
                 if stage != None: # not a singleton stage
                     prob = stage.probs[i]
+                    
+                    print("edge prob {}".format(prob))
                     self.tree[node][ch]["cond_prob"] = prob
                     self.tree[node][ch]["label"] = round(prob, 2)
                     self.tree[node][ch]["color"] = stage.color
                     self.tree.nodes[node]["color"] = stage.color
                 else:
+                    print("Singleton stage")
                     self.tree[node][ch]["cond_prob"] = probs[i]
                     self.tree[node][ch]["label"] = round(probs[i], 2)
                     
-    def estmate_parameters(self, data, method="BDeu", alpha_tot=1):
+    def estimate_parameters(self, data, method="BDeu", alpha_tot=1):
         
         
         # node is equal to level I think.. we treat the labelling outside.
@@ -429,7 +433,7 @@ class CStree(nx.Graph):
 
         if fill or (self.tree is None):
             self.create_tree()
-            self.set_random_parameters()
+            #self.set_random_parameters()
 
         return plot(self.tree)
         #agraph = nx.nx_agraph.to_agraph(self.tree)
