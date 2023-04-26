@@ -11,7 +11,7 @@ def counts_at_level(t, l, data):
     stage_counts = {}  # maybe context counts..
     for i in range(len(data)):  # iterate over the samples
         pred_vals = data[i, :l]
-        print("pred_vals: {}".format(pred_vals))
+        #print("pred_vals: {}".format(pred_vals))
         stage = t.get_stage(pred_vals)  # or context        
         
         #print("stages at level {}: {}".format(l-1, t.stages[l-1]))
@@ -101,7 +101,7 @@ def score_level(t, l, level_counts, alpha_tot=1.0, method="BDeu"):
     return score
 
 def estimate_parameters(t, stage, stage_counts, method, alpha_tot):
-    l = stage.level + 1 
+    l = stage.level + 1 # estimating fot the level above the stage
     if method == "K2":
         assert (alpha_tot == 1)
         alpha_obs = alpha_tot
@@ -122,13 +122,12 @@ def estimate_parameters(t, stage, stage_counts, method, alpha_tot):
 
     probs = [None] * t.cards[l]
     
-    stage_counts_total = sum(stage_counts.values())
+    stage_counts_total = sum(stage_counts[stage].values())
     for i in range(t.cards[l]):
         if i not in stage_counts[stage]: # no observations here so use only prior
             probs[i] = alpha_obs / alpha_stage
         else: # posterior mean or psterior predictive distribution..
             probs[i] = (alpha_obs + stage_counts[stage][i]) / (alpha_stage + stage_counts_total)
-
     return probs
 
 def score(t: ct.CStree, data: list, alpha_tot=1.0, method="BDeu"):

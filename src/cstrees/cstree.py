@@ -150,17 +150,21 @@ class CStree(nx.Graph):
     def estimate_stage_parameters(self, data, method="BDeu", alpha_tot=1):
         # Set stage probabilities
 
-        for lev, stages in self.stages.items():
+        for lev, stages in self.stages.items():            
             print("Level", lev)
-            stage_counts = sc.counts_at_level(self.tree, lev, data) # lev = node?
+            if lev == self.p-1:
+                continue
+
+            stage_counts = sc.counts_at_level(self, lev+1, data) # lev = node?
+            print(stage_counts)
             
             for i, stage in enumerate(stages):
                 probs = sc.estimate_parameters(self, stage, stage_counts, method, alpha_tot)
                 #probs = np.random.dirichlet([1] * self.cards[lev+1])                
+                print(stage)
+                print(probs)
                 stage.probs = probs
-                stage.color = self.colors[i]
-                
-    
+                stage.color = self.colors[i]    
 
     def set_random_parameters(self):
         """ This is dependent on if one has sampled from the tree already.
@@ -1643,19 +1647,18 @@ def optimal_staging_at_level(order, cards, data, l, max_cvars=1, alpha_tot=None,
     stagings = all_stagings(order, cards, l-1, max_cvars)
     max_staging = None
     max_staging_score = -100000000
-    #print("level: {}".format(l))
+    logging.debug("level: {}".format(l))
+
+    
     for stlist in stagings:
-        #print("stages in the staging")
-        #for st in stlist:
-        #    print(st)
-        #print("staging: {}".format(stlist))
+        logging.debug("staging: {}".format([str(ss) for ss in stlist]))
         tree.set_stages({l-1: stlist})
-        level_counts = sc.counts_at_level(tree, l, data)
-        #for k, v in level_counts.items():
-        #    print("{}: {}".format(k, v))
-        #print("level_counts: {}".format(level_counts))
+        level_counts = sc.counts_at_level(tree, l, data) # This needs the stages to be set at the line above.
+        logging.debug("all counts in the staging")
+        for k, v in level_counts.items():
+            logging.debug("{}: {}".format(k, v))
         score = sc.score_level(tree, l, level_counts, alpha_tot, method)
-        #print("score: {}".format(score))
+        logging.debug("score: {}".format(score))
         if score > max_staging_score:
             max_staging_score = score
             max_staging = stlist
@@ -1669,13 +1672,13 @@ def optimal_cstree(order, cards, data, max_cvars=1, alpha_tot=None, method="BDeu
     tree.set_cardinalities(cards)
     
     stages = {}
-    for level in range(p-1): # dont stage the last variable
+    stages[-1] = [Stage([])]
+    for level in range(p-1): # dont stage the last level
         max_staging, max_staging_score = optimal_staging_at_level(order, cards, data, level, max_cvars, alpha_tot, method)
-        stages[level] = max_staging        
-        for s in max_staging:
-            print(s)
-    tree.set_stages(stages)
-    print(tree.stages)
+        stages[level] = max_staging
+        print("max staging: {}".format([str(s) for s in max_staging]) )
+
+    tree.set_stages(stages)        
     return tree
     
     
