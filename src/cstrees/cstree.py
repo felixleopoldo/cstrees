@@ -109,16 +109,36 @@ class CStree(nx.Graph):
         Args:
             node (int): node.
         """
-        if self.stages is None:
-            return None
+        assert(self.stages is not None)
+        #print("get_stage of ", node) 
+        
+        #if len(node) == 0:
+        #    print("empty stage")
+        
+        #if self.stages is None:
+        #    return None
 
-        lev = len(node)-1  
-
+        lev = len(node)-1
+        #print("lev", lev)
+        #print(self.stages)
+        #print(self.stages[lev])
+        stage = None
         if lev in self.stages:
             for s in self.stages[lev]:
+                #print(s)
                 if node in s:
-                    return s
-        return None
+                    stage = s
+                    break
+
+        if stage is None:
+            print("No stage found for {}".format(node))
+            
+        #print("No stage found for {}".format(node))
+        #return None
+        
+        assert(stage is not None)
+        return stage                    
+            
 
     def to_df(self):
 
@@ -141,7 +161,7 @@ class CStree(nx.Graph):
     def set_random_stage_parameters(self, alpha=1):
         # Set stage probabilities
         for lev, stages in self.stages.items():
-            print(lev, stages)
+            
             for i, stage in enumerate(stages):
                 probs = np.random.dirichlet([alpha] * self.cards[lev+1])
                 stage.probs = probs
@@ -156,15 +176,15 @@ class CStree(nx.Graph):
                 continue
 
             stage_counts = sc.counts_at_level(self, lev+1, data) # lev = node?
-            print(stage_counts)
+            # printing stage counts 
+            for key, value in stage_counts.items():
+                print(str(key), value)
             
             for i, stage in enumerate(stages):
                 probs = sc.estimate_parameters(self, stage, stage_counts, method, alpha_tot)
-                #probs = np.random.dirichlet([1] * self.cards[lev+1])                
-                print(stage)
-                print(probs)
                 stage.probs = probs
                 stage.color = self.colors[i]    
+
 
     def set_random_parameters(self):
         """ This is dependent on if one has sampled from the tree already.
@@ -179,26 +199,22 @@ class CStree(nx.Graph):
                 continue
 
             children = sorted(list(self.tree.successors(node)))
-            probs = np.random.dirichlet([1] * self.cards[len(node)])
-            print(list(children))
-            # print(probs)
-
-
+            probs = np.random.dirichlet([1] * self.cards[len(node)])            
             # Seems like a stage at level l holds the probtable for the variabel at level l+1.
             for i, ch in enumerate(children):
-                print("i ", i, "ch ", ch, "node ", node)
+                #print("i ", i, "ch ", ch, "node ", node)
                 stage = self.get_stage(node)
 
                 if stage != None: # not a singleton stage
                     prob = stage.probs[i]
                     
-                    print("edge prob {}".format(prob))
+                    #print("edge prob {}".format(prob))
                     self.tree[node][ch]["cond_prob"] = prob
                     self.tree[node][ch]["label"] = round(prob, 2)
                     self.tree[node][ch]["color"] = stage.color
                     self.tree.nodes[node]["color"] = stage.color
                 else:
-                    print("Singleton stage")
+                    #print("Singleton stage")
                     self.tree[node][ch]["cond_prob"] = probs[i]
                     self.tree[node][ch]["label"] = round(probs[i], 2)
                     
@@ -518,6 +534,9 @@ class Stage:
             _type_: _description_
         """
 
+        if (len(node) == 0):
+            if (len(self.list_repr) == 0):
+                return True
         for i, val in enumerate(self.list_repr):
             # Must check if list
             if (type(val) is list) and (node[i] not in val):
@@ -1008,8 +1027,8 @@ def sample_cstree(cards: list, max_cvars: int, prob_cvar: int, prop_nonsingleton
         # BUG: for binary.. take max of mc elements in cards.
         minimal_stage_size = 2**(level+1-mc)
         
-        print("full_stage_space_size: {}".format(full_stage_space_size))
-        print("level: {}, mc: {}, minimal_stage_size: {}".format(level, mc, minimal_stage_size))
+        #print("full_stage_space_size: {}".format(full_stage_space_size))
+        #print("level: {}, mc: {}, minimal_stage_size: {}".format(level, mc, minimal_stage_size))
         
         #minimal_stage_prop = minimal_stage_size / full_stage_space_size
         # The special case when the granularity is to coarse.
@@ -1077,6 +1096,7 @@ def sample_cstree(cards: list, max_cvars: int, prob_cvar: int, prop_nonsingleton
             #print("proportion left")
             #print(space_left / full_state_space_size)
 
+    stages[-1] = [Stage([])]
     ct.set_stages(stages)
     # ct.set_random_stage_parameters()
 
@@ -1650,7 +1670,7 @@ def optimal_staging_at_level(order, cards, data, l, max_cvars=1, alpha_tot=None,
     
     stagings = all_stagings(order, cards, l-1, max_cvars)
     max_staging = None
-    max_staging_score = -100000000
+    max_staging_score = -np.inf
     logging.debug("level: {}".format(l))
 
     

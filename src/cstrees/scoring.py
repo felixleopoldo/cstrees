@@ -9,6 +9,8 @@ def counts_at_level(t, l, data):
         So the counts for level l depends on the stage of level l-1.
     """
     stage_counts = {}  # maybe context counts..
+    
+    #print("get counts at level {}".format(l))
     for i in range(len(data)):  # iterate over the samples
         pred_vals = data[i, :l]
         #print("pred_vals: {}".format(pred_vals))
@@ -28,6 +30,7 @@ def counts_at_level(t, l, data):
             stage_counts[stage] = {}
         #print("value : {}".format(data[i,l]))
         if data[i, l] in stage_counts[stage]:
+            
             stage_counts[stage][data[i, l]] += 1
         else:
             stage_counts[stage][data[i, l]] = 1
@@ -109,13 +112,8 @@ def estimate_parameters(t, stage, stage_counts, method, alpha_tot):
     if method == "BD":  # This should be the Cooper-Herzkovits
         alpha_obs = alpha_tot
         alpha_stage = alpha_tot * t.cards[l]
-    # elif method == "BDe": # not used in practice
-    #    alpha_obs = alpha_tot / (t.n_stages_at_level(l) * t.cards[l]) # TODO: is this ok?
-    #    alpha_stage = alpha_tot / t.n_stages_at_level(l) # TODO: is this ok?
-
     elif method == "BDeu":
         # TODO: assert that all stages are colored.
-        
         n_stages = max(len(t.stages[l-1]), 1) # level 0 has no stages. it has [] actually...
         alpha_obs = alpha_tot / (n_stages * t.cards[l])
         alpha_stage = alpha_tot / n_stages
