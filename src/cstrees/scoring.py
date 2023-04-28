@@ -9,7 +9,13 @@ def counts_at_level(t, l, data):
         So the counts for level l depends on the stage of level l-1.
     """
     stage_counts = {}  # maybe context counts..
-    
+    ord = list(t.co.order)
+    #print(data[3,:])
+    data = data[:, ord] # reorder the columns according to the order
+    #print("reordered data as {}".format(ord))
+    #print(data[3,:])
+
+
     #print("get counts at level {}".format(l))
     for i in range(len(data)):  # iterate over the samples
         pred_vals = data[i, :l]
@@ -44,9 +50,6 @@ def score_stage():
 def score_var():
     pass
 
-
-def score_order(order, data):
-    pass
 
 
 def score_level(t, l, level_counts, alpha_tot=1.0, method="BDeu"):
@@ -85,7 +88,7 @@ def score_level(t, l, level_counts, alpha_tot=1.0, method="BDeu"):
     elif method == "BDeu":
         # TODO: assert that all stages are colored.
         
-        n_stages = max(len(t.stages[l-1]), 1) # level 0 has no stages
+        n_stages = len(t.stages[l-1])#max(len(t.stages[l-1]), 1) # level 0 has no stages
         alpha_obs = alpha_tot / (n_stages * t.cards[l])
         alpha_stage = alpha_tot / n_stages
 
@@ -94,12 +97,11 @@ def score_level(t, l, level_counts, alpha_tot=1.0, method="BDeu"):
         stage_counts_stage = sum(counts.values())
         #print("stage counts: {}".format(stage_counts_stage))
 
-        score += loggamma(alpha_stage) - \
-            loggamma(alpha_stage + stage_counts_stage)
+        score += loggamma(alpha_stage) - loggamma(alpha_stage + stage_counts_stage)
         for val in range(t.cards[l]):
             if val not in counts:  # as we only store the observed values
                 continue
-            score += loggamma(alpha_obs) - loggamma(alpha_obs + counts[val])
+            score += loggamma(alpha_obs + counts[val]) - loggamma(alpha_obs) 
 
     return score
 
@@ -124,7 +126,7 @@ def estimate_parameters(t, stage, stage_counts, method, alpha_tot):
     for i in range(t.cards[l]):
         if i not in stage_counts[stage]: # no observations here so use only prior
             probs[i] = alpha_obs / alpha_stage
-        else: # posterior mean or psterior predictive distribution..
+        else: # posterior mean or posterior predictive probabilites.
             probs[i] = (alpha_obs + stage_counts[stage][i]) / (alpha_stage + stage_counts_total)
     return probs
 
@@ -142,8 +144,8 @@ def score(t: ct.CStree, data: list, alpha_tot=1.0, method="BDeu"):
     """
 
     # reorder the columns in data according to t.order.
-    ord = list(t.co.order)
-    data_ordered = data[:, ord]
+    #ord = list(t.co.order)
+    #data_ordered = data[:, ord] # reorder the columns according to the order
 
     score = 0  # log score
     for l in range(t.p):
@@ -156,17 +158,17 @@ def score(t: ct.CStree, data: list, alpha_tot=1.0, method="BDeu"):
         score += score_level(t, l, level_counts, alpha_tot, method)
     return score
 
-def score_order(order, cards, data, max_cvars=1, alpha_tot=1.0, method="BDeu"):
+def score_order(order, data, max_cvars=1, alpha_tot=1.0, method="BDeu"):
     score = 0  # log score
-        
+
     for l in range(len(order)):
-        s = score_order_at_level(order, l, cards, data, max_cvars, alpha_tot, method)
-        print("level {} score: {}".format(l, s))
+        s = score_order_at_level(order, l, data, max_cvars, alpha_tot, method)
+        #print("level {} score: {}".format(l, s))
         score += s
-    print("total score: {}".format(score))
+    #print("total score: {}".format(score))
     return score
 
-def score_order_at_level(order, l, cards, data, max_cvars=1, alpha_tot=1.0, method="BDeu"):
+def score_order_at_level(order, l, data, max_cvars=1, alpha_tot=1.0, method="BDeu"):
     """ Without singletons, there are 2*level stagings at level level.
         val1 side and val2 side colored in different ways
         val1 side and val2 side colored in the same way
@@ -196,28 +198,29 @@ def score_order_at_level(order, l, cards, data, max_cvars=1, alpha_tot=1.0, meth
         return None
 
     p = len(order)
-    co = ct.CausalOrder(range(p))
+    cards = [2] * p
+    co = ct.CausalOrder(order)
     tree = ct.CStree(co)
     tree.set_cardinalities(cards)
 
     # for l in range(len(order)):
-    print("level {}".format(l))
-    stagings = ct.all_stagings(order, cards, l-1, max_cvars=max_cvars)
+    #print("level {}".format(l))
+    stagings = ct.all_stagings(p, cards, l-1, max_cvars=max_cvars)
     # This is a bit clumsy but shoud work.
     
-    print("stagings at level {}:".format(l-1))
+    #print("stagings at level {}:".format(l-1))
     
     for stlist in stagings:
-        print("stages: {}".format(stlist))                        
+        #print("stages: {}".format(stlist))                        
         tree.set_stages({l-1: stlist}) # Need to set the stagings in order to count.
         
         level_counts = counts_at_level(tree, l, data)
         
-        for s, cnt in level_counts.items():
-            print("{}: {}".format(s, cnt))
+        #for s, cnt in level_counts.items():
+        #    print("{}: {}".format(s, cnt))
         
         tmp = score_level(tree, l, level_counts, alpha_tot, method)
-        print("staging score: {}".format(tmp))
+        #print("staging score: {}".format(tmp))
         score += tmp
 
     return score
