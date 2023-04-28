@@ -1706,7 +1706,7 @@ def optimal_cstree(order, cards, data, max_cvars=1, alpha_tot=None, method="BDeu
     return tree
     
     
-def find_optimal_order(data, max_cvars=1, alpha_tot=1, method="BDeu"):
+def find_optimal_order(data, strategy="max", max_cvars=1, alpha_tot=1, method="BDeu"):
     """ Find the optimal causal order for the data.
     """
     
@@ -1721,8 +1721,8 @@ def find_optimal_order(data, max_cvars=1, alpha_tot=1, method="BDeu"):
     for perm in list(perms):
         order = list(perm) # dont stage the last variable
         #print("scoring order: {}".format(order))
-        score = sc.score_order(order, data, max_cvars=max_cvars, alpha_tot=alpha_tot, method=method)
-        #print("order: {}, score: {}".format(order, score))
+        score = sc.score_order(order, data, strategy="max", max_cvars=max_cvars, alpha_tot=alpha_tot, method=method)
+        print("order: {}, score: {}".format(order, score))
         
         #if score == max_score:
         #    optimal_orders.append(order)

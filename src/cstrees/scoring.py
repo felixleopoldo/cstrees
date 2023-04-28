@@ -4,53 +4,35 @@ from scipy.special import loggamma
 import numpy as np
 
 
-def counts_at_level(t, l, data):
+def counts_at_level(t, l, dataperm):
     """ Collect all the observed counts at a specific level by stages.
         So the counts for level l depends on the stage of level l-1.
     """
     stage_counts = {}  # maybe context counts..
     ord = list(t.co.order)
-    #print(data[3,:])
-    data = data[:, ord] # reorder the columns according to the order
-    #print("reordered data as {}".format(ord))
-    #print(data[3,:])
-
+    dataperm = dataperm[:, ord] # reorder the columns according to the order
 
     #print("get counts at level {}".format(l))
-    for i in range(len(data)):  # iterate over the samples
-        pred_vals = data[i, :l]
-        #print("pred_vals: {}".format(pred_vals))
-        stage = t.get_stage(pred_vals)  # or context        
-        
+    for i in range(len(dataperm)):  # iterate over the samples
+        pred_vals = dataperm[i, :l]
+        stage = t.get_stage(pred_vals)  # or context                
         #print("stages at level {}: {}".format(l-1, t.stages[l-1]))
         if stage == None:  # singleton stage. Shold note be any of these in our setting.
             print("singleton stage")
-            print(stage)
-        #    stage = ct.Stage(list(data[i, :l]))  # Singleton stage
-
-        #print("conditioning values at row {}: {} is in stage {}".format(i, pred_vals, stage))        
-        #print("{} is in the stage {}".format(pred_vals, stage))
-
         if stage not in stage_counts:
             # only save the observed ones #[0] * t.cards[l]  # initiate with zeros.x
             stage_counts[stage] = {}
-        #print("value : {}".format(data[i,l]))
-        if data[i, l] in stage_counts[stage]:
-            
-            stage_counts[stage][data[i, l]] += 1
+        if dataperm[i, l] in stage_counts[stage]:            
+            stage_counts[stage][dataperm[i, l]] += 1
         else:
-            stage_counts[stage][data[i, l]] = 1
+            stage_counts[stage][dataperm[i, l]] = 1
     return stage_counts
-
 
 def score_stage():
     pass
 
-
 def score_var():
     pass
-
-
 
 def score_level(t, l, level_counts, alpha_tot=1.0, method="BDeu"):
     """BDe score at a level. We could also consider splitting the alpha into
@@ -87,7 +69,6 @@ def score_level(t, l, level_counts, alpha_tot=1.0, method="BDeu"):
 
     elif method == "BDeu":
         # TODO: assert that all stages are colored.
-        
         n_stages = len(t.stages[l-1])#max(len(t.stages[l-1]), 1) # level 0 has no stages
         alpha_obs = alpha_tot / (n_stages * t.cards[l])
         alpha_stage = alpha_tot / n_stages
@@ -158,17 +139,17 @@ def score(t: ct.CStree, data: list, alpha_tot=1.0, method="BDeu"):
         score += score_level(t, l, level_counts, alpha_tot, method)
     return score
 
-def score_order(order, data, max_cvars=1, alpha_tot=1.0, method="BDeu"):
+def score_order(order, data, strategy="max", max_cvars=1, alpha_tot=1.0, method="BDeu"):
     score = 0  # log score
-
+    #print("")
+    #print("scoring order: {}".format(order))
     for l in range(len(order)):
-        s = score_order_at_level(order, l, data, max_cvars, alpha_tot, method)
-        #print("level {} score: {}".format(l, s))
+        s = score_order_at_level(order, l, data, strategy=strategy, max_cvars=max_cvars, alpha_tot=alpha_tot, method=method)
+    #    print("level {} score: {}".format(l, s))
         score += s
-    #print("total score: {}".format(score))
     return score
 
-def score_order_at_level(order, l, data, max_cvars=1, alpha_tot=1.0, method="BDeu"):
+def score_order_at_level(order, l, data, strategy="max", max_cvars=1, alpha_tot=1.0, method="BDeu"):
     """ Without singletons, there are 2*level stagings at level level.
         val1 side and val2 side colored in different ways
         val1 side and val2 side colored in the same way
@@ -190,9 +171,6 @@ def score_order_at_level(order, l, data, max_cvars=1, alpha_tot=1.0, method="BDe
     Returns:
         _type_: _description_
     """
-
-    score = 0  # log score
-
     if max_cvars != 1:
         print("Only max_cvars = 1 implemented")
         return None
@@ -202,33 +180,29 @@ def score_order_at_level(order, l, data, max_cvars=1, alpha_tot=1.0, method="BDe
     co = ct.CausalOrder(order)
     tree = ct.CStree(co)
     tree.set_cardinalities(cards)
-
-    # for l in range(len(order)):
-    #print("level {}".format(l))
     stagings = ct.all_stagings(p, cards, l-1, max_cvars=max_cvars)
-    # This is a bit clumsy but shoud work.
     
-    #print("stagings at level {}:".format(l-1))
-    
+    if strategy == "max":
+        score = -np.inf  # log score
+    elif strategy == "sum":
+        score = 0
+        
+    # This is a bit clumsy but shoud work.    
     for stlist in stagings:
-        #print("stages: {}".format(stlist))                        
         tree.set_stages({l-1: stlist}) # Need to set the stagings in order to count.
-        
         level_counts = counts_at_level(tree, l, data)
-        
-        #for s, cnt in level_counts.items():
-        #    print("{}: {}".format(s, cnt))
-        
         tmp = score_level(tree, l, level_counts, alpha_tot, method)
-        #print("staging score: {}".format(tmp))
-        score += tmp
+        #print("level {} score: {}".format(l, tmp))   
 
+        if strategy == "max":
+            if tmp > score:
+                score = tmp
+        if strategy == "sum":
+            score += tmp
+    
     return score
 
-    def score_tables_order():
-        pass
-
-        # With max_cvars = 1, for each each level can have 4 stagings, including the singletons:
+    # With max_cvars = 1, for each each level can have 4 stagings, including the singletons:
     # val1 side colored rest uncolored
     # val2 side colored rest uncolored
     # both colored
