@@ -6,12 +6,8 @@ def num_stagings(l: int):
 
 
 def num_cstrees(n: int):
-    return np.fromiter(map(num_stagings, range(n)), int).prod()
-    # return reduce(mul, map(num_stagings, range(n)))
-
-
-def a_1_to_n(n: int):
-    return np.fromiter(map(num_cstrees, range(1, n + 1)), int)
+    return np.fromiter(map(num_stagings, range(n)), np.uint).prod()
+    # replace with .cumprod() to get sequence from 1 to n
 
 
 def enumerate_subdivisions(n, max_codim):
