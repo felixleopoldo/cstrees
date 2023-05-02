@@ -192,7 +192,7 @@ def score_order_at_level(order, l, data, strategy="max", max_cvars=1, alpha_tot=
         tree.set_stages({l-1: stlist}) # Need to set the stagings in order to count.
         level_counts = counts_at_level(tree, l, data)
         tmp = score_level(tree, l, level_counts, alpha_tot, method)
-        #print("level {} score: {}".format(l, tmp))   
+        print("level {} score: {}".format(l, tmp))   
 
         if strategy == "max":
             if tmp > score:
