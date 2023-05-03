@@ -10,7 +10,9 @@ def counts_at_level(t, l, dataperm):
     """
     stage_counts = {}  # maybe context counts..
     ord = list(t.co.order)
-    dataperm = dataperm[:, ord] # reorder the columns according to the order
+    # reorder the columns according to the order. 
+    # cardinalities are at first row.
+    dataperm = dataperm[1:, ord] 
 
     #print("get counts at level {}".format(l))
     for i in range(len(dataperm)):  # iterate over the samples
@@ -194,7 +196,7 @@ def score_order_at_level(order, l, data, strategy="max", max_cvars=1, alpha_tot=
         #for st in stlist:
         #    print(st)
         
-        tree.set_stages({l-1: stlist}) # Need to set the stagings in order to count.
+        tree.update_stages({l-1: stlist}) # Need to set the stagings in order to count.
         level_counts = counts_at_level(tree, l, data)
         tmp = score_level(tree, l, level_counts, alpha_tot, method)
         #print("level {} score: {}".format(l, tmp))   

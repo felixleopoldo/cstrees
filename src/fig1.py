@@ -24,7 +24,7 @@ tree.set_cardinalities(cards)
 # These do not have to be in a dict like this as the levels are
 # determined from the length of the tuples.
 
-tree.set_stages({
+tree.update_stages({
     0: [],
     1: [ct.Stage([{0, 1}, 0])],    # Green
     2: [ct.Stage([0, {0, 1}, 0]),  # Blue

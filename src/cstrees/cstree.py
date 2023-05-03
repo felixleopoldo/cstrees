@@ -82,7 +82,7 @@ class CStree(nx.Graph):
         
         return 1
 
-    def set_stages(self, stages: dict):
+    def update_stages(self, stages: dict):
         """Adds a stage.
 
         Example:
@@ -90,6 +90,8 @@ class CStree(nx.Graph):
         """
         #self.stages = stages
         self.stages.update(stages)
+        self.stages[-1] = [Stage([])]
+        
         # Add support for the set format too
         # self.stage_probs = {key: [None]*len(val)
         #                    for key, val in stages.items()}
@@ -186,7 +188,7 @@ class CStree(nx.Graph):
                 stage.color = self.colors[i]    
 
 
-    def set_random_parameters(self):
+    def set_random_parameters(self, alpha=1):
         """ This is dependent on if one has sampled from the tree already.
             I.e., if a probablity is already set for an edge, it
             should not be overwritten.
@@ -199,7 +201,7 @@ class CStree(nx.Graph):
                 continue
 
             children = sorted(list(self.tree.successors(node)))
-            probs = np.random.dirichlet([1] * self.cards[len(node)])            
+            probs = np.random.dirichlet([alpha] * self.cards[len(node)])            
             # Seems like a stage at level l holds the probtable for the variabel at level l+1.
             for i, ch in enumerate(children):
                 #print("i ", i, "ch ", ch, "node ", node)
@@ -291,7 +293,8 @@ class CStree(nx.Graph):
         """
         pass
 
-    def to_minimal_context_graphs(self):
+    # Here is the only place we need labels/orders.
+    def to_minimal_context_graphs(self, labels=None): 
         """ This returns a sequence of minimal context graphs (minimal I-maps).
         """
         logging.debug("getting csirels per level")
@@ -379,6 +382,8 @@ class CStree(nx.Graph):
             self.tree = nx.DiGraph()
         xs = []
 
+        xs.append(self.cards) # cardinalities at the first row
+
         for _ in range(n):
             node = ()
             x = []
@@ -427,7 +432,7 @@ class CStree(nx.Graph):
                                  for e in edges]
                 # print(probabilities)
                 #elements = [str(e[1]) for e in edges]
-                # ind is the index or the outcome of the sampled variable
+                # ind is the index or the outcome of the set_d variable
                 vals = len(edges)
                 # print(vals)
                 ind = np.random.choice(len(edges), 1, p=probabilities)[0]
@@ -436,6 +441,8 @@ class CStree(nx.Graph):
                 #print("One sample! {}".format(x))
 
             xs.append(x)
+            
+        
         return np.array(xs)
 
     def pdf(self, x):
@@ -890,17 +897,14 @@ def comp_bit_strings(a):
     return levels
 
 
-def csi_relations_to_dags(csi_relations, causal_order):
+def csi_relations_to_dags(csi_relations, causal_order, labels=None):
 
     p = causal_order.p
     graphs = {context: None for context in csi_relations}
     for context, csis in csi_relations.items():
-        #print("\nContext: {}".format(context))
+        
         adjmat = np.zeros(p*p).reshape(p, p)
-
-        # for j in range(1, p+1):
         for j in range(p):
-            # for i in range(1, j):
             for i in range(j):
                 # This will anyway be disregarded in the matrix slice?
                 if (i in context) | (j in context):
@@ -908,14 +912,12 @@ def csi_relations_to_dags(csi_relations, causal_order):
                 # create temp CI relation to compare with
                 a = {i}
                 b = {j}
-                # s = {k for k in range(1, j) if (
-                #    k != i) and (k not in context)}
+
                 s = {k for k in range(j) if (
                     k != i) and (k not in context)}
 
                 ci_tmp = CI_relation(a, b, s)
 
-                #print("checking ci: {}".format(ci_tmp))
                 # Check is the ci is in some of the cis of the context.
                 # 1. i<j
                 # 2. no edge if Xi _|_ Xj | Pa1:j \ i
@@ -927,21 +929,12 @@ def csi_relations_to_dags(csi_relations, causal_order):
                     cis += weak_union(csi.ci)
 
                 if ci_tmp in cis:
-                    #print("No edprint(s1)ge ({},{})".format(i,j))
-                    #adjmat[i-1, j-1] = 0
                     adjmat[i, j] = 0
                 else:
-                    #adjmat[i-1, j-1] = 1
                     adjmat[i, j] = 1
 
-        #context_els = {i-1 for i in context.context.keys()}
-        #allels = np.array(causal_order.order)-1
-        #inds = sorted(set(allels) - context_els)
-        #adjmat = adjmat[np.ix_(inds, inds)]
-
-        context_els = {i for i in context.context.keys()}
-        allels = np.array(causal_order.order)
-        inds = sorted(set(allels) - context_els)
+        context_els = set(context.context.keys())
+        inds = sorted(set(causal_order.order) - context_els)
         adjmat = adjmat[np.ix_(inds, inds)]
 
         graph = nx.from_numpy_array(adjmat, create_using=nx.DiGraph())
@@ -949,7 +942,7 @@ def csi_relations_to_dags(csi_relations, causal_order):
         # Label from 1 instead of 0
         labels = {}
         for i, j in enumerate(inds):
-            labels[i] = j  # +1
+            labels[i] = j
         graph = nx.relabel_nodes(graph, labels)
         graphs[context] = graph
 
@@ -1097,7 +1090,7 @@ def sample_cstree(cards: list, max_cvars: int, prob_cvar: int, prop_nonsingleton
             #print(space_left / full_state_space_size)
 
     stages[-1] = [Stage([])]
-    ct.set_stages(stages)
+    ct.update_stages(stages)
     # ct.set_random_stage_parameters()
 
     return ct
@@ -1133,6 +1126,7 @@ def df_to_cstree(df):
     cards = [int(x[1]) for x in df.columns]
 
     stages = {i: [] for i in range(len(cards)+1)}
+    stages[-1] = [Stage([])]
     cstree = CStree(co)
     cstree.set_cardinalities([None] + cards)
 
@@ -1149,7 +1143,7 @@ def df_to_cstree(df):
             else:
                 stage_list.append(int(val))
 
-    cstree.set_stages(stages)
+    cstree.update_stages(stages)
     cstree.co = co
 
     # cstree.set_random_stage_parameters()
@@ -1675,7 +1669,7 @@ def optimal_staging_at_level(order, cards, data, l, max_cvars=1, alpha_tot=None,
     
     for stlist in stagings:
         #logging.debug("scoring staging: {}".format([str(ss) for ss in stlist]))        
-        tree.set_stages({l: stlist})
+        tree.update_stages({l: stlist})
         level_counts = sc.counts_at_level(tree, l+1, data) # This needs the stages to be set at the line above.
         #logging.debug("all counts in the staging")
         #for k, v in level_counts.items():
@@ -1689,7 +1683,15 @@ def optimal_staging_at_level(order, cards, data, l, max_cvars=1, alpha_tot=None,
 
     return max_staging, max_staging_score
 
-def optimal_cstree(order, cards, data, max_cvars=1, alpha_tot=None, method="BDeu"):
+def optimal_cstree(order, data, max_cvars=1, alpha_tot=1.0, method="BDeu"):
+    
+    
+    # Order should use the same labels as data?
+    # Order is only intresting when data is involved. Then its the order of the data columns
+    # Otherwise we only talk about levels.
+    
+    
+    cards = data[0]
     p = len(order)
     co = CausalOrder(order)
     tree = CStree(co)
@@ -1702,7 +1704,8 @@ def optimal_cstree(order, cards, data, max_cvars=1, alpha_tot=None, method="BDeu
         stages[level] = max_staging
         print("max staging: {}".format([str(s) for s in max_staging]) )
 
-    tree.set_stages(stages)        
+    tree.update_stages(stages) 
+    # maybe set level labels here?       
     return tree
     
     
@@ -1713,7 +1716,7 @@ def find_optimal_order(data, strategy="max", max_cvars=1, alpha_tot=1, method="B
     p = data.shape[1]
     perms = permutations(list(range(p)))
     
-    cards = [2] * p # TODO: read from header
+    cards = data[0] 
     optimal_order = None
     max_score = -np.inf
     
@@ -1737,5 +1740,5 @@ def find_optimal_cstree(data, max_cvars=1, alpha_tot=1, method="BDeu"):
     opt_order = find_optimal_order(data, max_cvars=max_cvars, alpha_tot=alpha_tot, method=method)
     print("optimal order: {}".format(opt_order))
     
-    optimal_staging = optimal_cstree(opt_order, cards, data, max_cvars=max_cvars, alpha_tot=alpha_tot, method=method)
+    optimal_staging = optimal_cstree(opt_order, data, max_cvars=max_cvars, alpha_tot=alpha_tot, method=method)
     print("optimal staging: {}".format(optimal_staging))    
