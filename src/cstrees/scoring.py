@@ -4,15 +4,16 @@ from scipy.special import loggamma
 import numpy as np
 
 
-def counts_at_level(t, l, dataperm):
+def counts_at_level(t, l, data, order):
     """ Collect all the observed counts at a specific level by stages.
         So the counts for level l depends on the stage of level l-1.
     """
     stage_counts = {}  # maybe context counts..
-    ord = list(t.co.order)
+    #ord = list(t.co.order)
+    ord = list(order)
     # reorder the columns according to the order. 
     # cardinalities are at first row.
-    dataperm = dataperm[1:, ord] 
+    dataperm = data[1:, ord] 
 
     #print("get counts at level {}".format(l))
     for i in range(len(dataperm)):  # iterate over the samples

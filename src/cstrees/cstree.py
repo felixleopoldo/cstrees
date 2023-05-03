@@ -55,22 +55,21 @@ class CStree(nx.Graph):
 
     """
 
-    def __init__(self, causal_order, data=None, **attr):
+    def __init__(self, cards, labels=None, data=None, **attr):
         nx.Graph.__init__(self, data, **attr)
         self.tree = None
         self.stages = None
-        self.co = causal_order
-        self.p = causal_order.p
-        # random.seed(5) # For the colors
+        self.cards = cards
+        self.p = len(cards)#causal_order.p
+        if labels is None:
+            self.labels = list(range(self.p))
+        else:
+            self.labels = labels
+        
         self.colors = list(mcolors.cnames.keys())
-        # random.shuffle(self.colors)
         self.color_no = 0
         self.stages = {i: [] for i in range(self.p)}
-        random.shuffle(self.colors)
-
-    def set_cardinalities(self, cards):
-        self.cards = cards
-
+        
     def n_colored_stages_at_level(self, l):
         # n_colored may include singleton stages, on low levels.
         n_colored = len(self.stages[l]) 
@@ -145,12 +144,15 @@ class CStree(nx.Graph):
     def to_df(self):
 
         # cardinalities header
-        d = {self.co.order[i]: [c] for i, c in enumerate(self.cards)}
-        df = pd.DataFrame(d, columns=self.co.order)
+        d = {i: [c] for i, c in enumerate(self.cards)}
+        #d = {self.co.order[i]: [c] for i, c in enumerate(self.cards)}
+        #df = pd.DataFrame(d, columns=self.co.order)
+        df = pd.DataFrame(d, columns=self.labels)
 
         for l, stages in self.stages.items():
             for s in stages:
-                dftmp = s.to_df(self.co.order)
+                #dftmp = s.to_df(self.co.order)
+                dftmp = s.to_df(self.labels)
                 df = pd.concat([df, dftmp])
 
         return df
@@ -329,7 +331,7 @@ class CStree(nx.Graph):
             for csi in val:
                 logging.debug(csi)
 
-        cdags = csi_relations_to_dags(minl_csis_by_context, self.co)
+        cdags = csi_relations_to_dags(minl_csis_by_context, self.p)
 
         return cdags
 
@@ -497,17 +499,17 @@ class CI_relation:
 #        return (v in self.a) or (v in self.b) or (v in self.sep)
 
 
-class CausalOrder:
-    def __init__(self, order) -> None:
-        self.p = len(order)
-        self.order = order
-        self.order_inv = {j: i for i, j in enumerate(order)}
+# class CausalOrder:
+#     def __init__(self, order) -> None:
+#         self.p = len(order)
+#         self.order = order
+#         self.order_inv = {j: i for i, j in enumerate(order)}
 
-    def get_level(self, var):
-        return self.order_inv[var]
+#     def get_level(self, var):
+#         return self.order_inv[var]
 
-    def at_level(self, k):
-        return self.order[k]
+#     def at_level(self, k):
+#         return self.order[k]
 
 
 class Stage:
@@ -780,13 +782,12 @@ class CSI_relation:
 
         return csilist
 
-    def to_cstree_paths(self, cards: list, order: list):
+    def to_cstree_paths(self, cards: list):
         """Genreate the set(s) of path defining the CSI relations.
         note that it can be defined by several stages (set of paths).
 
         Args:
             cards (list): _description_
-            order (list): _description_
 
         Returns:
             _type_: _description_
@@ -897,9 +898,8 @@ def comp_bit_strings(a):
     return levels
 
 
-def csi_relations_to_dags(csi_relations, causal_order, labels=None):
+def csi_relations_to_dags(csi_relations, p, labels=None):
 
-    p = causal_order.p
     graphs = {context: None for context in csi_relations}
     for context, csis in csi_relations.items():
         
@@ -934,7 +934,7 @@ def csi_relations_to_dags(csi_relations, causal_order, labels=None):
                     adjmat[i, j] = 1
 
         context_els = set(context.context.keys())
-        inds = sorted(set(causal_order.order) - context_els)
+        inds = sorted(set(range(p)) - context_els)
         adjmat = adjmat[np.ix_(inds, inds)]
 
         graph = nx.from_numpy_array(adjmat, create_using=nx.DiGraph())
@@ -986,10 +986,10 @@ def sample_cstree(cards: list, max_cvars: int, prob_cvar: int, prop_nonsingleton
         CStree: a CStree.
     """
     p = len(cards)
-    co = CausalOrder(range(p))
-    ct = CStree(co)
+    #co = CausalOrder(range(p))
+    ct = CStree(cards)
 
-    ct.set_cardinalities(cards)
+    #ct.set_cardinalities(cards)
 
     stages = {}
     for level, val in enumerate(cards[:-1]):  # not the last level
@@ -1652,8 +1652,8 @@ def all_stagings(p, cards, l, max_cvars=1):
     st = Stage(stagelistrep)
     yield [st]
     
-def n_stagings(order, cards, l, max_cvars=1):
-    stagings = all_stagings(len(order), cards, l, max_cvars)
+def n_stagings(p, cards, l, max_cvars=1):
+    stagings = all_stagings(p, cards, l, max_cvars)
     return sum(len(staging) for staging in stagings)
 
 def optimal_staging_at_level(order, cards, data, l, max_cvars=1, alpha_tot=None, method="BDeu"):
@@ -1670,7 +1670,7 @@ def optimal_staging_at_level(order, cards, data, l, max_cvars=1, alpha_tot=None,
     for stlist in stagings:
         #logging.debug("scoring staging: {}".format([str(ss) for ss in stlist]))        
         tree.update_stages({l: stlist})
-        level_counts = sc.counts_at_level(tree, l+1, data) # This needs the stages to be set at the line above.
+        level_counts = sc.counts_at_level(tree, l+1, data, order) # This needs the stages to be set at the line above.
         #logging.debug("all counts in the staging")
         #for k, v in level_counts.items():
         #    logging.debug("{}: {}".format(k, v))
@@ -1693,9 +1693,9 @@ def optimal_cstree(order, data, max_cvars=1, alpha_tot=1.0, method="BDeu"):
     
     cards = data[0]
     p = len(order)
-    co = CausalOrder(order)
-    tree = CStree(co)
-    tree.set_cardinalities(cards)
+    #co = CausalOrder(order)
+    tree = CStree(cards)
+    #tree.set_cardinalities(cards)
     
     stages = {}
     stages[-1] = [Stage([])]
