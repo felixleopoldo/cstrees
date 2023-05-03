@@ -133,8 +133,8 @@ def score(t: ct.CStree, data: list, alpha_tot=1.0, method="BDeu"):
         print("level {} in the tree scoring procedure".format(l))
         level_counts = counts_at_level(t, l, data)
 
-        for s, cnt in level_counts.items():
-            print("{}: {}".format(s, cnt))
+        #for s, cnt in level_counts.items():
+        #    print("{}: {}".format(s, cnt))
 
         score += score_level(t, l, level_counts, alpha_tot, method)
     return score
@@ -189,10 +189,15 @@ def score_order_at_level(order, l, data, strategy="max", max_cvars=1, alpha_tot=
         
     # This is a bit clumsy but shoud work.    
     for stlist in stagings:
+        #print(stlist)
+        # print all stges in a stlist
+        #for st in stlist:
+        #    print(st)
+        
         tree.set_stages({l-1: stlist}) # Need to set the stagings in order to count.
         level_counts = counts_at_level(tree, l, data)
         tmp = score_level(tree, l, level_counts, alpha_tot, method)
-        print("level {} score: {}".format(l, tmp))   
+        #print("level {} score: {}".format(l, tmp))   
 
         if strategy == "max":
             if tmp > score:
