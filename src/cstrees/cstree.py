@@ -179,7 +179,7 @@ class CStree(nx.Graph):
             if lev == self.p-1:
                 continue
 
-            stage_counts = sc.counts_at_level(self, lev+1, data) # lev = node?
+            stage_counts = sc.counts_at_level(self, lev+1, data, order) # lev = node?
             # printing stage counts 
             for key, value in stage_counts.items():
                 print(str(key), value)
