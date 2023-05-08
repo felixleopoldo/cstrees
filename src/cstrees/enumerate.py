@@ -21,8 +21,8 @@ def enumerate_stagings(n: int):
     for idx, subdiv in enumerate(cd1s):
         sub0_cd1s = codim_1_subdivs(subdiv[0], idx)
         sub1_cd1s = codim_1_subdivs(subdiv[1], idx)
-        cd12s += [subdiv[1] + sub0_cd1 for sub0_cd1 in sub0_cd1s]
-        cd12s += [subdiv[0] + sub1_cd1 for sub1_cd1 in sub1_cd1s]
+        cd12s += [[subdiv[1]] + sub0_cd1 for sub0_cd1 in sub0_cd1s]
+        cd12s += [[subdiv[0]] + sub1_cd1 for sub1_cd1 in sub1_cd1s]
         cd2s += [
             sub0_cd1 + sub1_cd1 for sub0_cd1 in sub0_cd1s for sub1_cd1 in sub1_cd1s
         ]
