@@ -35,7 +35,8 @@ def counts_at_level(t, l, data):
     #print("get counts at level {}".format(l))
     for i in range(len(dataperm)):  # iterate over the samples
         pred_vals = dataperm[i, :l]
-        stage = t.get_stage(pred_vals)  # or context                
+        stage = t.get_stage(pred_vals)  # or context   
+        #print('pred_vals: ', pred_vals)             
         #print("stages at level {}: {}".format(l-1, t.stages[l-1]))
         if stage == None:  # singleton stage. Shold note be any of these in our setting.
             print("singleton stage")
@@ -186,8 +187,8 @@ def score_order_at_level(order, l, data, strategy="max", max_cvars=1, alpha_tot=
     Returns:
         _type_: _description_
     """
-    if max_cvars != 1:
-        print("Only max_cvars = 1 implemented")
+    if max_cvars > 2:
+        print("Only max_cvars < 3 implemented")
         return None
 
     p = len(order)
@@ -209,8 +210,8 @@ def score_order_at_level(order, l, data, strategy="max", max_cvars=1, alpha_tot=
     for stlist in stagings:
         #print(stlist)
         # print all stges in a stlist
-        #for st in stlist:
-        #    print(st)
+        for st in stlist:
+            print(st)
         
         tree.update_stages({l-1: stlist}) # Need to set the stagings in order to count.
         level_counts = counts_at_level(tree, l, data)

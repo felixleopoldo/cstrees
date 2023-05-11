@@ -121,8 +121,7 @@ class CStree(nx.Graph):
         #    return None
 
         lev = len(node)-1
-        #print("lev", lev)
-        #print(self.stages)
+
         #print(self.stages[lev])
         stage = None
         if lev in self.stages:
@@ -1639,10 +1638,29 @@ def all_stagings(p, cards, l, max_cvars=1):
         
         st = Stage(stagelistrep)
         yield [st]
+    elif max_cvars == 2:
+        from cstrees.double_cvar_stagings import enumerate_stagings
+        
+
+        for staging_list in enumerate_stagings(l+1):
+            
+            print("staging_list from alex")
+            print(staging_list)
+            #staging = [Stage(s) for s in staging_list]
+            #print(staging)
+            #yield staging
+                
     else:
         raise NotImplementedError("max_cvars > 1 not implemented yet")
         
 def n_stagings(p, cards, l, max_cvars=1):
+    """ Returns the number of stagings at a given level.
+        p: number of variables
+        cards: list of cardinalities of the variables
+        l: level
+        cvars: number of context variables
+    """
+    
     stagings = all_stagings(p, cards, l, max_cvars)
     return sum(len(staging) for staging in stagings)
 

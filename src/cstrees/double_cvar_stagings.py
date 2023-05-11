@@ -32,6 +32,10 @@ def enumerate_stagings(n: int):
 
     return chain([cd0], cd1s, cd12s, cd2s)
 
+def max2_cvars_stagings(l):
+    tmp = enumerate_stagings(l-1)
+    for staging in tmp:
+        yield staging
 
 def codim_1_subdivs(cube, fixed_dims=None):
     n = len(cube)
@@ -47,6 +51,8 @@ def codim_1_subdivs(cube, fixed_dims=None):
         # add codim-1 subdivisions
         subdivisions.append(subdivision)
     return subdivisions
+
+
 
 
 # test stage enumeration
