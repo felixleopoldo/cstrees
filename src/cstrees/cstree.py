@@ -15,8 +15,8 @@ import logging
 import sys
 import cstrees.scoring as sc
 from itertools import permutations
-logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
-#logging.basicConfig(stream=sys.stderr, level=logging.ERROR)
+#logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
+logging.basicConfig(stream=sys.stderr, level=logging.ERROR)
 
 
 def plot(graph, layout="dot"):
@@ -297,7 +297,7 @@ class CStree(nx.Graph):
         pass
 
     # Here is the only place we need labels/orders.
-    def to_minimal_context_graphs(self, labels=None): 
+    def to_minimal_context_graphs(self): 
         """ This returns a sequence of minimal context graphs (minimal I-maps).
         """
         logging.debug("getting csirels per level")
@@ -332,7 +332,7 @@ class CStree(nx.Graph):
             for csi in val:
                 logging.debug(csi)
 
-        cdags = csi_relations_to_dags(minl_csis_by_context, self.p)
+        cdags = csi_relations_to_dags(minl_csis_by_context, self.p, labels=self.labels)
 
         return cdags
 
@@ -445,8 +445,10 @@ class CStree(nx.Graph):
 
             xs.append(x)
             
-        
-        return np.array(xs)
+        df = pd.DataFrame(xs)
+        df.columns = self.labels
+        return df
+#        return np.array(xs)
 
     def pdf(self, x):
         """Density function evaluated at x.
@@ -940,30 +942,17 @@ def csi_relations_to_dags(csi_relations, p, labels=None):
 
         graph = nx.from_numpy_array(adjmat, create_using=nx.DiGraph())
 
+        print("The used indices/levels I guess...")
         # Label from 1 instead of 0
-        labels = {}
+        labs = {}
+        print(inds)
         for i, j in enumerate(inds):
-            labels[i] = j
-        graph = nx.relabel_nodes(graph, labels)
+            #labs[i] = j
+            labs[i] = labels[j]
+        graph = nx.relabel_nodes(graph, labs)
         graphs[context] = graph
 
     return graphs
-
-
-def minimal_context(csi_relations: set) -> set:
-    """_summary_
-
-    Args:
-        csi_relations (set): _description_
-
-    Returns:
-        set: _description_
-    """
-
-
-def get_minimal_dag_imaps(causal_order, csi_relations):
-
-    pass
 
 
 def sample_cstree(cards: list, max_cvars: int, prob_cvar: int, prop_nonsingleton: float) -> CStree:
@@ -1097,23 +1086,6 @@ def sample_cstree(cards: list, max_cvars: int, prob_cvar: int, prop_nonsingleton
     return ct
 
 
-def generate_random_clusters():
-    """Generate random stages by merging existing ones.
-       Stages can may have only one node.
-    """
-    # sample two nodes. ()
-    # check their stages.
-    # (since a stage is sample with prob psoportional to the #nodes in it
-    #  this is like sampling a stage, but we dont have to enumerate the stages).
-    # merge their stages.
-    # Repeat n times.
-
-    nodes_to_stage = {}
-
-    # uniform sampling
-    probs = [[1.0/card]*card for card in cardinalities]
-
-
 def powerset(iterable):
     "powerset([1,2,3]) --> () (1,) (2,) (3,) (1,2) (1,3) (2,3) (1,2,3)"
     s = list(iterable)
@@ -1122,14 +1094,15 @@ def powerset(iterable):
 
 def df_to_cstree(df):
 
-    co = CausalOrder([int(x[0]) for x in df.columns])
+    #co = CausalOrder([int(x[0]) for x in df.columns])
 
-    cards = [int(x[1]) for x in df.columns]
+    cards = cards = df.iloc[0].values #[int(x[1]) for x in df.columns]
 
     stages = {i: [] for i in range(len(cards)+1)}
     stages[-1] = [Stage([])]
-    cstree = CStree(co)
-    cstree.set_cardinalities([None] + cards)
+    cstree = CStree(cards)
+    #cstree.set_cardinalities([None] + cards)
+    cstree.labels  = df.columns
 
     for row in df.iterrows():
         stage_list = []
@@ -1145,7 +1118,7 @@ def df_to_cstree(df):
                 stage_list.append(int(val))
 
     cstree.update_stages(stages)
-    cstree.co = co
+    #cstree.co = co
 
     # cstree.set_random_stage_parameters()
 
@@ -1677,9 +1650,10 @@ def n_stagings(p, cards, l, max_cvars=1):
 
 def optimal_staging_at_level(order, cards, data, l, max_cvars=1, alpha_tot=None, method="BDeu"):
     p = len(order)
-    co = CausalOrder(range(p))
-    tree = CStree(co)
-    tree.set_cardinalities(cards)
+    #co = CausalOrder(cards)
+    tree = CStree(cards)
+    tree.labels = order 
+    #tree.set_cardinalities(cards)
     
     stagings = all_stagings(p, cards, l, max_cvars) # at level l
     max_staging = None
@@ -1689,7 +1663,7 @@ def optimal_staging_at_level(order, cards, data, l, max_cvars=1, alpha_tot=None,
     for stlist in stagings:
         #logging.debug("scoring staging: {}".format([str(ss) for ss in stlist]))        
         tree.update_stages({l: stlist})
-        level_counts = sc.counts_at_level(tree, l+1, data, order) # This needs the stages to be set at the line above.
+        level_counts = sc.counts_at_level(tree, l+1, data) # This needs the stages to be set at the line above.
         #logging.debug("all counts in the staging")
         #for k, v in level_counts.items():
         #    logging.debug("{}: {}".format(k, v))
@@ -1710,11 +1684,8 @@ def optimal_cstree(order, data, max_cvars=1, alpha_tot=1.0, method="BDeu"):
     # Otherwise we only talk about levels.
     
     
-    cards = data[0]
+    cards = data.iloc[0].values # BUG?: Maybe these have to be adapted to the order.
     p = len(order)
-    #co = CausalOrder(order)
-    tree = CStree(cards)
-    #tree.set_cardinalities(cards)
     
     stages = {}
     stages[-1] = [Stage([])]
@@ -1723,6 +1694,9 @@ def optimal_cstree(order, data, max_cvars=1, alpha_tot=1.0, method="BDeu"):
         stages[level] = max_staging
         print("max staging: {}".format([str(s) for s in max_staging]) )
 
+    # Create CStree
+    tree = CStree(cards)
+    tree.labels = order 
     tree.update_stages(stages) 
     # maybe set level labels here?       
     return tree
@@ -1734,14 +1708,15 @@ def find_optimal_order(data, strategy="max", max_cvars=1, alpha_tot=1, method="B
     
     p = data.shape[1]
     perms = permutations(list(range(p)))
-    
-    cards = data[0] 
+    labels = data.columns.values
+    cards = data.iloc[0].values 
     optimal_order = None
     max_score = -np.inf
     
     # iterate over all permutations
     for perm in list(perms):
-        order = list(perm) # dont stage the last variable
+        order = list(perm) # dont stage the last variable. What do i mean by this? /Felix
+        
         #print("scoring order: {}".format(order))
         score = sc.score_order(order, data, strategy="max", max_cvars=max_cvars, alpha_tot=alpha_tot, method=method)
         print("order: {}, score: {}".format(order, score))

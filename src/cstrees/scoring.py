@@ -14,7 +14,23 @@ def counts_at_level(t, l, data):
     ord = t.labels
     # reorder the columns according to the order. 
     # cardinalities are at first row.
-    dataperm = data[1:, ord] 
+    
+    
+    #dataperm = data[1:, ord]
+    dfperm = data[ord]
+    dataperm = data[ord].values[1:, :]
+    
+    # print("the labels/order/label order to read the data columns in")
+    # print(ord)
+    
+    # print("data")
+    # print(data)
+    # print("dfperm")
+    # print(dfperm)
+
+    # print("dataperm")
+    # print(dataperm)
+
 
     #print("get counts at level {}".format(l))
     for i in range(len(dataperm)):  # iterate over the samples
@@ -32,11 +48,6 @@ def counts_at_level(t, l, data):
             stage_counts[stage][dataperm[i, l]] = 1
     return stage_counts
 
-def score_stage():
-    pass
-
-def score_var():
-    pass
 
 def score_level(t, l, level_counts, alpha_tot=1.0, method="BDeu"):
     """BDe score at a level. We could also consider splitting the alpha into
@@ -180,11 +191,14 @@ def score_order_at_level(order, l, data, strategy="max", max_cvars=1, alpha_tot=
         return None
 
     p = len(order)
-    cards = [2] * p
-    co = ct.CausalOrder(order)
-    tree = ct.CStree(co)
-    tree.set_cardinalities(cards)
+    
+    cards = data.iloc[0].values # BUG?: Maybe these have to be adapted to the order.
+    tree = ct.CStree(cards)
+    # here we set the labels/order for the CStree, to be used in the counting.
+    tree.labels = order 
+    
     stagings = ct.all_stagings(p, cards, l-1, max_cvars=max_cvars)
+    
     
     if strategy == "max":
         score = -np.inf  # log score
@@ -210,60 +224,3 @@ def score_order_at_level(order, l, data, strategy="max", max_cvars=1, alpha_tot=
             score += tmp
     
     return score
-
-    # With max_cvars = 1, for each each level can have 4 stagings, including the singletons:
-    # val1 side colored rest uncolored
-    # val2 side colored rest uncolored
-    # both colored
-    # none colored
-    # so there are 4*level stagings at level level.
-        # TODO: The paret below allows for singletons, but we dont want that.
-        # so it is commented out.
-
-        #     if l == 0:
-        # # There are only 2 stagings at level 0
-        # Whithot singletons, this is ok.
-        # # Only singletons, i.e. two stages.
-        # tree.set_stages({})
-        # score += score_level(tree, l, level_counts, alpha_tot, method)
-        # print(score)
-
-        # # Just one stage
-        # st = ct.Stage([set(vals[l])])
-        # print(st)
-        # tree.set_stages({l: [st]})
-        # score += score_level(tree, l, level_counts, alpha_tot, method)
-        # print(score)
-
-        # loop through all possible combinations.
-        # use iter tools to go trough posssible values and the mask in cards.
-        # for k  in range(l+1): # all variables up to l can be context variables
-
-        #     prodset = [[True, False]] * cards[k]
-        #     print("cvar level: {}".format(k))
-        #     for binarray in itertools.product(*prodset): # each represents a staging
-        #         stlist = []
-        #         cvars = [vals[k][ind] for ind, val in enumerate(binarray) if val]
-        #         print("value to use as contexts: {}".format(cvars))
-        #         if cvars == []: #only singletons case treated separately. We dont allow for singletons.
-        #             #print("only singletons -> skip")
-        #             #continue
-        #             tree.set_stages({})
-        #             score += score_level(tree, l, level_counts, alpha_tot, method)
-        #         else:
-        #             for v in cvars:
-
-        #                 left = [set(vals[i]) for i in range(k)]
-        #                 right = [set(vals[j]) for j in range(k+1,l+1)]
-        #                 stagelistrep = left + [v] +  right # For example: [[0,1], [0,1], 0, [0, 1]]
-        #                 st = ct.Stage(stagelistrep)
-
-        #                 stlist += [st]
-        #             print("Staging")
-        #             for st in stlist:
-        #                 print("stage: {}".format(st))
-
-        #             tree.set_stages({l: stlist}) # This is a bit clumsy but shoud work.
-
-        #             score += score_level(tree, l, level_counts, alpha_tot, method)
-        #         print(score)
