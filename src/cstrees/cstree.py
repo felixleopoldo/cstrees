@@ -67,6 +67,7 @@ class CStree(nx.Graph):
             self.labels = labels
         
         self.colors = list(mcolors.cnames.keys())
+        random.shuffle(self.colors)
         self.color_no = 0
         self.stages = {i: [] for i in range(self.p)}
         
@@ -179,7 +180,7 @@ class CStree(nx.Graph):
             if lev == self.p-1:
                 continue
 
-            stage_counts = sc.counts_at_level(self, lev+1, data, order) # lev = node?
+            stage_counts = sc.counts_at_level(self, lev+1, data) # lev = node?
             # printing stage counts 
             for key, value in stage_counts.items():
                 print(str(key), value)
@@ -1624,34 +1625,52 @@ def csilist_to_csi_2(csilist):
 
 
 def all_stagings(p, cards, l, max_cvars=1):
-    assert(max_cvars == 1)
-    
-    if l == -1:
-        yield [Stage([])]
-        return
-    
-    
-    # all possible values for each variable
-    vals = [list(range(cards[l])) for l in range(p)]
-    for k in range(l+1):  # all variables up to l can be context variables
-        # When we restrict to max_cvars = 1, we have two cases:
-        # Either all are in one color or all are in different colors.
-        stlist = []
-        for v in vals[k]:  # Loop through the values of the context variables.
-            left = [set(vals[i]) for i in range(k)]
-            right = [set(vals[j]) for j in range(k+1, l+1)]
-            # For example: [[0,1], [0,1], 0, [0, 1]]
-            stagelistrep = left + [v] + right
-            st = Stage(stagelistrep)
-            stlist += [st]
-        yield stlist
-    
-    # no context variables
-    stagelistrep = [set(v) for v in vals][:l+1]
-    
-    st = Stage(stagelistrep)
-    yield [st]
-    
+    """ Generates an iterator over all stagings of a given level.
+        A staging with 2 stages for a binary CStree at level 2 
+        (numbering levels from 0) could e.g. be: 
+        [Stage([{0, 1}, 0, {0, 1}]), Stage([{0, 1}, 1, {0, 1}])]
+
+    Args:
+        p (int): Number of variables.
+        cards (list): List of cardinalities of the variables.
+        l (int): The level of the stage.
+        max_cvars (int, optional): The maximum number of context variables . Defaults to 1.
+
+    Raises:
+        NotImplementedError: Exception if max_cvars > 1.
+
+    Yields:
+        _type_: Iterator over all stagings of a given level.
+    """
+
+    if max_cvars == 1:
+        if l == -1: # This is an imaginary level -1, it has no stages.
+            yield [Stage([])]
+            return
+                
+        # All possible values for each variable
+        vals = [list(range(cards[l])) for l in range(p)]
+        for k in range(l+1):  # all variables up to l can be context variables
+            # When we restrict to max_cvars = 1, we have two cases:
+            # Either all are in 1 color or all are in 2 different colors.
+            stlist = [] # The staging: list of Stages.
+            for v in vals[k]:  # Loop through the values of the context variables.
+                left = [set(vals[i]) for i in range(k)]
+                right = [set(vals[j]) for j in range(k+1, l+1)]
+                # For example: [{0,1}, {0,1}, 0, {0, 1}]
+                stagelistrep = left + [v] + right
+                st = Stage(stagelistrep)
+                stlist += [st]
+            yield stlist
+        
+        # The staging with no context variables
+        stagelistrep = [set(v) for v in vals][:l+1]
+        
+        st = Stage(stagelistrep)
+        yield [st]
+    else:
+        raise NotImplementedError("max_cvars > 1 not implemented yet")
+        
 def n_stagings(p, cards, l, max_cvars=1):
     stagings = all_stagings(p, cards, l, max_cvars)
     return sum(len(staging) for staging in stagings)
