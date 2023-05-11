@@ -176,14 +176,14 @@ class CStree(nx.Graph):
         # Set stage probabilities
 
         for lev, stages in self.stages.items():            
-            print("Level", lev)
+            #print("Level", lev)
             if lev == self.p-1:
                 continue
 
             stage_counts = sc.counts_at_level(self, lev+1, data) # lev = node?
             # printing stage counts 
-            for key, value in stage_counts.items():
-                print(str(key), value)
+            #for key, value in stage_counts.items():
+            #    print(str(key), value)
             
             for i, stage in enumerate(stages):
                 probs = sc.estimate_parameters(self, stage, stage_counts, method, alpha_tot)
@@ -942,10 +942,8 @@ def csi_relations_to_dags(csi_relations, p, labels=None):
 
         graph = nx.from_numpy_array(adjmat, create_using=nx.DiGraph())
 
-        print("The used indices/levels I guess...")
         # Label from 1 instead of 0
         labs = {}
-        print(inds)
         for i, j in enumerate(inds):
             #labs[i] = j
             labs[i] = labels[j]
@@ -1716,6 +1714,7 @@ def find_optimal_order(data, strategy="max", max_cvars=1, alpha_tot=1, method="B
     # iterate over all permutations
     for perm in list(perms):
         order = list(perm) # dont stage the last variable. What do i mean by this? /Felix
+        order = [labels[i] for i in order] #maybe it should be the indices instead...
         
         #print("scoring order: {}".format(order))
         score = sc.score_order(order, data, strategy="max", max_cvars=max_cvars, alpha_tot=alpha_tot, method=method)
