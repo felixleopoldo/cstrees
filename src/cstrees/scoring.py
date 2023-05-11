@@ -210,8 +210,8 @@ def score_order_at_level(order, l, data, strategy="max", max_cvars=1, alpha_tot=
     for stlist in stagings:
         #print(stlist)
         # print all stges in a stlist
-        for st in stlist:
-            print(st)
+        #for st in stlist:
+        #    print(st)
         
         tree.update_stages({l-1: stlist}) # Need to set the stagings in order to count.
         level_counts = counts_at_level(tree, l, data)

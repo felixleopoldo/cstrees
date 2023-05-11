@@ -1644,11 +1644,15 @@ def all_stagings(p, cards, l, max_cvars=1):
 
         for staging_list in enumerate_stagings(l+1):
             
-            print("staging_list from alex")
-            print(staging_list)
-            #staging = [Stage(s) for s in staging_list]
-            #print(staging)
-            #yield staging
+            staging = []
+            for stage_list in staging_list:
+                # Fix repr bug
+                if isinstance(stage_list, set):
+                    stage_list = [stage_list]
+                
+                stage = Stage(stage_list)
+                staging.append(stage)
+            yield staging
                 
     else:
         raise NotImplementedError("max_cvars > 1 not implemented yet")
