@@ -4,6 +4,7 @@ docs/_build/
 .DS_Store
 .huskyrc.json
 out
+*.png
 log.log
 **/node_modules
 *.pyc

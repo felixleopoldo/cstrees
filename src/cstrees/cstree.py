@@ -1,4 +1,5 @@
-
+import math
+from math import comb
 from random import uniform
 from re import S
 import networkx as nx
@@ -8,16 +9,27 @@ from itertools import chain, combinations
 import itertools
 import matplotlib.cm as cm
 import matplotlib.colors as mcolors
-import random 
+import random
 import pandas as pd
+import logging
+import sys
+import cstrees.scoring as sc
+from itertools import permutations
+
+from cstrees.stage import Stage
+from cstrees.csi_relation import *
+#logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
+logging.basicConfig(stream=sys.stderr, level=logging.ERROR)
+
 
 def plot(graph, layout="dot"):
     agraph = nx.nx_agraph.to_agraph(graph)
     agraph.layout(layout)
     return agraph
 
+
 class CStree(nx.Graph):
-    """ 
+    """
         However, there can be like O(2^p) differnet minimal contexts,
         so maybe its impossible. Then we would need some limit on the number
         of nodes in the minimal contexts. But even if we limit the number of
@@ -35,7 +47,7 @@ class CStree(nx.Graph):
         >>> co = range(1, p+1)
         >>> tree = ct.CStree(co)
         >>> tree.set_cardinalities([None] + [2] * p)
-        >>> tree.add_stages({
+        >>> tree.set_stages({
         >>>     0: [],
         >>>     1: [],
         >>>     2: [{(0, 0), (1, 0)}],  # green
@@ -46,31 +58,45 @@ class CStree(nx.Graph):
 
     """
 
-    def __init__(self, causal_order, data=None, **attr):
+    def __init__(self, cards, labels=None, data=None, **attr):
         nx.Graph.__init__(self, data, **attr)
         self.tree = None
         self.stages = None
-        self.co = causal_order
-        self.p = causal_order.p
-        random.seed(1)
-        self.colors = list(mcolors.cnames.keys())
-        self.color_no = 0
-        random.shuffle(self.colors)
-        
-
-    def set_cardinalities(self, cards):
         self.cards = cards
+        self.p = len(cards)  # causal_order.p
+        if labels is None:
+            self.labels = list(range(self.p))
+        else:
+            self.labels = labels
 
-    def add_stages(self, stages: dict):
+        self.colors = list(mcolors.cnames.keys())
+        random.shuffle(self.colors)
+        self.color_no = 0
+        self.stages = {i: [] for i in range(self.p)}
+
+    def n_colored_stages_at_level(self, l):
+        # n_colored may include singleton stages, on low levels.
+        n_colored = len(self.stages[l])
+
+        # Count the colored size and subtract it from the total number of nodes.
+        # This gives the number of singleton stages.
+        n_singleton = 0
+        size_colored = np.sum([s.size() for s in self.stages[l]])
+
+        return 1
+
+    def update_stages(self, stages: dict):
         """Adds a stage.
 
         Example:
-            
+
         """
-        self.stages = stages
-        
+        #self.stages = stages
+        self.stages.update(stages)
+        self.stages[-1] = [Stage([])]
+
         # Add support for the set format too
-        #self.stage_probs = {key: [None]*len(val)
+        # self.stage_probs = {key: [None]*len(val)
         #                    for key, val in stages.items()}
 
     def get_stages(self, level: int):
@@ -83,79 +109,156 @@ class CStree(nx.Graph):
 
     def get_stage(self, node: tuple):
         """ Get the stages of node.
-
+            TODO: It should probably also give the singteton stage if so.
 
         Args:
             node (int): node.
         """
-        if self.stages is None:
-            return None
-        
-        lev = len(node)
-        
-        
+        assert(self.stages is not None)
+        #print("get_stage of ", node)
+
+        # if len(node) == 0:
+        #    print("empty stage")
+
+        # if self.stages is None:
+        #    return None
+
+        lev = len(node)-1
+
+        #print(self.stages[lev])
+        stage = None
         if lev in self.stages:
             for s in self.stages[lev]:
-                if node in s: 
-                    return s
-        return None
-    
- 
+                # print(s)
+                if node in s:
+                    stage = s
+                    break
+
+        if stage is None:
+            print("No stage found for {}".format(node))
+
+        #print("No stage found for {}".format(node))
+        # return None
+
+        assert(stage is not None)
+        return stage
+
     def to_df(self):
-        
+
         # cardinalities header
-        d = {self.co.order[i]:[c] for i,c in enumerate(self.cards[1:])}
-        df = pd.DataFrame(d, columns=self.co.order)
-        
+        d = {i: [c] for i, c in enumerate(self.cards)}
+        #d = {self.co.order[i]: [c] for i, c in enumerate(self.cards)}
+        #df = pd.DataFrame(d, columns=self.co.order)
+        df = pd.DataFrame(d, columns=self.labels)
+
         for l, stages in self.stages.items():
-            for s in stages:            
-                dftmp = s.to_df(self.co.order)
+            for s in stages:
+                #dftmp = s.to_df(self.co.order)
+                dftmp = s.to_df(self.labels)
                 df = pd.concat([df, dftmp])
 
         return df
-    
+
     def from_df(self, df):
-        
+
         for row in df.iterrows():
             pass
 
-    
-    def set_random_stage_parameters(self):
+    def set_random_stage_parameters(self, alpha=1):
+        # Set stage probabilities
+        for lev, stages in self.stages.items():
+
+            for i, stage in enumerate(stages):
+                probs = np.random.dirichlet([alpha] * self.cards[lev+1])
+                stage.probs = probs
+                stage.color = self.colors[i]
+
+        self.set_tree_probs()
+
+    def estimate_stage_parameters(self, data, method="BDeu", alpha_tot=1):
         # Set stage probabilities
 
-        #cols = ["red", "blue", "green", "purple", "yellow", "grey"]
-        #self.colors = {key: cols[:len(val)]
-        #               for key, val in self.stages.items()}
-
         for lev, stages in self.stages.items():
+            #print("Level", lev)
+            if lev == self.p-1:
+                continue
+
+            stage_counts = sc.counts_at_level(self, lev+1, data)  # lev = node?
+            # printing stage counts
+            # for key, value in stage_counts.items():
+            #    print(str(key), value)
+
             for i, stage in enumerate(stages):
-                probs = np.random.dirichlet([1] * self.cards[lev+1])
+                probs = sc.estimate_parameters(
+                    self, stage, stage_counts, method, alpha_tot)
                 stage.probs = probs
-                stage.color = self.colors[i] #cols[i]
-        
-    
-    def set_random_parameters(self):
+                stage.color = self.colors[i]
+
+        self.set_tree_probs()
+
+    def set_tree_probs(self, alpha=1):
         """ This is dependent on if one has sampled from the tree already.
-            I.e., if a probablity is already set for an edge, it 
+            I.e., if a probablity is already set for an edge, it
             should not be overwritten.
         """
-        
+        # First create the tree.
+        # This has to do with that, if we allow for singleton stages, we need to
+        # make sure it is not too big sort of.
 
-        # Check if the node is part part of a context (stage?) 
+        self.create_tree()
+
+        # Check if the node is part part of a context (stage?)
         # if so we may overwrite probs. Otherwise, generate new ones.
         for node in self.tree.nodes():
             if len(node) == self.p:
                 continue
-            lev = len(node)
+
+            children = sorted(list(self.tree.successors(node)))
+            probs = np.random.dirichlet([alpha] * self.cards[len(node)])
+            # Seems like a stage at level l holds the probtable for the variabel at level l+1.
+            for i, ch in enumerate(children):
+                #print("i ", i, "ch ", ch, "node ", node)
+                stage = self.get_stage(node)
+
+                if stage != None:  # NO singleton stages allowed!
+                    prob = stage.probs[i]
+
+                    #print("edge prob {}".format(prob))
+                    self.tree[node][ch]["cond_prob"] = prob
+                    self.tree[node][ch]["label"] = round(prob, 2)
+                    self.tree[node][ch]["color"] = stage.color
+                    self.tree.nodes[node]["color"] = stage.color
+                else:
+                    #print("Singleton stage")
+                    self.tree[node][ch]["cond_prob"] = probs[i]
+                    self.tree[node][ch]["label"] = round(probs[i], 2)
+
+    def estimate_parameters(self, data, method="BDeu", alpha_tot=1):
+
+        # node is equal to level I think.. we treat the labelling outside.
+        for node in self.tree.nodes():
+            if len(node) == self.p:
+                continue
+
+            stage_counts = sc.counts_at_level(self.tree, node, data)
 
             children = self.tree.successors(node)
-            probs = np.random.dirichlet([1] * self.cards[len(node)+1])
+            #probs = np.random.dirichlet([1] * self.cards[len(node)])
+
+            # estimatest the probabilites for the nodes having this stage.
+            # actually the nodes should have the distribution of the stage but
+            # since can be quite many we assign it to ste stage instead for convenience.
+            probs = sc.estimate_parameters(
+                self, stage, stage_counts, method, alpha_tot)
+
+            # print(list(children))
+            # print(probs)
 
             for i, ch in enumerate(children):
                 stage = self.get_stage(node)
 
                 if stage != None:
-                    prob = stage.probs[i]
+                    prob = stage.probs[i]  # the probs ar already set here..
                     self.tree[node][ch]["cond_prob"] = prob
                     self.tree[node][ch]["label"] = round(prob, 2)
                     self.tree[node][ch]["color"] = stage.color
@@ -173,62 +276,90 @@ class CStree(nx.Graph):
         return None
 
     def create_tree(self):
-        if self.tree is None:            
+        if self.tree is None:
             self.tree = nx.DiGraph()
 
-        ## All the levels of the firs variable
-        tovisit = [(i,) for i in range(self.cards[1])]
+        # All the levels of the firs variable
+        tovisit = [(i,) for i in range(self.cards[0])]
 
         while len(tovisit) != 0:
             # Visit/create node in the tree
             node = tovisit.pop()
-            lev = len(node)
-            fr = node[:lev-1]
+            lev = len(node)-1  # added -1
+            fr = node[:lev]
             to = node
-            if not self.tree.has_edge(fr,to):
-                self.tree.add_edge(fr, to) # check if exists first
-            else:                
+            if not self.tree.has_edge(fr, to):
+                self.tree.add_edge(fr, to)  # check if exists first
+            else:
                 pass
             self.tree.nodes[to]["label"] = to[-1]
             # Add more nodes to visit
-            if lev < self.p:
+            if lev < self.p-1:
                 #np.random.dirichlet([1] * lev)
                 for i in range(self.cards[lev + 1]):
                     tovisit.append(to + (i,))
 
+    def minimal_context_csis(self):
+        """ Returns the minimal contexts.
+        """
+        pass
+
+    # Here is the only place we need labels/orders.
     def to_minimal_context_graphs(self):
         """ This returns a sequence of minimal context graphs (minimal I-maps).
         """
+        logging.debug("getting csirels per level")
+        logging.debug(self.stages)
+        rels = self.csi_relations_per_level()
+        logging.debug("rels")
+        logging.debug(rels)
+        for k, rs in rels.items():
+            for r in rs:
+                logging.debug(r)
+        paired_csis = csis_by_levels_2_by_pairs(rels)
+        logging.debug("###### paired_csis")
+        logging.debug(paired_csis)
 
-        #csi_rels = self.csi_relations()
-        #dags = get_minimal_dag_imaps(csi_rels)
+        logging.debug("\n ######### minl cslisist")
+        minl_csislists = minimal_csis(paired_csis, self.cards[1:])
+        logging.debug(minl_csislists)
 
-        pass
+        logging.debug("\n ############### get minl csis in list format")
+        minl_csis = csi_lists_to_csis_by_level(minl_csislists, self.p)
+        logging.debug(minl_csislists)
+        for key in minl_csislists:
+            # logging.debug(key)
+            for pair, val in key.items():
+                logging.debug("{}: {}".format(pair, val))
+                #logging.debug("{} {}".format(val))
 
-    def likelihood(self, data):
-        pass
+        logging.debug("#### minimal csis")
+        minl_csis_by_context = rels_by_level_2_by_context(minl_csis)
+        logging.debug(minl_csis_by_context)
+        for pair, val in minl_csis_by_context.items():
+            for csi in val:
+                logging.debug(csi)
 
-    def to_csv(self):
-        pass
-    
-    def read_csv(self,filename):
-        pass
-    
+        cdags = csi_relations_to_dags(
+            minl_csis_by_context, self.p, labels=self.labels)
+
+        return cdags
+
     def csi_relations_per_level(self, level="all"):
-        
-        return {l:[s.to_csi() for s in stages] for l, stages in self.stages.items()}
-    
+
+        return {l: [s.to_csi() for s in stages] for l, stages in self.stages.items()}
+
     def csi_relations(self, level="all"):
         """ Returns all the context specific indepencende (CSI) relations.
             These should normally be thinned out using absorption, and then we would extract
             the minmal contexts based on that.
-            
+
             TODO: This should be returned by level.
         """
         csi_rels = {}
         # print(self.stages)
         for key, stage_list in self.stages.items():
-            print("{} {}".format(key, stage_list))
+            #print("{} {}".format(key, stage_list))
             for stage in stage_list:
                 #       print(stage)
                 csi_rel = stage.to_csi()
@@ -242,11 +373,6 @@ class CStree(nx.Graph):
 
         return csi_rels
 
-    def minimal_contexts(self):
-        """ Returns the minimal contexts.
-        """
-        pass
-
     def sample(self, n):
         """Draws n random samples from the CStree.
             Dynamically generates nodes in the underlying tree
@@ -256,25 +382,29 @@ class CStree(nx.Graph):
         Args:
             n (int): number of random samples.
         """
-        
+
         if self.tree is None:
-            self.tree = nx.DiGraph()        
+            print("Creating tree on the fly on sampling.")
+            self.tree = nx.DiGraph()
         xs = []
-        
+
+        xs.append(self.cards)  # cardinalities at the first row
+
         for _ in range(n):
             node = ()
             x = []
             while len(x) < self.p:
                 #print(node, x)
-                # while self.tree.out_degree(node) != 0:
+                # Create tree dynamically.
                 if (node not in self.tree) or len(self.tree.out_edges(node)) == 0:
-                    lev = len(node)
-                    edges = [(node, node + (ind,)) for ind in range(self.cards[lev+1])]
+                    lev = len(node)-1  # changed to -1
+                    edges = [(node, node + (ind,))
+                             for ind in range(self.cards[lev+1])]
                     #print("adding edges {}".format(edges))
                     self.tree.add_edges_from(edges)
 
                     # Sample parameters
-                    
+
                     # We set the parametres at random. But if the node belongs to a
                     # stage we overwrite.
                     probs = np.random.dirichlet([1] * self.cards[lev+1])
@@ -282,41 +412,45 @@ class CStree(nx.Graph):
                     # Check if node is in some stage
                     s = self.get_stage(node)
                     color = ""
-                    if s is not None:                        
-                        probs = s.probs                        
+                    if s is not None:
+                        probs = s.probs
                         if s.color is None:
                             s.color = self.colors[self.color_no]
                             self.color_no += 1
-                            
+
                         color = s.color
-                    
-     
-                    edges = list(self.tree.out_edges(node)) # Hope this gets in the right order
-                    #print(edges)
+
+                    # Hope this gets in the right order
+                    edges = list(self.tree.out_edges(node))
+                    # print(edges)
                     # Set parameters
                     for i, e in enumerate(edges):
+                        # print(i)
                         self.tree[e[0]][e[1]]["cond_prob"] = probs[i]
                         self.tree[e[0]][e[1]]["label"] = round(probs[i], 2)
                         self.tree.nodes[e[1]]["label"] = e[1][-1]
                         self.tree[e[0]][e[1]]["color"] = color
                         self.tree.nodes[e[0]]["color"] = color
- 
+
                 edges = list(self.tree.out_edges(node))
-                #print(self.tree[()][(0,)]["cond_prob"])
+                # print(self.tree[()][(0,)])
                 probabilities = [self.tree[e[0]][e[1]]["cond_prob"]
-                                for e in edges]
-                #print(probabilities)
+                                 for e in edges]
+                # print(probabilities)
                 #elements = [str(e[1]) for e in edges]
-                # ind is the index or the outcome of the sampled variable
+                # ind is the index or the outcome of the set_d variable
                 vals = len(edges)
-                #print(vals)
+                # print(vals)
                 ind = np.random.choice(len(edges), 1, p=probabilities)[0]
-                node = edges[ind][1] # This is a typle like (0,1,1,0)
-                x.append(node[-1]) # Take the last element, 0, above
+                node = edges[ind][1]  # This is a typle like (0,1,1,0)
+                x.append(node[-1])  # Take the last element, 0, above
                 #print("One sample! {}".format(x))
 
             xs.append(x)
-        return np.array(xs)
+
+        df = pd.DataFrame(xs)
+        df.columns = self.labels
+        return df
 
     def pdf(self, x):
         """Density function evaluated at x.
@@ -326,308 +460,17 @@ class CStree(nx.Graph):
         """
 
     def plot(self, fill=False):
-        
-        if fill or (self.tree is None):            
+
+        if fill or (self.tree is None):
             self.create_tree()
-            self.set_random_parameters()
+            # self.set_random_parameters()
 
         return plot(self.tree)
         #agraph = nx.nx_agraph.to_agraph(self.tree)
-        #agraph.layout("dot")
-        #return agraph
+        # agraph.layout("dot")
+        # return agraph
         # agraph.draw(filename)
 
-
-
-class CI_relation:
-    def __init__(self, a, b, sep) -> None:
-        self.a = a
-        self.b = b
-        self.sep = sep
-
-    def __eq__(self, o: object) -> bool:
-        return ((((self.a == o.a) & (self.b == o.b)) |
-                ((self.a == o.b) & (self.b == o.a)))
-                & (self.sep == o.sep))
-
-    def __str__(self) -> str:
-        s1 = ""
-        for i in self.a:
-            s1 += "X{}, ".format(i)
-        s1 = s1[:-2]
-        s2 = ""
-        for i in self.b:
-            s2 += "X{}, ".format(i)
-        s2 = s2[:-2]
-        s3 = ""
-        if sum(self.sep) > 0:
-            for i in self.sep:
-                s3 += "X{}, ".format(i)
-            s3 = s3[:-2]
-            return "{} ⊥ {} | {}".format(s1, s2, s3)
-        return "{} ⊥  {}".format(s1, s2)
-    
-#    def __contains__(self, v):
-#        return (v in self.a) or (v in self.b) or (v in self.sep)
-
-
-class CausalOrder:
-    def __init__(self, order) -> None:
-        self.p = len(order)
-        self.order = order
-        self.order_inv = {j: i for i, j in enumerate(order)}
-
-    def get_level(self, var):
-        return self.order_inv[var]
-
-    def at_level(self, k):
-        return self.order[k]
-
-
-class Stage:
-    def __init__(self, list_repr) -> None:
-        self.level = len(list_repr)
-        self.list_repr = list_repr
-        self.color = None
-
-    def __hash__(self) -> int:
-        return hash(tuple([tuple(i) for i in self.list_resp]))
-
-    def __contains__(self, node):
-
-        for i, val in enumerate(self.list_repr):
-             # Must chec if list
-            if (type(val) is list) and (node[i] not in val):
-                return False
-            if (type(val) is int) and (node[i] != val):                
-                return False
-            
-        return True
-
-    def to_df(self, columns):
-        import pandas as pd
-        
-        d = {}
-        
-        for i in range(len(columns)):
-            if i < len(self.list_repr):
-                if type(self.list_repr[i]) == list:
-                    d[columns[i]] = ["*"]
-                else:
-                    d[columns[i]] = [self.list_repr[i]]
-            else:
-                d[columns[i]] = ["-"]
-                
-                
-        df = pd.DataFrame(d, columns=columns)
-        
-        return df
-
-    def set_random_params(self, cards):
-        self.probs = np.random.dirichlet([1] * cards[self.level]) # Need to fix this
-
-    def from_df(self):
-        pass
-        
-
-    def to_csi(self):
-        sepseta = set()
-        cond_set = set()
-        context = {}
-        sepsetb = {self.level+1}
-
-        for i, el in enumerate(self.list_repr):
-            if type(el) is list:
-                sepseta.add(i+1)
-            else:
-                context[i+1] = el
-
-        ci = CI_relation(sepseta, sepsetb, cond_set)
-        context = Context(context)
-        return CSI_relation(ci, context)
-
-    def intersects(self, stage):
-        """ Checks if tha paths of two stages intersect.
-            Since then they cannot be in the same CStree.
-        """
-
-        # Suffcient with some level with no overlap to return False.
-        for i, lev in enumerate(stage.list_repr):
-            s_lev = self.list_repr[i]
-            # Either same number of both sets. It is always the same sets,
-            # the whole outcome space.
-            if (lev == s_lev):
-                continue
-            if type(s_lev) is list:
-                if (lev in s_lev):
-                    continue
-            if type(lev) is list:
-                if (s_lev in lev):
-                    continue
-            return False
-        return True
-
-    def to_cstree_paths(self):
-        tmp = [[i] if type(i) is int else i for i in self.list_repr]
-        return list(itertools.product(*tmp))
-
-    def __str__(self) -> str:
-        return str(self.to_csi()) + "; probs: " + str(self.probs)
-        #return str(self.list_repr) + "; probs: " + str(self.probs)
-
-
-class Context:
-    def __init__(self, context: dict) -> None:
-        self.context = context
-
-    def __str__(self) -> str:
-        context_str = ""
-        for key, val in self.context.items():
-            context_str += "X{}={}, ".format(key, val)
-        if context_str != "":
-            context_str = context_str[:-2]   
-        if context_str == "":
-            context_str = "None"
-        return context_str
-
-    def __contains__(self, key):
-
-        return key in self.context
-
-    def __getitem__(self, key):
-        return self.context[key]
-
-    def __eq__(self, __o: object) -> bool:
-        return hash(__o) == hash(self)
-
-    def __hash__(self) -> int:
-        m = 1  # special case when context is emtpy
-        if len(self.context) == 0:
-            return hash(())
-
-        m = max(self.context)
-        tmp = [None] * (m+1)
-        for i in range(m+1):
-            if i in self.context:
-                tmp[i] = self.context[i]
-
-        return hash(tuple(tmp))
-
-
-class CSI_relation:
-    """This is a context specific relation. Itshould be implemented
-       as a context and a CI relation.
-    """
-
-    def __init__(self, ci: CI_relation, context: Context) -> None:
-        self.ci = ci
-        self.context = context
-
-    def to_stages(self):
-        """Returns a list of stages defining the CSI relation.
-        """
-        stages = []
-        pass
-
-    def as_list(self):
-        # Get the level as the max element-1
-        # The Nones not at index 0 encode the CI variables.
-        def mymax(s):
-            
-            if (type(s) is set) and (len(s) > 0):
-                return max(s)
-            else:
-                return 0
-            
-        #print(print(self.ci.sep))
-        levels = max(mymax(self.ci.a), mymax(self.ci.b), mymax(self.ci.sep), mymax(self.context.context)) + 1
-        
-        cards = [2] * levels
-        csilist = [None] * levels
-        for l in range(levels):
-            if (l in self.ci.a) or (l in self.ci.b):
-                csilist[l] = None
-            elif l in self.ci.sep:
-                csilist[l] = set(range(cards[l]))
-            elif l in self.context:
-                csilist[l] = {self.context[l]}
-
-        return csilist            
-
-    def from_list(self):
-        pass
-        
-    def to_cstree_paths(self, cards: list, order: list):
-        """Genreate the set(s) of path defining the CSI relations.
-        note that it can be defined by several stages (set of paths).
-
-        Args:
-            cards (list): _description_
-            order (list): _description_
-
-        Returns:
-            _type_: _description_
-        """
-
-        level = len(self.ci.a) + len(self.context.context) + 1
-        vals = []*level
-        for i in self.ci.a:
-            vals[i] = range(cards[i])
-        for i in self.ci.b:
-            vals[i] = range(cards[i])
-        for i, j in self.context.context.items():
-            vals[i] = j
-
-        return itertools.product(*vals)
-
-
-    def __add__(self, o):
-        """Adding two objects by adding their set of paths and create a new
-            CSI_relation.
-
-        Args:
-            o (CSI_relation): A CSI relation.
-
-        Returns:
-            CSI_relation: A new CSI relation, created by joining the paths in both.
-        """
-        return CSI_relation(self.to_cstree_paths() + o.to_cstree_paths())
-
-    def __hash__(self) -> int:
-        """TODO: Check that the order is correct, so tht not 1 CSI can
-        be represented in 2 ways.
-
-        Returns:
-            int: hash of the string representation.
-        """
-        return hash(str(self))
-
-    def __str__(self) -> str:
-        if len(self.context.context) == 0:
-            return "{}".format(self.ci)
-        return "{}, {}".format(self.ci, self.context)
-
-
-def sample_random_stage(cards: list, level: int) -> Stage:
-    # The las level cannot contain stages
-    
-    #if level >= len(cards):
-    #    return None
-    vals = [None]*len(cards[:level])
-    # Just to make sure not all variables are context variables.
-    while not any(map(lambda x: type(x) is list, vals)):
-        for i, j in enumerate(cards[:level]):
-            b = np.random.randint(2)
-            if b == 0:
-                vals[i] = np.random.randint(cards[i])
-            if b == 1:
-                vals[i] = list(range(cards[i]))
-
-    s = Stage(vals)
-    
-    
-    #s.probs = np.random.dirichlet([1] * cards[level]) # Need to fix this
-    return s
 
 def comp_bit_strings(a):
     """Takes a set of bit strings,representaing outcome paths in a CStree. and returns
@@ -657,78 +500,19 @@ def comp_bit_strings(a):
     return levels
 
 
-def csi_relations_to_dags(csi_relations, causal_order):
-
-    p = causal_order.p
-    graphs = {context: None for context in csi_relations}
-    for context, csis in csi_relations.items():
-        #print("\nContext: {}".format(context))
-        adjmat = np.zeros(p*p).reshape(p, p)
-
-        for j in range(1, p+1):
-            for i in range(1, j):
-                # This will anyway be disregarded in the matrix slice?
-                if (i in context) | (j in context):
-                    continue
-                # create temp CI relation to compare with
-                a = {i}
-                b = {j}
-                s = {k for k in range(1, j) if (
-                    k != i) and (k not in context)}
-                ci_tmp = CI_relation(a, b, s)
-
-                #print("checking ci: {}".format(ci_tmp))
-                # Check is the ci is in some of the cis of the context.
-                # 1. i<j
-                # 2. no edge if Xi _|_ Xj | Pa1:j \ i
-
-                cis = []
-                for csi in csis:
-                    cis += [csi.ci]
-                    cis += decomposition(csi.ci)
-                    cis += weak_union(csi.ci)
-
-                if ci_tmp in cis:
-                    #print("No edprint(s1)ge ({},{})".format(i,j))
-                    adjmat[i-1, j-1] = 0
-                else:
-                    adjmat[i-1, j-1] = 1
-
-        context_els = {i-1 for i in context.context.keys()}
-        allels = np.array(causal_order.order)-1
-        inds = sorted(set(allels) - context_els)
-        adjmat = adjmat[np.ix_(inds, inds)]
-
-        graph = nx.from_numpy_array(adjmat, create_using=nx.DiGraph())
-        labels = {}
-        for i, j in enumerate(inds):
-            labels[i] = j+1
-        graph = nx.relabel_nodes(graph, labels)
-        graphs[context] = graph
-
-    return graphs
-
-
-def minimal_context(csi_relations: set) -> set:
-    """_summary_
-
-    Args:
-        csi_relations (set): _description_
-
-    Returns:
-        set: _description_
-    """
-
-
-def get_minimal_dag_imaps(causal_order, csi_relations):
-
-    pass
-
-
-def sample_cstree(p: int) -> CStree:
+def sample_cstree(cards: list, max_cvars: int, prob_cvar: int, prop_nonsingleton: float) -> CStree:
     """
        Sample a random CStree with given cardinalities.
-       Since the tree is sampled the order shouldn't matter?
+
+       K = cardinality at level.
+       Maximal number of stages at a level is K^level.
+       Assume prob_contextvars = 1.
+       max_contextvars = level => #stages = K^level.
+       max_contextvars = 1 => #stages = K^1 * (level choose 1). The size (number of leafs in the tree) if each stage will be K^(l-1).
+       max_contextvars = 2 => #stages = K^2 * (level choose 2). The size if each stage will be K^(l-2).
+       ...       
+       These can overlap! Without overlaps it is a bit different i guess. Think about the leafs instead. there is room for max K^(l+1) stages (including singletons).
+       Maybe count the proportion of singletons left! Keeping trac of the rest of the space!! This is the way to do it.
 
     Args:
         cardinalities (list): cardinalities of the variables.
@@ -736,62 +520,123 @@ def sample_cstree(p: int) -> CStree:
     Returns:
         CStree: a CStree.
     """
-    co = CausalOrder(range(1, p+1))
-    ct = CStree(co)
-    cards = [2] * p
-    ct.set_cardinalities([None] + cards)
+    p = len(cards)
+    ct = CStree(cards)
 
     stages = {}
-    for key, val in enumerate(cards): # not the last level
+    for level, val in enumerate(cards[:-1]):  # not the last level
 
-        stages[key] = []
-        for i in range(key):  # Number of trees incrases as O(p*level)
-            if np.random.randint(2): 
-                s = sample_random_stage(cards, level=key)
-                #s.set_random_params(cards)
+        # fix max_context_vars if higher than level
+        #print("level {}".format(level))
+        stage_space = [Stage([set(range(cards[l])) for l in cards[:level+1]])]
 
-                if all(map(lambda x: x.intersects(s) is False, stages[key])):
-                    stages[key].append(s)
+        full_stage_space_size = stage_space[0].size()
 
-    ct.add_stages(stages)
-    
-    #ct.set_random_stage_parameters()
-    
+        # proportion_left = 1.0 # stage_space.size() / full_state_space_size
+        singleton_space_size = full_stage_space_size
+        # print(proportion_left)
+
+        mc = max_cvars
+        if level < mc:
+            mc = level + 1  # should allow for "singleton" stages at level 0 as this
+            # this correponds to the half of the space.
+        # in general, when the level is the liming factor, the number of stages
+        # should be as many as possible. Hence, mc = level +1
+        # It should not make abig difference. But in this way, we actually show
+        # all the stages expicitly, even when saving to file, without risking
+        # to blow up the space.
+
+        #print("level: {}, mc: {}".format(level, mc))
+
+        # BUG: for binary.. take max of mc elements in cards.
+        minimal_stage_size = 2**(level+1-mc)
+
+        #print("full_stage_space_size: {}".format(full_stage_space_size))
+        #print("level: {}, mc: {}, minimal_stage_size: {}".format(level, mc, minimal_stage_size))
+
+        #minimal_stage_prop = minimal_stage_size / full_stage_space_size
+        # The special case when the granularity is to coarse.
+        # Randomly add anyway?
+        # Setting the upper boudn likje this may generalize. However, the stage should not
+        # always be accepted..
+        #prop_nonsingleton = max(prop_nonsingleton, minimal_stage_size / full_state_space_size)
+
+        # Allowing only non-singleton stages, this should never happen.
+        if prop_nonsingleton < minimal_stage_size / full_stage_space_size:
+            logging.info("The size (proportion {}) of a minimal is larger than {}.".format(
+                minimal_stage_size / full_stage_space_size, prop_nonsingleton))
+            b = np.random.multinomial(
+                1, [prob_cvar, 1-prob_cvar], size=1)[0][0]
+            stages[level] = []
+
+            if b == 0:
+                print(b)
+                # it should be the whole space to begin with
+                stage_restr = stage_space.pop(0)
+                new_stage = sample_stage_restr_by_stage(
+                    stage_restr, mc, 1.0, cards)
+                stages[level].append(new_stage)
+            continue  # cant add anything anyway so just go to the next level.
+
+        # print(mc)
+        #max_n_stages = comb(level+1, mc) * (cards[level]**mc)
+        # logging.debug("Max # stages with {} context variables: {}".format(mc, max_n_stages))
+        stages[level] = []
+        #m = math.ceil(max_n_stages * frac_stages_per_level)
+        #logging.debug("Trying to add max of {} stages".format(m))
+
+        while (1 - (singleton_space_size / full_stage_space_size)) < prop_nonsingleton:
+            colored_size_old = full_stage_space_size - singleton_space_size
+            # Choose randomly a stage space
+            space_int = np.random.randint(len(stage_space))
+            stage_restr = stage_space.pop(space_int)
+            #print("stage restr: {}".format(stage_restr))
+            #print(mc, prob_cvar)
+            new_stage = sample_stage_restr_by_stage(
+                stage_restr, mc, prob_cvar, cards)
+            #print("proposed new stage: {}".format(new_stage))
+
+            new_space = stage_restr - new_stage  # this is a list of substages after removal
+            stage_space += new_space  # adds a list of stages
+            # subtract the size of the sampled stage
+            singleton_space_size -= new_stage.size()
+            # Problem with level 0 since then the whole level is always filled.
+            new_stage_size = new_stage.size()
+            colored_prop = 1 - singleton_space_size / full_stage_space_size
+            # Check it its over full after adding the new space
+            if colored_prop > prop_nonsingleton:
+                # Check if it would be possible to add the smallest stage.
+                # Restore the old space and maybe try again
+
+                if (minimal_stage_size + colored_size_old)/full_stage_space_size <= prop_nonsingleton:
+                    stage_space = stage_space[:-len(new_space)]
+                    stage_space += [stage_restr]
+                    singleton_space_size += new_stage.size()
+                else:
+                    # This is when it is impossible to push in a new stages since all are be too big.
+                    break
+            else:
+                stages[level].append(new_stage)
+            #print("proportion left")
+            #print(space_left / full_state_space_size)
+
+    stages[-1] = [Stage([])]
+    ct.update_stages(stages)
+    # ct.set_random_stage_parameters()
+
     return ct
 
 
-def generate_random_clusters():
-    """Generate random stages by merging existing ones.
-       Stages can may have only one node.
-    """
-    # sample two nodes. ()
-    # check their stages.
-    # (since a stage is sample with prob psoportional to the #nodes in it
-    #  this is like sampling a stage, but we dont have to enumerate the stages).
-    # merge their stages.
-    # Repeat n times.
-
-    nodes_to_stage = {}
-
-    # uniform sampling
-    probs = [[1.0/card]*card for card in cardinalities]
-
-
-def powerset(iterable):
-    "powerset([1,2,3]) --> () (1,) (2,) (3,) (1,2) (1,3) (2,3) (1,2,3)"
-    s = list(iterable)
-    return chain.from_iterable(combinations(s, r) for r in range(len(s)+1))
 
 def df_to_cstree(df):
-    
-    co = CausalOrder([int(x[0]) for x in df.columns])
-    
-    cards = [int(x[1]) for x in df.columns]
-    
-    stages = {i:[] for i in range(len(cards)+1)}
-    cstree = CStree(co)
-    cstree.set_cardinalities([None] + cards)
-    
+    cards = cards = df.iloc[0].values  # [int(x[1]) for x in df.columns]
+
+    stages = {i: [] for i in range(len(cards)+1)}
+    stages[-1] = [Stage([])]
+    cstree = CStree(cards)
+    #cstree.set_cardinalities([None] + cards)
+    cstree.labels = df.columns
+
     for row in df.iterrows():
         stage_list = []
 
@@ -804,13 +649,11 @@ def df_to_cstree(df):
                 break
             else:
                 stage_list.append(int(val))
-    
-    cstree.add_stages(stages)
-    cstree.co = co
 
-    #cstree.set_random_stage_parameters()
-    
+    cstree.update_stages(stages)
+
     return cstree
+
 
 def multivariate_multinomial(probs):
     x = []
@@ -822,174 +665,176 @@ def multivariate_multinomial(probs):
     # make sure the last entry is the same
 
 
-def decomposition(ci: CI_relation):
+def all_stagings(p, cards, l, max_cvars=1):
+    """ Generates an iterator over all stagings of a given level.
+        A staging with 2 stages for a binary CStree at level 2 
+        (numbering levels from 0) could e.g. be: 
+        [Stage([{0, 1}, 0, {0, 1}]), Stage([{0, 1}, 1, {0, 1}])]
 
-    cilist = []
-    for x in itertools.product(ci.a, ci.b):
-        new_ci = CI_relation({x[0]}, {x[1]}, ci.sep)
-        if new_ci == ci:
-            continue
-        cilist.append(new_ci)
-
-    return cilist
-
-
-def weak_union(ci: CI_relation):
-
-    cis = []
-    for d in powerset(ci.b):
-        d = set(d)
-        if (len(d) == 0) | (d == ci.b):
-            continue
-
-        BuD = ci.b
-        cis.append(CI_relation(ci.a, BuD-d, ci.sep | d))
-
-    for d in powerset(ci.a):
-        d = set(d)
-        if (len(d) == 0) | (d == ci.a):
-            continue
-
-        d = set(d)
-        AuD = ci.a
-        cis.append(CI_relation(AuD - d, ci.b, ci.sep | d))
-
-    return cis
-
-def pairwise_cis(ci: CI_relation):
-    """ Using weak union just to get pairwise indep relations.
-
-        X_a _|_ X_b | X_d 
     Args:
-        ci (CI_relation): CI relation
+        p (int): Number of variables.
+        cards (list): List of cardinalities of the variables.
+        l (int): The level of the stage.
+        max_cvars (int, optional): The maximum number of context variables . Defaults to 1.
+
+    Raises:
+        NotImplementedError: Exception if max_cvars > 1.
+
+    Yields:
+        _type_: Iterator over all stagings of a given level.
     """
-    cis = []
-    A = ci.a
-    B = ci.b # This will probably just contain one element.
-    for x in itertools.product(A, B):
-        rest = (A - {x[0]}) | (B - {x[1]})
-        cis.append(CI_relation({x[0]}, {x[1]}, ci.sep | rest))
-    return cis
 
+    if max_cvars == 1:
+        if l == -1:  # This is an imaginary level -1, it has no stages.
+            yield [Stage([])]
+            return
 
-def pairwise_csis(csi: CSI_relation):
-    context = csi.context
-    ci_pairs = pairwise_cis(csi.ci)
-    csis = []
-    for ci in ci_pairs:
-        csi = CSI_relation(ci, context=context)
-        csis.append(csi)
-    return csis
+        # All possible values for each variable
+        vals = [list(range(cards[l])) for l in range(p)]
+        for k in range(l+1):  # all variables up to l can be context variables
+            # When we restrict to max_cvars = 1, we have two cases:
+            # Either all are in 1 color or all are in 2 different colors.
+            stlist = []  # The staging: list of Stages.
+            # Loop through the values of the context variables.
+            for v in vals[k]:
+                left = [set(vals[i]) for i in range(k)]
+                right = [set(vals[j]) for j in range(k+1, l+1)]
+                # For example: [{0,1}, {0,1}, 0, {0, 1}]
+                stagelistrep = left + [v] + right
+                st = Stage(stagelistrep)
+                stlist += [st]
+            yield stlist
+
+        # The staging with no context variables
+        stagelistrep = [set(v) for v in vals][:l+1]
+
+        st = Stage(stagelistrep)
+        yield [st]
+    elif max_cvars == 2:
+        from cstrees.double_cvar_stagings import enumerate_stagings
+        
+
+        for staging_list in enumerate_stagings(l+1):
             
-def get_minimal_csis(csi_list):
-    """
-        1. Group by pairwise relations of same form Xi _|_ Xj | something.
-        2. Find mergeable CSIs by trying to pair everything with everything.
-           To do so, use the list representation of CSIs and merge such. 
-                      
+            staging = []
+            for stage_list in staging_list:
+                # Fix repr bug
+                if isinstance(stage_list, set):
+                    stage_list = [stage_list]
+                
+                stage = Stage(stage_list)
+                staging.append(stage)
+            yield staging
+                
+    else:
+        raise NotImplementedError("max_cvars > 1 not implemented yet")
 
-    Args:
-        csis (_type_): _description_
-    """
-    csis = csi_list.copy()
-    abs_list = []
-    levels = [2, 2, 2]
-    cards = [2, 2, 2]
-    # Since not all variables have the same cardinality.
-    
-    for l in levels:
-        context_list = [[]] * cards[l]
-        # Create card[l] tuples
-        for val in range(cards):            
-            for csi in csis:
-                if l in csi.context and csi.context[l] == val:
-                    context_list[val].append(csi)
-        # group by context values
-        # combine and see if mergeable
-        # Check if these are absorbable
-        
-        for csi_tuple in itertools.product(*context_list):
-            absorbable_csis(csi_tuple, level=l)
-           
-    for i, csi1 in enumerate(csis[:-1]):
-        for j, csi2 in csis[i+1:]:
-            # is_absorbable(csi1, csi2)
-            # Check if absorbable, i.e. has intersecting contexts/conditioning set
-            # Absorb
-            # csi_abs = absorb(csi1,csi2)
-            pass
-            
-    return
 
-def absorbable_csis(csis, level):
-    """Checks if the csis can be absorbed. I think mixed is better word, since it doesnt
-        necessarily dissappear after this process. 
-        
-        A CSI is minimal if it is not a subset of (cant be absorbed by) an existing CSI.
-        
-        Note that minimal CSI may be mixed into other minimal CSIs. 
-        
-
-    Args:
-        csis (list): list of csis that may be absorbed.
+def n_stagings(p, cards, l, max_cvars=1):
+    """ Returns the number of stagings at a given level.
+        p: number of variables
+        cards: list of cardinalities of the variables
+        l: level
+        cvars: number of context variables
     """
     
-    # 1. Check if there is some context variable where all the csis has differnt values.
-    # If 1. is true: 
-    #   1.1 Check if the csis has nonemtpy intersection for the rest of the cond/cont variables.
-    pass
-
-def absorb_csis(csis, exclude=None):
-    """Return the intersection of the csis, used for absorbing.
+    stagings = all_stagings(p, cards, l, max_cvars)
+    return sum(len(staging) for staging in stagings)
 
 
-    Args:
-        csi (CSI_relation): A CSI relation.
+def optimal_staging_at_level(order, cards, data, l, max_cvars=1, alpha_tot=None, method="BDeu"):
+    p = len(order)
+    #co = CausalOrder(cards)
+    tree = CStree(cards)
+    tree.labels = order
+    # tree.set_cardinalities(cards)
 
-    Returns:
-        CSI_relation: A new CSI relation.
+    stagings = all_stagings(p, cards, l, max_cvars)  # at level l
+    max_staging = None
+    max_staging_score = -np.inf
+    #logging.debug("level: {}".format(l))
+
+    for stlist in stagings:
+        #logging.debug("scoring staging: {}".format([str(ss) for ss in stlist]))
+        tree.update_stages({l: stlist})
+        # This needs the stages to be set at the line above.
+        level_counts = sc.counts_at_level(tree, l+1, data)
+        #logging.debug("all counts in the staging")
+        # for k, v in level_counts.items():
+        #    logging.debug("{}: {}".format(k, v))
+        score = sc.score_level(tree, l+1, level_counts, alpha_tot, method)
+        #logging.debug("score: {}".format(score))
+        if score > max_staging_score:
+            #logging.debug("{} is current max".format(score))
+            max_staging_score = score
+            max_staging = stlist
+
+    return max_staging, max_staging_score
+
+
+def optimal_cstree(order, data, max_cvars=1, alpha_tot=1.0, method="BDeu"):
+
+    # Order should use the same labels as data?
+    # Order is only intresting when data is involved. Then its the order of the data columns
+    # Otherwise we only talk about levels.
+
+    # BUG?: Maybe these have to be adapted to the order.
+    cards = data.iloc[0].values
+    p = len(order)
+
+    stages = {}
+    stages[-1] = [Stage([])]
+    for level in range(-1, p-1):  # dont stage the last level
+        max_staging, max_staging_score = optimal_staging_at_level(
+            order, cards, data, level, max_cvars, alpha_tot, method)
+        stages[level] = max_staging
+        print("max staging: {}".format([str(s) for s in max_staging]))
+
+    # Create CStree
+    tree = CStree(cards)
+    tree.labels = order
+    tree.update_stages(stages)
+    # maybe set level labels here?
+    return tree
+
+
+def find_optimal_order(data, strategy="max", max_cvars=1, alpha_tot=1, method="BDeu"):
+    """ Find the optimal causal order for the data.
     """
-    
-    #Maybe just tur into list repre, and take interseaction 
-    # elementwise is easier.
-    
-    
-    csi_lists = [csi.as_list() for csi in csis]
-    
-    # Go through each level/variable see which stages can be merged.
-    # To do so, look only at the ones with a single value and partition 
-    # based on the different values. Then try all combinations from each partion
-    # to see if they can be absorbed.
-    
-    for i in range(p+1):
-        partitions = [[]]*cards[i] # Put the lists here
-        
-        for csi_list in csi_lists:
-            for val in cards[i]:
-                if len(csi_list[i]) == 1:
-                    pass
-    
-    for csi in csis:
-        print(csi)
-    cards = [2,2,2,2,2]
-    levels = [1,2,3,4,5]
-    p = len(cards)
-    # need to, for each csi, store the value/values at each level
-    # to get the nonempty intersections at each position.
-    ## UPDATE: Its easies to convert to lists first! So the below
-    # is probably a bit messy.
-    vals = [[set()] * len(csis)] * p
-    for l in levels:
-        if l in exclude:
-            continue    
-        for i, csi in enumerate(csis):
-            # check if l is a cond variable
-            if l in csi.ci.sep:
-                vals[l] = set(range(cards[l]))
-            # check if l is a context variable and take its value
-            elif l in csi.context:
-                vals[l] = {csi.context[l]}               
-            print(vals)
-        intersection = set.intersection(*vals)
-        
-    return None
+
+    p = data.shape[1]
+    perms = permutations(list(range(p)))
+    labels = data.columns.values
+    cards = data.iloc[0].values
+    optimal_order = None
+    max_score = -np.inf
+
+    # iterate over all permutations
+    for perm in list(perms):
+        # dont stage the last variable. What do i mean by this? /Felix
+        order = list(perm)
+        # maybe it should be the indices instead...
+        order = [labels[i] for i in order]
+
+        #print("scoring order: {}".format(order))
+        score = sc.score_order(order, data, strategy="max",
+                               max_cvars=max_cvars, alpha_tot=alpha_tot, method=method)
+        print("order: {}, score: {}".format(order, score))
+
+        # if score == max_score:
+        #    optimal_orders.append(order)
+        if score > max_score:
+            max_score = score
+            optimal_orders = order
+
+    return optimal_orders, max_score
+
+
+def find_optimal_cstree(data, max_cvars=1, alpha_tot=1, method="BDeu"):
+    opt_order = find_optimal_order(
+        data, max_cvars=max_cvars, alpha_tot=alpha_tot, method=method)
+    print("optimal order: {}".format(opt_order))
+
+    optimal_staging = optimal_cstree(
+        opt_order, data, max_cvars=max_cvars, alpha_tot=alpha_tot, method=method)
+    print("optimal staging: {}".format(optimal_staging))
