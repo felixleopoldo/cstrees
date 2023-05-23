@@ -12,7 +12,11 @@ class Stage:
     def __init__(self, list_repr, color=None) -> None:
         self.level = len(list_repr)-1
         self.list_repr = list_repr
-        self.color = color
+        # Check if singleton, if so set color black
+        if all([isinstance(i, int) for i in list_repr]):
+            self.color = "black"
+        else:
+            self.color = color
         self.csi = self.to_csi()
         self.probs = None
 
@@ -170,7 +174,7 @@ class Stage:
     def __str__(self) -> str:
         # return str(self.to_csi()) + "; probs: " + str(self.probs)
         if self.probs is not None:
-            return str(self.list_repr) + "; probs: " + str(self.probs)
+            return str(self.list_repr) + "; probs: " + str(self.probs)+ "; color: " + str(self.color)
         #return str(self.list_repr) + "; probs: " + str(self.probs)
         return str(self.list_repr)
 

@@ -7,7 +7,7 @@ Subpackages
 .. toctree::
    :maxdepth: 4
 
-   cstrees.tests
+..   cstrees.tests
 
 Submodules
 ----------
@@ -16,6 +16,9 @@ Submodules
    :maxdepth: 4
 
    cstrees.cstree
+   cstrees.learning
+   cstrees.csi_relation
+   cstrees.scoring
 
 Module contents
 ---------------

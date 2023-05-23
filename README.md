@@ -159,8 +159,7 @@ This example crates the CStree from Figure 1 in (Duarte & Solus, 2022).
 >>> # CStree from Figure 1 in (Duarte & Solus, 2022)
 >>> np.random.seed(1)
 >>> p = 4
->>> co = range(1, p+1)
->>> tree = ct.CStree(co)
+>>> tree = ct.CStree([2]*p)
 >>> tree.update_stages({
 >>>    0: [],
 >>>    1: [ct.Stage([[0, 1], 0])],    # Green
@@ -168,8 +167,7 @@ This example crates the CStree from Figure 1 in (Duarte & Solus, 2022).
 >>>        ct.Stage([0, [0, 1], 1]),  # Orange
 >>>        ct.Stage([1, [0, 1], 0])]  # Red
 >>> })
->>> tree.create_tree()
->>> tree.set_random_parameters()
+>>> tree.set_random_stage_parameters()
 >>> tree.plot()
 >>> csi_rels = tree.csi_relations()
 >>> for key, val in csi_rels.items():

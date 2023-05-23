@@ -1,5 +1,5 @@
 import itertools
-import cstrees.cstree as ct
+
 from scipy.special import loggamma
 import numpy as np
 import cstrees.learning as learn
@@ -128,7 +128,7 @@ def estimate_parameters(t, stage, stage_counts, method, alpha_tot):
             probs[i] = (alpha_obs + stage_counts[stage][i]) / (alpha_stage + stage_counts_total)
     return probs
 
-def score(t: ct.CStree, data: list, alpha_tot=1.0, method="BDeu"):
+def score(t, data: list, alpha_tot=1.0, method="BDeu"):
     """Score a CStree.
 
     Args:
@@ -188,6 +188,7 @@ def score_order_at_level(order, l, data, strategy="max", max_cvars=1, alpha_tot=
     Returns:
         _type_: _description_
     """
+    import cstrees.cstree as ct
     if max_cvars > 2:
         print("Only max_cvars < 3 implemented")
         return None

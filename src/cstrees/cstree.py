@@ -68,9 +68,10 @@ class CStree(nx.Graph):
             self.labels = list(range(self.p))
         else:
             self.labels = labels
-
-        self.colors = list(mcolors.cnames.keys())
-        random.shuffle(self.colors)
+      
+        #self.colors = list(set(mcolors.cnames.keys()))
+        self.colors = ['blueviolet', 'orange', 'navy', 'rebeccapurple', 'darkseagreen', 'darkslategray', 'lightslategray', 'aquamarine', 'lightgoldenrodyellow', 'cornsilk', 'azure', 'chocolate', 'red', 'darkolivegreen', 'chartreuse', 'turquoise', 'olive', 'crimson', 'goldenrod', 'orchid', 'firebrick', 'lawngreen', 'deeppink', 'wheat', 'teal', 'mediumseagreen', 'peru', 'salmon', 'palegreen', 'navajowhite', 'yellowgreen', 'mediumaquamarine', 'darkcyan', 'dodgerblue', 'brown', 'powderblue', 'mistyrose', 'violet', 'darkslategrey', 'midnightblue', 'aliceblue', 'dimgrey', 'palegoldenrod', 'black', 'darkgrey', 'olivedrab', 'linen', 'lightblue', 'thistle', 'greenyellow', 'indianred', 'khaki', 'lightslategrey', 'slateblue', 'purple', 'deepskyblue', 'magenta', 'yellow', 'ivory', 'darkorchid', 'mediumpurple', 'snow', 'dimgray', 'palevioletred', 'darkslateblue', 'sandybrown', 'lightgray', 'lemonchiffon', 'gray', 'silver', 'aqua', 'tomato', 'lightyellow', 'seagreen', 'darkmagenta', 'beige', 'cornflowerblue', 'peachpuff', 'ghostwhite', 'cyan', 'lightcoral', 'hotpink', 'lightpink', 'lightskyblue', 'slategrey', 'tan', 'oldlace', 'steelblue', 'springgreen', 'fuchsia', 'lime', 'papayawhip', 'mediumblue', 'mediumspringgreen', 'darkorange', 'lightgreen', 'blue', 'slategray', 'white', 'saddlebrown', 'mediumturquoise', 'paleturquoise', 'darkblue', 'plum', 'lightseagreen', 'lightgrey', 'blanchedalmond', 'lavenderblush', 'darkkhaki', 'gainsboro', 'lightsalmon', 'darkturquoise', 'moccasin', 'darkgoldenrod', 'mediumorchid', 'honeydew', 'mediumslateblue', 'maroon', 'forestgreen', 'darkgray', 'floralwhite', 'darkgreen', 'lightcyan', 'darksalmon', 'pink', 'royalblue', 'sienna', 'green', 'orangered', 'bisque', 'antiquewhite', 'rosybrown', 'whitesmoke', 'darkred', 'burlywood', 'skyblue', 'mediumvioletred', 'mintcream', 'limegreen', 'lightsteelblue', 'grey', 'coral', 'indigo', 'gold', 'cadetblue']
+        #random.shuffle(self.colors)
         self.color_no = 0
         self.stages = {i: [] for i in range(self.p)}
 
@@ -149,24 +150,14 @@ class CStree(nx.Graph):
 
         return df
 
-    def from_df(self, df):
-
-        for row in df.iterrows():
-            pass
-
     def set_random_stage_parameters(self, alpha=1):
         # Set stage probabilities
         for lev, stages in self.stages.items():
-
             for i, stage in enumerate(stages):
-                probs = np.random.dirichlet([alpha] * self.cards[lev+1])
-                #print(stage)
-                #print(probs)
+                probs = np.random.dirichlet([alpha] * self.cards[lev+1])                
                 stage.probs = probs
                 if stage.color is None:
                     stage.color = self.colors[i] # Set color from stage if possible
-                else:
-                    self.colors[i] = stage.color
                 
         self.set_tree_probs()
 
@@ -184,10 +175,12 @@ class CStree(nx.Graph):
             #    print(str(key), value)
 
             for i, stage in enumerate(stages):
+                print("Stage:   ", stage)
                 probs = sc.estimate_parameters(
                     self, stage, stage_counts, method, alpha_tot)
                 stage.probs = probs
-                stage.color = self.colors[i]
+                # The color should probably already be set 
+                #stage.color = self.colors[i] 
 
         self.set_tree_probs()
 
@@ -229,35 +222,6 @@ class CStree(nx.Graph):
                     self.tree[node][ch]["cond_prob"] = probs[i]
                     self.tree[node][ch]["label"] = round(probs[i], 2)
 
-    def estimate_parameters(self, data, method="BDeu", alpha_tot=1):
-
-        # node is equal to level I think.. we treat the labelling outside.
-        for node in self.tree.nodes():
-            if len(node) == self.p:
-                continue
-
-            stage_counts = sc.counts_at_level(self.tree, node, data)
-
-            children = self.tree.successors(node)
-
-            # estimates the probabilites for the nodes having this stage.
-            # actually the nodes should have the distribution of the stage but
-            # since can be quite many we assign it to ste stage instead for convenience.
-            probs = sc.estimate_parameters(
-                self, stage, stage_counts, method, alpha_tot)
-
-            for i, ch in enumerate(children):
-                stage = self.get_stage(node)
-
-                if stage != None:
-                    prob = stage.probs[i]  # the probs are already set here..
-                    self.tree[node][ch]["cond_prob"] = prob
-                    self.tree[node][ch]["label"] = round(prob, 2)
-                    self.tree[node][ch]["color"] = stage.color
-                    self.tree.nodes[node]["color"] = stage.color
-                else:
-                    self.tree[node][ch]["cond_prob"] = probs[i]
-                    self.tree[node][ch]["label"] = round(probs[i], 2)
 
     def get_stage_no(self, node):
         lev = len(node)
@@ -369,6 +333,8 @@ class CStree(nx.Graph):
 
         Args:
             n (int): number of random samples.
+        Examples:
+            >>> import cstrees.cstree as ct
         """
 
         if self.tree is None:
@@ -385,6 +351,7 @@ class CStree(nx.Graph):
                 #print(node, x)
                 # Create tree dynamically.
                 if (node not in self.tree) or len(self.tree.out_edges(node)) == 0:
+                    print("should not happen")
                     lev = len(node)-1  # changed to -1
                     edges = [(node, node + (ind,))
                              for ind in range(self.cards[lev+1])]
@@ -453,7 +420,6 @@ class CStree(nx.Graph):
         # agraph.draw(filename)
 
 
-
 def sample_cstree(cards: list, max_cvars: int, prob_cvar: int, prop_nonsingleton: float) -> CStree:
     """
        Sample a random CStree with given cardinalities.
@@ -477,7 +443,7 @@ def sample_cstree(cards: list, max_cvars: int, prob_cvar: int, prop_nonsingleton
     p = len(cards)
     ct = CStree(cards)
 
-    stages = {}
+    stagings = {}
     for level, val in enumerate(cards[:-1]):  # not the last level
 
         # fix max_context_vars if higher than level
@@ -521,7 +487,7 @@ def sample_cstree(cards: list, max_cvars: int, prob_cvar: int, prop_nonsingleton
                 minimal_stage_size / full_stage_space_size, prop_nonsingleton))
             b = np.random.multinomial(
                 1, [prob_cvar, 1-prob_cvar], size=1)[0][0]
-            stages[level] = []
+            stagings[level] = []
 
             if b == 0:
                 print(b)
@@ -529,13 +495,13 @@ def sample_cstree(cards: list, max_cvars: int, prob_cvar: int, prop_nonsingleton
                 stage_restr = stage_space.pop(0)
                 new_stage = sample_stage_restr_by_stage(
                     stage_restr, mc, 1.0, cards)
-                stages[level].append(new_stage)
+                stagings[level].append(new_stage)
             continue  # cant add anything anyway so just go to the next level.
 
         # print(mc)
         #max_n_stages = comb(level+1, mc) * (cards[level]**mc)
         # logging.debug("Max # stages with {} context variables: {}".format(mc, max_n_stages))
-        stages[level] = []
+        stagings[level] = []
         #m = math.ceil(max_n_stages * frac_stages_per_level)
         #logging.debug("Trying to add max of {} stages".format(m))
 
@@ -570,13 +536,12 @@ def sample_cstree(cards: list, max_cvars: int, prob_cvar: int, prop_nonsingleton
                     # This is when it is impossible to push in a new stages since all are be too big.
                     break
             else:
-                stages[level].append(new_stage)
+                stagings[level].append(new_stage)
             #print("proportion left")
             #print(space_left / full_state_space_size)
 
-    stages[-1] = [Stage([])]
-    ct.update_stages(stages)
-    # ct.set_random_stage_parameters()
+    stagings[-1] = [Stage([], color="black")]
+    ct.update_stages(stagings)
 
     return ct
 
