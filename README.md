@@ -161,12 +161,10 @@ This example crates the CStree from Figure 1 in (Duarte & Solus, 2022).
 >>> p = 4
 >>> co = range(1, p+1)
 >>> tree = ct.CStree(co)
->>> tree.set_cardinalities([None] + [2] * p)
->>> tree.add_stages({
+>>> tree.update_stages({
 >>>    0: [],
->>>    1: [],
->>>    2: [ct.Stage([[0, 1], 0])],    # Green
->>>    3: [ct.Stage([0, [0, 1], 0]),  # Blue
+>>>    1: [ct.Stage([[0, 1], 0])],    # Green
+>>>    2: [ct.Stage([0, [0, 1], 0]),  # Blue
 >>>        ct.Stage([0, [0, 1], 1]),  # Orange
 >>>        ct.Stage([1, [0, 1], 0])]  # Red
 >>> })

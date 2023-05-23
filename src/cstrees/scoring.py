@@ -2,6 +2,7 @@ import itertools
 import cstrees.cstree as ct
 from scipy.special import loggamma
 import numpy as np
+import cstrees.learning as learn
 
 
 def counts_at_level(t, l, data):
@@ -146,7 +147,7 @@ def score(t: ct.CStree, data: list, alpha_tot=1.0, method="BDeu"):
 
     score = 0  # log score
     for l in range(t.p):
-        print("level {} in the tree scoring procedure".format(l))
+        #print("level {} in the tree scoring procedure".format(l))
         level_counts = counts_at_level(t, l, data)
 
         #for s, cnt in level_counts.items():
@@ -198,7 +199,7 @@ def score_order_at_level(order, l, data, strategy="max", max_cvars=1, alpha_tot=
     # here we set the labels/order for the CStree, to be used in the counting.
     tree.labels = order 
     
-    stagings = ct.all_stagings(p, cards, l-1, max_cvars=max_cvars)
+    stagings = learn.all_stagings(p, cards, l-1, max_cvars=max_cvars)
     
     
     if strategy == "max":

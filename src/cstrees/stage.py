@@ -9,11 +9,12 @@ class Stage:
 
     """
 
-    def __init__(self, list_repr) -> None:
+    def __init__(self, list_repr, color=None) -> None:
         self.level = len(list_repr)-1
         self.list_repr = list_repr
-        self.color = None
+        self.color = color
         self.csi = self.to_csi()
+        self.probs = None
 
     def __hash__(self) -> int:
         #return hash(tuple([tuple(i) for i in self.list_repr]))
@@ -84,8 +85,6 @@ class Stage:
         self.probs = np.random.dirichlet(
             [1] * cards[self.level])  # Need to fix this
 
-    def from_df(self):
-        pass
 
     def __sub__(self, stage):
         """ b is typically a sample from the space self.
@@ -170,7 +169,9 @@ class Stage:
 
     def __str__(self) -> str:
         # return str(self.to_csi()) + "; probs: " + str(self.probs)
-        # return str(self.list_repr) + "; probs: " + str(self.probs)
+        if self.probs is not None:
+            return str(self.list_repr) + "; probs: " + str(self.probs)
+        #return str(self.list_repr) + "; probs: " + str(self.probs)
         return str(self.list_repr)
 
 

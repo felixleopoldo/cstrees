@@ -3,6 +3,73 @@ from cstrees.csi_relation import *
 from cstrees.stage import *
 from cstrees.scoring import *
 
+
+def all_stagings(p, cards, l, max_cvars=1):
+    """ Generates an iterator over all stagings of a given level.
+        A staging with 2 stages for a binary CStree at level 2 
+        (numbering levels from 0) could e.g. be: 
+        [Stage([{0, 1}, 0, {0, 1}]), Stage([{0, 1}, 1, {0, 1}])]
+
+    Args:
+        p (int): Number of variables.
+        cards (list): List of cardinalities of the variables.
+        l (int): The level of the stage.
+        max_cvars (int, optional): The maximum number of context variables . Defaults to 1.
+
+    Raises:
+        NotImplementedError: Exception if max_cvars > 1.
+
+    Yields:
+        _type_: Iterator over all stagings of a given level.
+    """
+
+    if max_cvars == 1:
+        if l == -1:  # This is an imaginary level -1, it has no stages.
+            yield [Stage([])]
+            return
+
+        # All possible values for each variable
+        
+        vals = [list(range(cards[l])) for l in range(p)]
+        for k in range(l+1):  # all variables up to l can be context variables
+            # When we restrict to max_cvars = 1, we have two cases:
+            # Either all are in 1 color or all are in 2 different colors.
+            stlist = []  # The staging: list of Stages.
+            # Loop through the values of the context variables.
+            for v in vals[k]:
+                left = [set(vals[i]) for i in range(k)]
+                right = [set(vals[j]) for j in range(k+1, l+1)]
+                # For example: [{0,1}, {0,1}, 0, {0, 1}]
+                stagelistrep = left + [v] + right
+                st = Stage(stagelistrep)
+                stlist += [st]
+            yield stlist
+
+        # The staging with no context variables
+        stagelistrep = [set(v) for v in vals][:l+1]
+
+        st = Stage(stagelistrep)
+        yield [st]
+    elif max_cvars == 2:
+        from cstrees.double_cvar_stagings import enumerate_stagings
+        
+
+        for staging_list in enumerate_stagings(l+1):
+            
+            staging = []
+            for stage_list in staging_list:
+                # Fix repr bug
+                if isinstance(stage_list, set):
+                    stage_list = [stage_list]
+                
+                stage = Stage(stage_list)
+                staging.append(stage)
+            yield staging
+                
+    else:
+        raise NotImplementedError("max_cvars > 1 not implemented yet")
+
+
 def n_stagings(p, cards, l, max_cvars=1):
     """ Returns the number of stagings at a given level.
         p: number of variables
@@ -12,6 +79,10 @@ def n_stagings(p, cards, l, max_cvars=1):
     """
     
     stagings = all_stagings(p, cards, l, max_cvars)
+    for staging in stagings:
+        print([str(s) for s in staging])
+    
+    
     return sum(len(staging) for staging in stagings)
 
 
