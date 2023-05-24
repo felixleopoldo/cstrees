@@ -21,6 +21,7 @@ import os
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 
 sys.path.append(os.path.abspath('../src'))
+
 #sys.path.append(os.path.abspath('..'))
 # -- General configuration ------------------------------------------------
 
@@ -31,6 +32,7 @@ sys.path.append(os.path.abspath('../src'))
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
+    "nbsphinx",
     'sphinx.ext.autodoc',
     'sphinx.ext.doctest',
     'sphinx.ext.viewcode',
