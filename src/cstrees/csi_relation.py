@@ -78,12 +78,6 @@ class CSI_relation:
         self.context = context
         self.cards = cards
 
-    def to_stages(self):
-        """Returns a list of stages defining the CSI relation.
-        """
-        stages = []
-        pass
-
     def __and__(self, other):
         a = self.as_list()
         b = other.as_list()

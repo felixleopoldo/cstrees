@@ -34,6 +34,7 @@ extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.doctest',
     'sphinx.ext.viewcode',
+    'sphinx_copybutton',
     'sphinx.ext.napoleon',  # Supports google-style docstrings.
 ]
 

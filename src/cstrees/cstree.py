@@ -23,39 +23,41 @@ logging.basicConfig(stream=sys.stderr, level=logging.ERROR)
 
 
 def plot(graph, layout="dot"):
+    """Plots a graph using graphviz.
+    
+    Args:
+        graph (nx.Graph): The graph to plot.
+        layout (str, optional): The layout to use. Defaults to "dot".
+
+    """
     agraph = nx.nx_agraph.to_agraph(graph)
     agraph.layout(layout)
     return agraph
 
 
 class CStree(nx.Graph):
-    """
-        However, there can be like O(2^p) differnet minimal contexts,
-        so maybe its impossible. Then we would need some limit on the number
-        of nodes in the minimal contexts. But even if we limit the number of
-        nodes in the context to 1, the are about 2^p such sequences/sets.
+    """ A CStree class. The levels are enumerated from 0,...,p-1. 
+    You may provide labels for the lavels, corresponding to the 
+    random variable they represent.
 
     Args:
-        causal_order (list): A causal order of the variables.
-
+        cards (list): A list of integers representing the cardinality of each level.
+        labels (list, optional): A list of strings representing the labels of each level. Defaults to [0,1,...,p-1].
+        
     Example:
+        >>> # Figure 1. from (Duarte & Solus 2022)
         >>> import cstrees.cstree as ct
-        >>> import numpy as np
-        >>> # CStree from Figure 1 in (Duarte & Solus, 2022)
-        >>> np.random.seed(1)
-        >>> p = 4
-        >>> co = range(1, p+1)
-        >>> tree = ct.CStree(co)
-        >>> tree.set_cardinalities([None] + [2] * p)
-        >>> tree.set_stages({
-        >>>     0: [],
-        >>>     1: [],
-        >>>     2: [{(0, 0), (1, 0)}],  # green
-        >>>     3: [{(0, 0, 0), (0, 1, 0)},  # blue
-        >>>         {(0, 0, 1), (0, 1, 1)},  # orange
-        >>>         {(1, 0, 0), (1, 1, 0)}]  # red
+        >>> tree = ct.CStree([2,2,2,2]])
+        >>> tree.update_stages({
+        >>>     0: [ct.Stage([0]), ct.Stage([1])],
+        >>>     1: [ct.Stage([{0, 1}, 0], color="green"), ct.Stage([0, 1]), ct.Stage([1, 1])],
+        >>>     2: [ct.Stage([0, {0, 1}, 0], color="blue"),
+        >>>         ct.Stage([0, {0, 1}, 1], color="orange"),
+        >>>         ct.Stage([1, {0, 1}, 0], color="red"),
+        >>>         ct.Stage([1, 1, 1]),
+        >>>         ct.Stage([1, 0, 1])]  
         >>> })
-
+        >>> tree.set_random_stage_parameters()
     """
 
     def __init__(self, cards, labels=None, data=None, **attr):
@@ -75,21 +77,25 @@ class CStree(nx.Graph):
         self.color_no = 0
         self.stages = {i: [] for i in range(self.p)}
 
-    def n_colored_stages_at_level(self, l):
-        # n_colored may include singleton stages, on low levels.
-        n_colored = len(self.stages[l])
-
-        # Count the colored size and subtract it from the total number of nodes.
-        # This gives the number of singleton stages.
-        n_singleton = 0
-        size_colored = np.sum([s.size() for s in self.stages[l]])
-
-        return 1
 
     def update_stages(self, stages: dict):
-        """Adds a stage.
-
+        """ Update the stages of the CStree.
+        
+        Args:
+            stages (dict): A dictionary of stages. The keys are the levels, and the values are lists of stages.
+            
         Example:
+            >>> import cstrees.cstree as ct
+            >>> tree = ct.CStree([2,2,2,2]])
+            >>> tree.update_stages({
+            >>>     0: [ct.Stage([0]), ct.Stage([1])],
+            >>>     1: [ct.Stage([{0, 1}, 0], color="green"), ct.Stage([0, 1]), ct.Stage([1, 1])],
+            >>>     2: [ct.Stage([0, {0, 1}, 0], color="blue"),
+            >>>         ct.Stage([0, {0, 1}, 1], color="orange"),
+            >>>         ct.Stage([1, {0, 1}, 0], color="red"),
+            >>>         ct.Stage([1, 1, 1]),
+            >>>         ct.Stage([1, 0, 1])]  
+            >>> })
 
         """
         self.stages.update(stages)
@@ -99,20 +105,16 @@ class CStree(nx.Graph):
         # self.stage_probs = {key: [None]*len(val)
         #                    for key, val in stages.items()}
 
-    def get_stages(self, level: int):
-        """ Get all the stages in one level.
-
-        Args:
-            level (int): A level corresponds to variable in the causal ordering.
-        """
-        pass
-
     def get_stage(self, node: tuple):
-        """ Get the stages of node.
-            TODO: It should probably also give the singteton stage if so.
+        """ Get the stage of a node in the cstree.
 
         Args:
-            node (int): node.
+            node (tuple): A node in the CStree.
+        Example:
+            >>> # tree is the fig. 1 CStree
+            >>> st = tree.get_stage([0, 0])
+            >>> print(st)
+            [{0, 1}, 0]; probs: [0.57628561 0.42371439]; color: green
         """
         assert(self.stages is not None)
         lev = len(node)-1
@@ -128,30 +130,56 @@ class CStree(nx.Graph):
         if stage is None:
             print("No stage found for {}".format(node))
 
-        #print("No stage found for {}".format(node))
-        # return None
-
         assert(stage is not None)
         return stage
 
     def to_df(self):
+        """ Converts the CStree to a pandas dataframe.
+        
+        Returns:
+            df (pd.DataFrame): A pandas dataframe with the stages of the CStree.
+            
+        Example:
+            >>> tree.to_df()
+            0  1  2  3
+            2  2  2  2
+            0  -  -  -
+            1  -  -  -
+            *  0  -  -
+            0  1  -  -
+            1  1  -  -
+            0  *  0  -
+            0  *  1  -
+            1  *  0  -
+            1  1  1  -
+            1  0  1  -
+            -  -  -  -    
+        """
 
         # cardinalities header
-        d = {i: [c] for i, c in enumerate(self.cards)}
-        #d = {self.co.order[i]: [c] for i, c in enumerate(self.cards)}
-        #df = pd.DataFrame(d, columns=self.co.order)
+        d = {self.labels[i]: [c] for i, c in enumerate(self.cards)}
         df = pd.DataFrame(d, columns=self.labels)
 
         for l, stages in self.stages.items():
+            if l == -1:
+                continue
             for s in stages:
-                #dftmp = s.to_df(self.co.order)
                 dftmp = s.to_df(self.labels)
                 df = pd.concat([df, dftmp])
-
+        
         return df
 
     def set_random_stage_parameters(self, alpha=1):
-        # Set stage probabilities
+        """ Set the parameters of the stages of the CStree to be random samples 
+        from a Dirichlet distribution with hyper parameter alpha.
+        
+        Args:
+            alpha (float): The hyper parameter for the Dirichlet distribution.
+        
+        Example:
+            >>> t = ct.sample_cstree([2,2,2,2], max_cvars=1, prob_cvar=0.5, prop_nonsingleton=1)
+            >>> t.set_random_stage_parameters()        
+        """
         for lev, stages in self.stages.items():
             for i, stage in enumerate(stages):
                 probs = np.random.dirichlet([alpha] * self.cards[lev+1])                
@@ -162,6 +190,18 @@ class CStree(nx.Graph):
         self.set_tree_probs()
 
     def estimate_stage_parameters(self, data, method="BDeu", alpha_tot=1):
+        """ Estimate the parameters of the stages of the CStree under a Dirichlet model.
+        Args:
+            data (pd.DataFrame): A pandas dataframe with the data.
+            method (str): The method to use for estimating the parameters. 
+                Currently only "BDeu" is implemented.
+            alpha_tot (float): The total alpha value to use for the Dirichlet model.
+        Example:
+            >>> t = ct.sample_cstree([2,2,2,2], max_cvars=1, prob_cvar=0.5, prop_nonsingleton=1)
+            >>> t.estimate_stage_parameters(x, alpha_tot=1.0, method="BDeu")
+        
+        """
+        
         # Set stage probabilities
 
         for lev, stages in self.stages.items():
@@ -224,6 +264,12 @@ class CStree(nx.Graph):
 
 
     def get_stage_no(self, node):
+        """ Get the stage number of a node in a level of the cstree.
+        This is used when coloring the nodes.
+            
+        Args:
+            node (tuple): A node in the CStree.    
+        """
         lev = len(node)
         for stages in self.stages[lev]:
             for i, stage_dict in enumerate(stages):
@@ -261,6 +307,16 @@ class CStree(nx.Graph):
     # Here is the only place we need labels/orders.
     def to_minimal_context_graphs(self):
         """ This returns a sequence of minimal context graphs (minimal I-maps).
+        
+        Example:
+            >>> # tree is the Figure 1 CStree
+            >>> gs = tree.to_minimal_context_graphs()
+            >>> for key, graph in gs.items():
+            >>>     print("{}: Edges {}".format(key, graph.edges()))
+            X0=0: Edges [(1, 2), (2, 3)]
+            X1=0: Edges [(0, 3), (2, 3)]
+            X2=0: Edges [(0, 1), (0, 3)]            
+
         """
         logging.debug("getting csirels per level")
         logging.debug(self.stages)
@@ -309,6 +365,16 @@ class CStree(nx.Graph):
             the minmal contexts based on that.
 
             TODO: This should be returned by level.
+        
+        Examples:
+            >>> rels = tree.csi_relations()
+            >>> for cont, rels in rels.items():
+            >>>     for rel in rels:
+            >>>         print(rel)
+            X0 ⊥  X2, X1=0
+            X1 ⊥  X3, X0=0, X2=0
+            X1 ⊥  X3, X0=0, X2=1
+            X1 ⊥  X3, X0=1, X2=0
         """
         csi_rels = {}
         # print(self.stages)
@@ -316,6 +382,8 @@ class CStree(nx.Graph):
             #print("{} {}".format(key, stage_list))
             for stage in stage_list:
                 #       print(stage)
+                if stage.is_singleton():
+                    continue # As these dont encode any independence relations.
                 csi_rel = stage.to_csi()
 
                 if csi_rel.context not in csi_rels.keys():  # should be a list
@@ -327,14 +395,26 @@ class CStree(nx.Graph):
 
     def sample(self, n):
         """Draws n random samples from the CStree.
-            Dynamically generates nodes in the underlying tree
-            and associated parameters on the fly in order to avoid
-            creating the whole tree, which is O(2^p), just to sample data.
+        When singletons are allowed (maybe deprecated) it dynamically generates nodes in the underlying tree
+        and associated parameters on the fly in order to avoid
+        creating the whole tree, which is O(2^p), just to sample data.
 
         Args:
             n (int): number of random samples.
+            
+        Returns:
+            pandas.DataFrame: A pandas dataframe with the sampled data. 
+            The first row contains the labels of the variables and the second row contains the cardinalities.
         Examples:
-            >>> import cstrees.cstree as ct
+            >>> df = tree.sample(5)
+            >>> print(df)
+            0  1  2  3
+            0  2  2  2  2
+            1  0  0  1  1
+            2  0  0  0  0
+            3  0  0  0  1
+            4  0  0  1  1
+            5  0  0  0  1
         """
 
         if self.tree is None:
@@ -408,7 +488,17 @@ class CStree(nx.Graph):
         return df
 
     def plot(self, fill=False):
-
+        """Plot the CStree. Make sure to set the parameters first.
+        
+        Args:
+            fill (bool): If True, the tree is filled with parameters.
+        
+        Examples:
+            >>> tree.set_random_stage_parameters()
+            >>> agraph = tree.plot()
+            >>> agraph.draw("cstree.png")
+        """
+    
         if fill or (self.tree is None):
             self.create_tree()
             # self.set_random_parameters()
@@ -424,21 +514,17 @@ def sample_cstree(cards: list, max_cvars: int, prob_cvar: int, prop_nonsingleton
     """
        Sample a random CStree with given cardinalities.
 
-       K = cardinality at level.
-       Maximal number of stages at a level is K^level.
-       Assume prob_contextvars = 1.
-       max_contextvars = level => #stages = K^level.
-       max_contextvars = 1 => #stages = K^1 * (level choose 1). The size (number of leafs in the tree) if each stage will be K^(l-1).
-       max_contextvars = 2 => #stages = K^2 * (level choose 2). The size if each stage will be K^(l-2).
-       ...       
-       These can overlap! Without overlaps it is a bit different i guess. Think about the leafs instead. there is room for max K^(l+1) stages (including singletons).
-       Maybe count the proportion of singletons left! Keeping trac of the rest of the space!! This is the way to do it.
-
     Args:
-        cardinalities (list): cardinalities of the variables.
-
+        cards (list): cardinalities of the levels.  
+        max_cvars (int): maximum number of context variables.
+        prob_cvar (float): probability a potential context variable (in the algorithm) will a context variable.
+        prop_nonsingleton (float): proportion of non-singleton stages.
+                
     Returns:
-        CStree: a CStree.
+        CStree: A CStree.
+    Examples:
+        >>> tree = ct.sample_cstree([2,2,2,2], max_cvars=1, prob_cvar=0.5, prop_nonsingleton=1)
+
     """
     p = len(cards)
     ct = CStree(cards)
@@ -547,28 +633,68 @@ def sample_cstree(cards: list, max_cvars: int, prob_cvar: int, prop_nonsingleton
 
 
 def df_to_cstree(df):
+    """ Convert a dataframe to a CStree. The dataframe should have the following format:
+    The labels should be the level labels.
+    The first row should be the cards, the second row should be the first stage, the third row the second stage etc.
+    
+    Args:
+        df (pd.DataFrame): The dataframe to convert.
+    Example:
+        >>> df = tree.to_df()
+        >>> print(df)
+        >>> t2 = ct.df_to_cstree(df)
+        >>> df2 = t2.to_df()
+        >>> print("The same tree:")
+        >>> print(df)
+           0  1  2  3  
+        0  2  2  2  2
+        0  0  -  -  -
+        0  1  -  -  -
+        0  *  0  -  -
+        0  0  1  -  -
+        0  1  1  -  -
+        0  0  *  0  -
+        0  0  *  1  -
+        0  1  *  0  -
+        0  1  1  1  -
+        0  1  0  1  -
+        1  2  3  4
+        The same tree:
+           0  1  2  3  
+        0  2  2  2  2
+        0  0  -  -  -
+        0  1  -  -  -
+        0  *  0  -  -
+        0  0  1  -  -
+        0  1  1  -  -
+        0  0  *  0  -
+        0  0  *  1  -
+        0  1  *  0  -
+        0  1  1  1  -
+        0  1  0  1  -
+    """
     cards = cards = df.iloc[0].values  # [int(x[1]) for x in df.columns]
 
-    stages = {i: [] for i in range(len(cards)+1)}
-    stages[-1] = [Stage([])]
+    stagings = {i: [] for i in range(len(cards))}
+    stagings[-1] = [Stage([])]
     cstree = CStree(cards)
-    #cstree.set_cardinalities([None] + cards)
     cstree.labels = df.columns
 
-    for row in df.iterrows():
+    for row in df[1:].iterrows():
         stage_list = []
-
         for level, val in enumerate(row[1]):
+            if level == len(cards): 
+                break
             if val == "*":
-                stage_list.append(list(range(cards[level])))
+                stage_list.append(set(range(cards[level])))
             elif val == "-":
                 s = Stage(stage_list)
-                stages[level].append(s)
+                stagings[level-1].append(s)
                 break
             else:
                 stage_list.append(int(val))
 
-    cstree.update_stages(stages)
+    cstree.update_stages(stagings)
 
     return cstree
 

@@ -58,6 +58,12 @@ class Stage:
             if type(e) is set:
                 s *= len(e)
         return s
+    
+    def is_singleton(self):
+        """
+        Checks if the stage is a singleton.
+        """
+        return self.size() == 1
 
     def to_df(self, column_labels):
         """Write sthe stage to dataframe. columns is..?
