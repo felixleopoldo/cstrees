@@ -624,6 +624,7 @@ def csi_relations_to_dags(csi_relations, p, labels=None):
         graph = nx.from_numpy_array(adjmat, create_using=nx.DiGraph())
 
         # Label from 1 instead of 0
+        # TODO: the context should also be relabeled accordingly. Maybe in Context directly.
         labs = {}
         for i, j in enumerate(inds):
             labs[i] = labels[j]
