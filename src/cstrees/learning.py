@@ -2,7 +2,7 @@ from cstrees.cstree import *
 from cstrees.csi_relation import *
 from cstrees.stage import *
 from cstrees.scoring import *
-
+from itertools import permutations
 
 def all_stagings(p, cards, l, max_cvars=1):
     """ Generates an iterator over all stagings of a given level.
@@ -137,15 +137,16 @@ def optimal_cstree(order, data, max_cvars=1, alpha_tot=1.0, method="BDeu"):
     stages[-1] = [Stage([], color="black")]
     for level in range(-1, p-1):  # dont stage the last level
         max_staging, max_staging_score = optimal_staging_at_level(
-            order, cards, data, level, max_cvars, alpha_tot, method)
+            order, data, level, max_cvars, alpha_tot, method)
         stages[level] = max_staging
-        print("max staging: {}".format([str(s) for s in max_staging]))
+        #print("max staging: {}".format([str(s) for s in max_staging]))
 
     # Create CStree
     tree = CStree(cards)
     tree.labels = order
     
-    # color each stage. Singletons are black. This should be done somewhere else probably.
+    # Color each stage in the optimal staging. Singletons are black. 
+    # This should be done somewhere else probably.
     colors = ['blueviolet', 'orange', 'navy', 'rebeccapurple', 'darkseagreen', 'darkslategray', 'lightslategray', 'aquamarine', 'lightgoldenrodyellow', 'cornsilk', 'azure', 'chocolate', 'red', 'darkolivegreen', 'chartreuse', 'turquoise', 'olive', 'crimson', 'goldenrod', 'orchid', 'firebrick', 'lawngreen', 'deeppink', 'wheat', 'teal', 'mediumseagreen', 'peru', 'salmon', 'palegreen', 'navajowhite', 'yellowgreen', 'mediumaquamarine', 'darkcyan', 'dodgerblue', 'brown', 'powderblue', 'mistyrose', 'violet', 'darkslategrey', 'midnightblue', 'aliceblue', 'dimgrey', 'palegoldenrod', 'black', 'darkgrey', 'olivedrab', 'linen', 'lightblue', 'thistle', 'greenyellow', 'indianred', 'khaki', 'lightslategrey', 'slateblue', 'purple', 'deepskyblue', 'magenta', 'yellow', 'ivory', 'darkorchid', 'mediumpurple', 'snow', 'dimgray', 'palevioletred', 'darkslateblue', 'sandybrown', 'lightgray', 'lemonchiffon', 'gray', 'silver', 'aqua', 'tomato', 'lightyellow', 'seagreen', 'darkmagenta', 'beige', 'cornflowerblue', 'peachpuff', 'ghostwhite', 'cyan', 'lightcoral', 'hotpink', 'lightpink', 'lightskyblue', 'slategrey', 'tan', 'oldlace', 'steelblue', 'springgreen', 'fuchsia', 'lime', 'papayawhip', 'mediumblue', 'mediumspringgreen', 'darkorange', 'lightgreen', 'blue', 'slategray', 'white', 'saddlebrown', 'mediumturquoise', 'paleturquoise', 'darkblue', 'plum', 'lightseagreen', 'lightgrey', 'blanchedalmond', 'lavenderblush', 'darkkhaki', 'gainsboro', 'lightsalmon', 'darkturquoise', 'moccasin', 'darkgoldenrod', 'mediumorchid', 'honeydew', 'mediumslateblue', 'maroon', 'forestgreen', 'darkgray', 'floralwhite', 'darkgreen', 'lightcyan', 'darksalmon', 'pink', 'royalblue', 'sienna', 'green', 'orangered', 'bisque', 'antiquewhite', 'rosybrown', 'whitesmoke', 'darkred', 'burlywood', 'skyblue', 'mediumvioletred', 'mintcream', 'limegreen', 'lightsteelblue', 'grey', 'coral', 'indigo', 'gold', 'cadetblue']
     for level, staging in stages.items():
         for i, stage in enumerate(staging):
@@ -153,9 +154,8 @@ def optimal_cstree(order, data, max_cvars=1, alpha_tot=1.0, method="BDeu"):
                 stage.color = "black"
             else:
                 stage.color = colors[level]
-    
     tree.update_stages(stages)
-    # maybe set level labels here?
+
     return tree
 
 

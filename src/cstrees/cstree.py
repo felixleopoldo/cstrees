@@ -14,7 +14,7 @@ import pandas as pd
 import logging
 import sys
 import cstrees.scoring as sc
-from itertools import permutations
+
 
 from cstrees.stage import * 
 from cstrees.csi_relation import *
@@ -166,6 +166,7 @@ class CStree(nx.Graph):
             for s in stages:
                 dftmp = s.to_df(self.labels)
                 df = pd.concat([df, dftmp])
+        df.reset_index(drop=True, inplace=True)
         
         return df
 
@@ -215,12 +216,10 @@ class CStree(nx.Graph):
             #    print(str(key), value)
 
             for i, stage in enumerate(stages):
-                print("Stage:   ", stage)
                 probs = sc.estimate_parameters(
                     self, stage, stage_counts, method, alpha_tot)
                 stage.probs = probs
-                # The color should probably already be set 
-                #stage.color = self.colors[i] 
+
 
         self.set_tree_probs()
 
@@ -318,6 +317,27 @@ class CStree(nx.Graph):
             X2=0: Edges [(0, 1), (0, 3)]            
 
         """
+        
+        minl_csis_by_context = self.to_minimal_context_csis()
+        
+        cdags = csi_relations_to_dags(
+            minl_csis_by_context, self.p, labels=self.labels)
+
+        return cdags
+
+    def to_minimal_context_csis(self):
+        """ This returns a sequence of minimal context graphs (minimal I-maps).
+        
+        Example:
+            >>> # tree is the Figure 1 CStree
+            >>> gs = tree.to_minimal_context_graphs()
+            >>> for key, graph in gs.items():
+            >>>     print("{}: Edges {}".format(key, graph.edges()))
+            X0=0: Edges [(1, 2), (2, 3)]
+            X1=0: Edges [(0, 3), (2, 3)]
+            X2=0: Edges [(0, 1), (0, 3)]            
+
+        """
         logging.debug("getting csirels per level")
         logging.debug(self.stages)
         rels = self.csi_relations_per_level()
@@ -349,11 +369,8 @@ class CStree(nx.Graph):
         for pair, val in minl_csis_by_context.items():
             for csi in val:
                 logging.debug(csi)
-
-        cdags = csi_relations_to_dags(
-            minl_csis_by_context, self.p, labels=self.labels)
-
-        return cdags
+                
+        return minl_csis_by_context
 
     def csi_relations_per_level(self, level="all"):
 
@@ -640,10 +657,10 @@ def df_to_cstree(df):
     Args:
         df (pd.DataFrame): The dataframe to convert.
     Example:
-        >>> df = tree.to_df()
+        >>> df = tree.()
         >>> print(df)
         >>> t2 = ct.df_to_cstree(df)
-        >>> df2 = t2.to_df()
+        >>> df2 = t2.()
         >>> print("The same tree:")
         >>> print(df)
            0  1  2  3  

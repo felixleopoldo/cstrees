@@ -1,4 +1,4 @@
-cstrees.cstree
+cstree
 =====================
 
 .. automodule:: cstrees.cstree

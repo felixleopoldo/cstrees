@@ -1,4 +1,4 @@
-cstrees.csi_relation 
+csi_relation 
 =====================
 
 .. automodule:: cstrees.csi_relation

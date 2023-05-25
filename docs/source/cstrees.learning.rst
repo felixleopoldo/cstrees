@@ -1,4 +1,4 @@
-cstrees.learning module
+learning
 =====================
 
 .. automodule:: cstrees.learning
