@@ -1,8 +1,11 @@
+from cstrees.cstree import CStree
 from cstrees.cstree import *
 from cstrees.csi_relation import *
 from cstrees.stage import *
 from cstrees.scoring import *
 from itertools import permutations
+import cstrees.scoring as sc
+
 
 def all_stagings(p, cards, l, max_cvars=1):
     """ Generates an iterator over all stagings of a given level.
@@ -153,7 +156,7 @@ def optimal_cstree(order, data, max_cvars=1, alpha_tot=1.0, method="BDeu"):
             if all([isinstance(i, int) for i in stage.list_repr]):
                 stage.color = "black"
             else:
-                stage.color = colors[level]
+                stage.color = colors[i]
     tree.update_stages(stages)
 
     return tree
