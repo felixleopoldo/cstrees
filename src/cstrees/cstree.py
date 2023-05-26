@@ -6,7 +6,7 @@ import networkx as nx
 import numpy as np
 import matplotlib
 from itertools import chain, combinations
-import itertools
+
 import matplotlib.cm as cm
 import matplotlib.colors as mcolors
 import random
@@ -14,8 +14,6 @@ import pandas as pd
 import logging
 import sys
 import cstrees.scoring as sc
-
-
 from cstrees.stage import * 
 from cstrees.csi_relation import *
 #logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
@@ -57,7 +55,7 @@ class CStree(nx.Graph):
         >>>         ct.Stage([1, 1, 1]),
         >>>         ct.Stage([1, 0, 1])]  
         >>> })
-        >>> tree.set_random_stage_parameters()
+        >>> tree.sample_stage_parameters()
     """
 
     def __init__(self, cards, labels=None, data=None, **attr):
@@ -170,7 +168,7 @@ class CStree(nx.Graph):
         
         return df
 
-    def set_random_stage_parameters(self, alpha=1):
+    def sample_stage_parameters(self, alpha=1):
         """ Set the parameters of the stages of the CStree to be random samples 
         from a Dirichlet distribution with hyper parameter alpha.
         
@@ -179,7 +177,7 @@ class CStree(nx.Graph):
         
         Example:
             >>> t = ct.sample_cstree([2,2,2,2], max_cvars=1, prob_cvar=0.5, prop_nonsingleton=1)
-            >>> t.set_random_stage_parameters()        
+            >>> t.sample_stage_parameters()        
         """
         for lev, stages in self.stages.items():
             for i, stage in enumerate(stages):
@@ -378,11 +376,9 @@ class CStree(nx.Graph):
 
     def csi_relations(self, level="all"):
         """ Returns all the context specific indepencende (CSI) relations.
-            These should normally be thinned out using absorption, and then we would extract
-            the minmal contexts based on that.
+        These should normally be thinned out using absorption, and then we would extract
+        the minmal contexts based on that.
 
-            TODO: This should be returned by level.
-        
         Examples:
             >>> rels = tree.csi_relations()
             >>> for cont, rels in rels.items():
@@ -511,7 +507,7 @@ class CStree(nx.Graph):
             fill (bool): If True, the tree is filled with parameters.
         
         Examples:
-            >>> tree.set_random_stage_parameters()
+            >>> tree.sample_stage_parameters()
             >>> agraph = tree.plot()
             >>> agraph.draw("cstree.png")
         """

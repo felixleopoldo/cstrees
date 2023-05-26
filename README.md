@@ -167,7 +167,7 @@ This example crates the CStree from Figure 1 in (Duarte & Solus, 2022).
 >>>        ct.Stage([0, [0, 1], 1]),  # Orange
 >>>        ct.Stage([1, [0, 1], 0])]  # Red
 >>> })
->>> tree.set_random_stage_parameters()
+>>> tree.sample_stage_parameters()
 >>> tree.plot()
 >>> csi_rels = tree.csi_relations()
 >>> for key, val in csi_rels.items():

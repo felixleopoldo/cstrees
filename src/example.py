@@ -15,7 +15,7 @@ cards = [2] * p
 
 t = ct.sample_cstree(cards, 2, 0.5, 1)
 #t.plot()
-t.set_random_stage_parameters()
+t.sample_stage_parameters()
 
 x = t.sample(5)
 t.plot()

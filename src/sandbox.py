@@ -49,7 +49,7 @@ for seed in seeds:
                         print("Sample tree")
                         cards = [2]*p
                         t = ct.sample_cstree(cards, m, prob_cvar, prop_nonsingleton)
-                        t.set_random_stage_parameters()
+                        t.sample_stage_parameters()
                         print("df {}".format(t.to_df()))
                         stop = time.perf_counter()
                         # save the tree as well

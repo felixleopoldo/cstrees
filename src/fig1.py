@@ -33,7 +33,7 @@ tree.update_stages({
 })
 
 
-tree.set_random_stage_parameters()
+tree.sample_stage_parameters()
 #x = tree.sample(5)
 
 a = tree.plot()

@@ -17,7 +17,7 @@ def all_stagings(p, cards, l, max_cvars=1):
         max_cvars (int, optional): The maximum number of context variables . Defaults to 1.
 
     Raises:
-        NotImplementedError: Exception if max_cvars > 1.
+        NotImplementedError: Exception if max_cvars > 2.
 
     Yields:
         _type_: Iterator over all stagings of a given level.

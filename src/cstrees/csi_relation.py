@@ -1,7 +1,18 @@
-from cstrees.cstree import *
+import itertools
+import logging
+
+import numpy as np
+
+from cstrees import cstree  as ct
 
 
 class Context:
+    """ A class for the context of a CSI. It takes a dictionary as input, where
+    e.g. {0:0, 3:1} means that X0=0 and X3=1, where Xl is the variable at level l.
+    
+    Args:
+        context (dict): A dictionary of the context. 
+    """
     def __init__(self, context: dict) -> None:
         self.context = context
 
@@ -40,6 +51,13 @@ class Context:
 
 
 class CI_relation:
+    """ This is a contitional independence relation.
+    
+    Args:
+        a (set): The first set of variables.
+        b (set): The second set of variables.
+        sep (set): The set of variables that separate a and b.
+    """
     def __init__(self, a, b, sep) -> None:
         self.a = a
         self.b = b
@@ -65,12 +83,17 @@ class CI_relation:
                 s3 += "X{}, ".format(i)
             s3 = s3[:-2]
             return "{} ⊥ {} | {}".format(s1, s2, s3)
-        return "{} ⊥  {}".format(s1, s2)
+        return "{} ⊥ {}".format(s1, s2)
 
 
 class CSI_relation:
     """This is a context specific relation. Itshould be implemented
        as a context and a CI relation.
+       
+       Args:
+            ci (CI_relation): The CI relation.
+            context (Context): The context.  
+            cards (list): The list of cardinalities of the variables.
     """
 
     def __init__(self, ci: CI_relation, context: Context, cards=None) -> None:
@@ -89,10 +112,10 @@ class CSI_relation:
         return CSI_relation(c_list)
 
     def as_list(self):
-        """Should work for pairwise CSIs.
+        """ List representation. Important: only for pairwise CSIs.
 
         Returns:
-            _type_: _description_
+            list: list representation of the CSI.
         """
         # Get the level as the max element-1
         # The Nones not at index 0 encode the CI variables.
@@ -121,39 +144,39 @@ class CSI_relation:
 
         return csilist
 
-    def to_cstree_paths(self, cards: list):
-        """Genreate the set(s) of path defining the CSI relations.
-        note that it can be defined by several stages (set of paths).
+    # def to_cstree_paths(self, cards: list):
+    #     """Generate the set(s) of paths defining the CSI relations.
+    #     note that it can be defined by several stages (set of paths).
 
-        Args:
-            cards (list): _description_
+    #     Args:
+    #         cards (list): _description_
 
-        Returns:
-            _type_: _description_
-        """
+    #     Returns:
+    #         _type_: _description_
+    #     """
 
-        level = len(self.ci.a) + len(self.context.context) + 1
-        vals = []*level
-        for i in self.ci.a:
-            vals[i] = range(cards[i])
-        for i in self.ci.b:
-            vals[i] = range(cards[i])
-        for i, j in self.context.context.items():
-            vals[i] = j
+    #     level = len(self.ci.a) + len(self.context.context) + 1
+    #     vals = []*level
+    #     for i in self.ci.a:
+    #         vals[i] = range(cards[i])
+    #     for i in self.ci.b:
+    #         vals[i] = range(cards[i])
+    #     for i, j in self.context.context.items():
+    #         vals[i] = j
 
-        return
+    #     return
 
-    def __add__(self, o):
-        """Adding two objects by adding their set of paths and create a new
-            CSI_relation.
+    # def __add__(self, o):
+    #     """Adding two objects by adding their set of paths and create a new
+    #         CSI_relation.
 
-        Args:
-            o (CSI_relation): A CSI relation.
+    #     Args:
+    #         o (CSI_relation): A CSI relation.
 
-        Returns:
-            CSI_relation: A new CSI relation, created by joining the paths in both.
-        """
-        return CSI_relation(self.to_cstree_paths() + o.to_cstree_paths())
+    #     Returns:
+    #         CSI_relation: A new CSI relation, created by joining the paths in both.
+    #     """
+    #     return CSI_relation(self.to_cstree_paths() + o.to_cstree_paths())
 
     def __hash__(self) -> int:
         """TODO: Check that the order is correct, so tht not 1 CSI can
@@ -211,7 +234,7 @@ def weak_union(ci: CI_relation):
 
 
 def pairwise_cis(ci: CI_relation):
-    """ Using weak union just to get pairwise indep relations.
+    """ Using weak union just to get pairwise indep relations from a CSI.
 
         X_a _|_ X_b | X_d
     Args:
@@ -561,25 +584,6 @@ def csi_lists_to_csis_by_level(csi_lists, p):
         stages[l] = tmp
         # print(csilist)
     return stages
-
-
-def csilist_to_csi_2(csilist):
-    a = set()
-    b = set()
-    s = set()
-    c = {}
-    for i, e in enumerate(csilist):
-        # if i == 0:
-        #    continue
-        if e is None:
-            a |= {i}
-        else:
-            c[i] = list(e)[0]
-
-    b = {len(csilist)}
-    ci = CI_relation(a, b, s)
-    cont = Context(c)
-    return CSI_relation(ci, cont)
 
 
 def csi_relations_to_dags(csi_relations, p, labels=None):
