@@ -286,6 +286,8 @@ class CStree(nx.Graph):
 
             if not self.tree.has_edge(fr, to):
                 self.tree.add_edge(fr, to)  # check if exists first
+                if fr == ():
+                    self.tree.nodes[fr]["label"] = "∅"
             else:
                 pass
             self.tree.nodes[to]["label"] = to[-1]
