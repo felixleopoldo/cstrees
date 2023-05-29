@@ -378,10 +378,10 @@ class CStree(nx.Graph):
             >>> for cont, rels in rels.items():
             >>>     for rel in rels:
             >>>         print(rel)
-            X0 ⊥  X2, X1=0
-            X1 ⊥  X3, X0=0, X2=0
-            X1 ⊥  X3, X0=0, X2=1
-            X1 ⊥  X3, X0=1, X2=0
+            X0 ⊥ X2, X1=0
+            X1 ⊥ X3, X0=0, X2=0
+            X1 ⊥ X3, X0=0, X2=1
+            X1 ⊥ X3, X0=1, X2=0
         """
         csi_rels = {}
         # print(self.stages)

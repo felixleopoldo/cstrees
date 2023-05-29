@@ -26,7 +26,6 @@ class Stage:
         self.probs = None
 
     def __hash__(self) -> int:
-        #return hash(tuple([tuple(i) for i in self.list_repr]))
         return hash(self.csi.context)
 
     def __eq__(self, __o: object) -> bool:
