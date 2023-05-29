@@ -1,38 +1,24 @@
-import itertools
-
 from scipy.special import loggamma
 import numpy as np
+
 import cstrees.learning as learn
+import cstrees.cstree as ct
+import cstrees.stage as st
+import cstrees.stage as st
 
 
 def counts_at_level(t, l, data):
     """ Collect all the observed counts at a specific level by stages.
         So the counts for level l depends on the stage of level l-1.
     """
-    stage_counts = {}  # maybe context counts..
-    #ord = list(t.co.order)
-    #ord = list(order)
+    stage_counts =  {} 
+
     ord = t.labels
     # reorder the columns according to the order. 
     # cardinalities are at first row.
     
-    
-    #dataperm = data[1:, ord]
-    dfperm = data[ord]
     dataperm = data[ord].values[1:, :]
     
-    # print("the labels/order/label order to read the data columns in")
-    # print(ord)
-    
-    # print("data")
-    # print(data)
-    # print("dfperm")
-    # print(dfperm)
-
-    # print("dataperm")
-    # print(dataperm)
-
-
     #print("get counts at level {}".format(l))
     for i in range(len(dataperm)):  # iterate over the samples
         pred_vals = dataperm[i, :l]
@@ -188,7 +174,7 @@ def score_order_at_level(order, l, data, strategy="max", max_cvars=1, alpha_tot=
     Returns:
         _type_: _description_
     """
-    import cstrees.cstree as ct
+    import cstrees.cstree as st
     if max_cvars > 2:
         print("Only max_cvars < 3 implemented")
         return None

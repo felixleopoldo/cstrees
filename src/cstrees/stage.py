@@ -1,5 +1,10 @@
-from cstrees.cstree import *
-from cstrees.csi_relation import *
+import itertools
+import random 
+
+import numpy as np
+
+import cstrees.cstree as ct
+from cstrees import csi_relation
 
 class Stage:
     """
@@ -148,9 +153,9 @@ class Stage:
             else:
                 context[i] = el
 
-        ci = CI_relation(sepseta, sepsetb, cond_set)
-        context = Context(context)
-        return CSI_relation(ci, context)
+        ci = csi_relation.CI_relation(sepseta, sepsetb, cond_set)
+        context = csi_relation.Context(context)
+        return csi_relation.CSI_relation(ci, context)
 
     def intersects(self, stage):
         """ Checks if the paths of two stages intersect.

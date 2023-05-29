@@ -1,9 +1,9 @@
 import itertools
 import logging
+from itertools import chain, combinations
 
+import networkx as nx
 import numpy as np
-
-from cstrees import cstree  as ct
 
 
 class Context:

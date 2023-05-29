@@ -2,7 +2,7 @@
 #%load_ext autoreload
 #%autoreload 2
 import os
-import cstrees.cstree as ct
+import cstrees.cstree as st
 import numpy as np
 import networkx as nx
 import random
@@ -48,7 +48,7 @@ for seed in seeds:
                         start = time.perf_counter()
                         print("Sample tree")
                         cards = [2]*p
-                        t = ct.sample_cstree(cards, m, prob_cvar, prop_nonsingleton)
+                        t = st.sample_cstree(cards, m, prob_cvar, prop_nonsingleton)
                         t.sample_stage_parameters()
                         print("df {}".format(t.to_df()))
                         stop = time.perf_counter()

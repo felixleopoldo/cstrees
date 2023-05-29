@@ -1,10 +1,10 @@
-from cstrees.cstree import CStree
-from cstrees.cstree import *
-from cstrees.csi_relation import *
-from cstrees.stage import *
-from cstrees.scoring import *
-from itertools import permutations
+import numpy as np
+
+import cstrees.cstree as ct
+from cstrees import csi_relation
+import cstrees.stage as stl
 import cstrees.scoring as sc
+from itertools import permutations
 
 
 def all_stagings(p, cards, l, max_cvars=1):
@@ -26,14 +26,14 @@ def all_stagings(p, cards, l, max_cvars=1):
         A staging with 2 stages for a binary CStree at level 2 
         (numbering levels from 0) could e.g. be: 
         
-        >>> staging = [Stage([{0, 1}, 0, {0, 1}]), Stage([{0, 1}, 1, {0, 1}])]
+        >>> staging = [stl.Stage([{0, 1}, 0, {0, 1}]), stl.Stage([{0, 1}, 1, {0, 1}])]
 
     """
     assert(l < len(cards)-1)
     assert(l < p-1)
     if max_cvars == 1:
         if l == -1:  # This is an imaginary level -1, it has no stages.
-            yield [Stage([])]
+            yield [stl.Stage([])]
             return
 
         # All possible values for each variable
@@ -42,21 +42,21 @@ def all_stagings(p, cards, l, max_cvars=1):
         for k in range(l+1):  # all variables up to l can be context variables
             # When we restrict to max_cvars = 1, we have two cases:
             # Either all are in 1 color or all are in 2 different colors.
-            stlist = []  # The staging: list of Stages.
+            stlist = []  # The staging: list of stl.Stages.
             # Loop through the values of the context variables.
             for v in vals[k]:
                 left = [set(vals[i]) for i in range(k)]
                 right = [set(vals[j]) for j in range(k+1, l+1)]
                 # For example: [{0,1}, {0,1}, 0, {0, 1}]
                 stagelistrep = left + [v] + right
-                st = Stage(stagelistrep)
+                st = stl.Stage(stagelistrep)
                 stlist += [st]
             yield stlist
 
         # The staging with no context variables
         stagelistrep = [set(v) for v in vals][:l+1]
 
-        st = Stage(stagelistrep)
+        st = stl.Stage(stagelistrep)
         yield [st]
     elif max_cvars == 2:
         from cstrees.double_cvar_stagings import enumerate_stagings
@@ -70,7 +70,7 @@ def all_stagings(p, cards, l, max_cvars=1):
                 if isinstance(stage_list, set):
                     stage_list = [stage_list]
                 
-                stage = Stage(stage_list) #could set colors here cut that takes time maybe.
+                stage = stl.Stage(stage_list) #could set colors here cut that takes time maybe.
                 staging.append(stage)
             yield staging
                 
@@ -100,7 +100,7 @@ def optimal_staging_at_level(order, data, l, max_cvars=1, alpha_tot=None, method
     p = len(order)
     cards = data.iloc[0].values
     assert(l < len(cards)-1)
-    tree = CStree(cards)
+    tree = ct.CStree(cards)
     tree.labels = order
     
     stagings = all_stagings(p, cards, l, max_cvars)  # at level l
@@ -137,7 +137,7 @@ def optimal_cstree(order, data, max_cvars=1, alpha_tot=1.0, method="BDeu"):
     p = len(order)
 
     stages = {}
-    stages[-1] = [Stage([], color="black")]
+    stages[-1] = [stl.Stage([], color="black")]
     for level in range(-1, p-1):  # dont stage the last level
         max_staging, max_staging_score = optimal_staging_at_level(
             order, data, level, max_cvars, alpha_tot, method)
@@ -145,7 +145,7 @@ def optimal_cstree(order, data, max_cvars=1, alpha_tot=1.0, method="BDeu"):
         #print("max staging: {}".format([str(s) for s in max_staging]))
 
     # Create CStree
-    tree = CStree(cards)
+    tree = ct.CStree(cards)
     tree.labels = order
     
     # Color each stage in the optimal staging. Singletons are black. 

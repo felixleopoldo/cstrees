@@ -1,21 +1,15 @@
-import math
 from math import comb
 from random import uniform
-from re import S
-import networkx as nx
-import numpy as np
-import matplotlib
-from itertools import chain, combinations
-
-import matplotlib.cm as cm
-import matplotlib.colors as mcolors
-import random
-import pandas as pd
 import logging
 import sys
+
+import networkx as nx
+import numpy as np
+import pandas as pd
+
 import cstrees.scoring as sc
-from cstrees.stage import * 
-from cstrees.csi_relation import *
+import cstrees.stage as st 
+from cstrees import csi_relation
 #logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
 logging.basicConfig(stream=sys.stderr, level=logging.ERROR)
 
@@ -45,10 +39,10 @@ class CStree(nx.Graph):
     Example:
         >>> # Figure 1. from (Duarte & Solus 2022)
         >>> import cstrees.cstree as ct
-        >>> tree = ct.CStree([2,2,2,2]])
+        >>> tree = ct.CStree([2,2,2,2])
         >>> tree.update_stages({
-        >>>     0: [ct.Stage([0]), ct.Stage([1])],
-        >>>     1: [ct.Stage([{0, 1}, 0], color="green"), ct.Stage([0, 1]), ct.Stage([1, 1])],
+        >>>     0: [st.Stage([0]), ct.Stage([1])],
+        >>>     1: [t.Stage([{0, 1}, 0], color="green"), ct.Stage([0, 1]), ct.Stage([1, 1])],
         >>>     2: [ct.Stage([0, {0, 1}, 0], color="blue"),
         >>>         ct.Stage([0, {0, 1}, 1], color="orange"),
         >>>         ct.Stage([1, {0, 1}, 0], color="red"),
@@ -97,7 +91,7 @@ class CStree(nx.Graph):
 
         """
         self.stages.update(stages)
-        self.stages[-1] = [Stage([], color="black")]
+        self.stages[-1] = [st.Stage([], color="black")]
 
         # Add support for the set format too
         # self.stage_probs = {key: [None]*len(val)
@@ -318,7 +312,7 @@ class CStree(nx.Graph):
         
         minl_csis_by_context = self.to_minimal_context_csis()
         
-        cdags = csi_relations_to_dags(
+        cdags = csi_relation.csi_relations_to_dags(
             minl_csis_by_context, self.p, labels=self.labels)
 
         return cdags
@@ -344,16 +338,16 @@ class CStree(nx.Graph):
         for k, rs in rels.items():
             for r in rs:
                 logging.debug(r)
-        paired_csis = csis_by_levels_2_by_pairs(rels)
+        paired_csis = csi_relation.csis_by_levels_2_by_pairs(rels)
         logging.debug("###### paired_csis")
         logging.debug(paired_csis)
 
         logging.debug("\n ######### minl cslisist")
-        minl_csislists = minimal_csis(paired_csis, self.cards[1:])
+        minl_csislists = csi_relation.minimal_csis(paired_csis, self.cards[1:])
         logging.debug(minl_csislists)
 
         logging.debug("\n ############### get minl csis in list format")
-        minl_csis = csi_lists_to_csis_by_level(minl_csislists, self.p)
+        minl_csis = csi_relation.csi_lists_to_csis_by_level(minl_csislists, self.p)
         logging.debug(minl_csislists)
         for key in minl_csislists:
             # logging.debug(key)
@@ -362,7 +356,7 @@ class CStree(nx.Graph):
                 #logging.debug("{} {}".format(val))
 
         logging.debug("#### minimal csis")
-        minl_csis_by_context = rels_by_level_2_by_context(minl_csis)
+        minl_csis_by_context = csi_relation.rels_by_level_2_by_context(minl_csis)
         logging.debug(minl_csis_by_context)
         for pair, val in minl_csis_by_context.items():
             for csi in val:
@@ -689,7 +683,7 @@ def df_to_cstree(df):
     cards = cards = df.iloc[0].values  # [int(x[1]) for x in df.columns]
 
     stagings = {i: [] for i in range(len(cards))}
-    stagings[-1] = [Stage([])]
+    stagings[-1] = [st.Stage([])]
     cstree = CStree(cards)
     cstree.labels = df.columns
 
@@ -701,7 +695,7 @@ def df_to_cstree(df):
             if val == "*":
                 stage_list.append(set(range(cards[level])))
             elif val == "-":
-                s = Stage(stage_list)
+                s = st.Stage(stage_list)
                 stagings[level-1].append(s)
                 break
             else:
