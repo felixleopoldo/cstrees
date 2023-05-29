@@ -1,4 +1,4 @@
-import cstrees.cstree as ct
+import cstrees.cstree as st
 import numpy as np
 import networkx as nx
 import logging, sys
@@ -12,8 +12,8 @@ logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
 np.random.seed(2)
 levelplus1=4
 cards = [2] * levelplus1
-co = ct.CausalOrder(range(levelplus1))
-tree = ct.CStree(co)
+co = st.CausalOrder(range(levelplus1))
+tree = st.CStree(co)
 
 
 #stage = ct.sample_random_stage(cards,2)
@@ -26,14 +26,14 @@ tree.set_cardinalities(cards)
 
 tree.update_stages({
     0: [],
-    1: [ct.Stage([{0, 1}, 0])],    # Green
-    2: [ct.Stage([0, {0, 1}, 0]),  # Blue
-        ct.Stage([0, {0, 1}, 1]),  # Orange
-        ct.Stage([1, {0, 1}, 0])]  # Red
+    1: [st.Stage([{0, 1}, 0])],    # Green
+    2: [st.Stage([0, {0, 1}, 0]),  # Blue
+        st.Stage([0, {0, 1}, 1]),  # Orange
+        st.Stage([1, {0, 1}, 0])]  # Red
 })
 
 
-tree.set_random_stage_parameters()
+tree.sample_stage_parameters()
 #x = tree.sample(5)
 
 a = tree.plot()

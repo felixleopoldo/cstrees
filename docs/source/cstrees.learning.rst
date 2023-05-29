@@ -1,7 +1,7 @@
-cstree
+learning
 =====================
 
-.. automodule:: cstrees.cstree
+.. automodule:: cstrees.learning
    :members:
    :undoc-members:
    :show-inheritance:

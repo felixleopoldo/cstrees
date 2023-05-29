@@ -1,27 +1,108 @@
-from cstrees.cstree import *
-from cstrees.csi_relation import *
-from cstrees.stage import *
-from cstrees.scoring import *
+import numpy as np
+
+import cstrees.cstree as ct
+from cstrees import csi_relation
+import cstrees.stage as stl
+import cstrees.scoring as sc
+from itertools import permutations
+
+
+def all_stagings(p, cards, l, max_cvars=1):
+    """ Generates an iterator over all stagings of a given level.
+        
+    Args:
+        p (int): Number of variables.
+        cards (list): List of cardinalities of the variables.
+        l (int): The level of the stage.
+        max_cvars (int, optional): The maximum number of context variables . Defaults to 1.
+
+    Raises:
+        NotImplementedError: Exception if max_cvars > 2.
+
+    Yields:
+        _type_: Iterator over all stagings of a given level.
+
+    Examples:
+        A staging with 2 stages for a binary CStree at level 2 
+        (numbering levels from 0) could e.g. be: 
+        
+        >>> staging = [stl.Stage([{0, 1}, 0, {0, 1}]), stl.Stage([{0, 1}, 1, {0, 1}])]
+
+    """
+    assert(l < len(cards)-1)
+    assert(l < p-1)
+    if max_cvars == 1:
+        if l == -1:  # This is an imaginary level -1, it has no stages.
+            yield [stl.Stage([])]
+            return
+
+        # All possible values for each variable
+        
+        vals = [list(range(cards[l])) for l in range(p)]
+        for k in range(l+1):  # all variables up to l can be context variables
+            # When we restrict to max_cvars = 1, we have two cases:
+            # Either all are in 1 color or all are in 2 different colors.
+            stlist = []  # The staging: list of stl.Stages.
+            # Loop through the values of the context variables.
+            for v in vals[k]:
+                left = [set(vals[i]) for i in range(k)]
+                right = [set(vals[j]) for j in range(k+1, l+1)]
+                # For example: [{0,1}, {0,1}, 0, {0, 1}]
+                stagelistrep = left + [v] + right
+                st = stl.Stage(stagelistrep)
+                stlist += [st]
+            yield stlist
+
+        # The staging with no context variables
+        stagelistrep = [set(v) for v in vals][:l+1]
+
+        st = stl.Stage(stagelistrep)
+        yield [st]
+    elif max_cvars == 2:
+        from cstrees.double_cvar_stagings import enumerate_stagings
+        
+
+        for staging_list in enumerate_stagings(l+1):
+            
+            staging = []
+            for stage_list in staging_list:
+                # Fix repr bug
+                if isinstance(stage_list, set):
+                    stage_list = [stage_list]
+                
+                stage = stl.Stage(stage_list) #could set colors here cut that takes time maybe.
+                staging.append(stage)
+            yield staging
+                
+    else:
+        raise NotImplementedError("max_cvars > 1 not implemented yet")
+
 
 def n_stagings(p, cards, l, max_cvars=1):
     """ Returns the number of stagings at a given level.
-        p: number of variables
-        cards: list of cardinalities of the variables
-        l: level
-        cvars: number of context variables
+    
+    Args:
+        p (int): Number of variables.            
+        cards (list): List of cardinalities of the variables.
+        l (int): The level of the stage.
+        cvars (int, optional): The maximum number of context variables . Defaults to 1.
+
     """
     
     stagings = all_stagings(p, cards, l, max_cvars)
+    for staging in stagings:
+        print([str(s) for s in staging])
+    
     return sum(len(staging) for staging in stagings)
 
 
-def optimal_staging_at_level(order, cards, data, l, max_cvars=1, alpha_tot=None, method="BDeu"):
+def optimal_staging_at_level(order, data, l, max_cvars=1, alpha_tot=None, method="BDeu"):
     p = len(order)
-    #co = CausalOrder(cards)
-    tree = CStree(cards)
+    cards = data.iloc[0].values
+    assert(l < len(cards)-1)
+    tree = ct.CStree(cards)
     tree.labels = order
-    # tree.set_cardinalities(cards)
-
+    
     stagings = all_stagings(p, cards, l, max_cvars)  # at level l
     max_staging = None
     max_staging_score = -np.inf
@@ -56,18 +137,28 @@ def optimal_cstree(order, data, max_cvars=1, alpha_tot=1.0, method="BDeu"):
     p = len(order)
 
     stages = {}
-    stages[-1] = [Stage([])]
+    stages[-1] = [stl.Stage([], color="black")]
     for level in range(-1, p-1):  # dont stage the last level
         max_staging, max_staging_score = optimal_staging_at_level(
-            order, cards, data, level, max_cvars, alpha_tot, method)
+            order, data, level, max_cvars, alpha_tot, method)
         stages[level] = max_staging
-        print("max staging: {}".format([str(s) for s in max_staging]))
+        #print("max staging: {}".format([str(s) for s in max_staging]))
 
     # Create CStree
-    tree = CStree(cards)
+    tree = ct.CStree(cards)
     tree.labels = order
+    
+    # Color each stage in the optimal staging. Singletons are black. 
+    # This should be done somewhere else probably.
+    colors = ['blueviolet', 'orange', 'navy', 'rebeccapurple', 'darkseagreen', 'darkslategray', 'lightslategray', 'aquamarine', 'lightgoldenrodyellow', 'cornsilk', 'azure', 'chocolate', 'red', 'darkolivegreen', 'chartreuse', 'turquoise', 'olive', 'crimson', 'goldenrod', 'orchid', 'firebrick', 'lawngreen', 'deeppink', 'wheat', 'teal', 'mediumseagreen', 'peru', 'salmon', 'palegreen', 'navajowhite', 'yellowgreen', 'mediumaquamarine', 'darkcyan', 'dodgerblue', 'brown', 'powderblue', 'mistyrose', 'violet', 'darkslategrey', 'midnightblue', 'aliceblue', 'dimgrey', 'palegoldenrod', 'black', 'darkgrey', 'olivedrab', 'linen', 'lightblue', 'thistle', 'greenyellow', 'indianred', 'khaki', 'lightslategrey', 'slateblue', 'purple', 'deepskyblue', 'magenta', 'yellow', 'ivory', 'darkorchid', 'mediumpurple', 'snow', 'dimgray', 'palevioletred', 'darkslateblue', 'sandybrown', 'lightgray', 'lemonchiffon', 'gray', 'silver', 'aqua', 'tomato', 'lightyellow', 'seagreen', 'darkmagenta', 'beige', 'cornflowerblue', 'peachpuff', 'ghostwhite', 'cyan', 'lightcoral', 'hotpink', 'lightpink', 'lightskyblue', 'slategrey', 'tan', 'oldlace', 'steelblue', 'springgreen', 'fuchsia', 'lime', 'papayawhip', 'mediumblue', 'mediumspringgreen', 'darkorange', 'lightgreen', 'blue', 'slategray', 'white', 'saddlebrown', 'mediumturquoise', 'paleturquoise', 'darkblue', 'plum', 'lightseagreen', 'lightgrey', 'blanchedalmond', 'lavenderblush', 'darkkhaki', 'gainsboro', 'lightsalmon', 'darkturquoise', 'moccasin', 'darkgoldenrod', 'mediumorchid', 'honeydew', 'mediumslateblue', 'maroon', 'forestgreen', 'darkgray', 'floralwhite', 'darkgreen', 'lightcyan', 'darksalmon', 'pink', 'royalblue', 'sienna', 'green', 'orangered', 'bisque', 'antiquewhite', 'rosybrown', 'whitesmoke', 'darkred', 'burlywood', 'skyblue', 'mediumvioletred', 'mintcream', 'limegreen', 'lightsteelblue', 'grey', 'coral', 'indigo', 'gold', 'cadetblue']
+    for level, staging in stages.items():
+        for i, stage in enumerate(staging):
+            if all([isinstance(i, int) for i in stage.list_repr]):
+                stage.color = "black"
+            else:
+                stage.color = colors[i]
     tree.update_stages(stages)
-    # maybe set level labels here?
+
     return tree
 
 

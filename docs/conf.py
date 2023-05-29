@@ -20,7 +20,8 @@ import os
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 
-sys.path.append(os.path.abspath('../../src/cstrees'))
+sys.path.append(os.path.abspath('../src'))
+
 #sys.path.append(os.path.abspath('..'))
 # -- General configuration ------------------------------------------------
 
@@ -31,9 +32,11 @@ sys.path.append(os.path.abspath('../../src/cstrees'))
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
+    "nbsphinx",
     'sphinx.ext.autodoc',
     'sphinx.ext.doctest',
     'sphinx.ext.viewcode',
+    'sphinx_copybutton',
     'sphinx.ext.napoleon',  # Supports google-style docstrings.
 ]
 
@@ -54,8 +57,8 @@ master_doc = 'index'
 # General information about the project.
 project = 'cstrees'
 project_title = project.title()
-author = ''
-copyright = '2022, %s' % author
+author = 'Liams and the three wise men'
+copyright = '2023, %s' % author
 
 
 # The version info for the project you're documenting, acts as replacement for

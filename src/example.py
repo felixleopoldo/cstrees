@@ -1,7 +1,7 @@
 # %load_ext autoreload
 # %autoreload 2
 
-import cstrees.cstree as ct
+import cstrees.cstree as st
 import numpy as np
 import networkx as nx
 import itertools
@@ -13,9 +13,9 @@ cards = [2] * p
 
 
 
-t = ct.sample_cstree(cards, 2, 0.5, 1)
+t = st.sample_cstree(cards, 2, 0.5, 1)
 #t.plot()
-t.set_random_stage_parameters()
+t.sample_stage_parameters()
 
 x = t.sample(5)
 t.plot()

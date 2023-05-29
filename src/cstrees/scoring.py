@@ -1,37 +1,24 @@
-import itertools
-import cstrees.cstree as ct
 from scipy.special import loggamma
 import numpy as np
+
+import cstrees.learning as learn
+import cstrees.cstree as ct
+import cstrees.stage as st
+import cstrees.stage as st
 
 
 def counts_at_level(t, l, data):
     """ Collect all the observed counts at a specific level by stages.
         So the counts for level l depends on the stage of level l-1.
     """
-    stage_counts = {}  # maybe context counts..
-    #ord = list(t.co.order)
-    #ord = list(order)
+    stage_counts =  {} 
+
     ord = t.labels
     # reorder the columns according to the order. 
     # cardinalities are at first row.
     
-    
-    #dataperm = data[1:, ord]
-    dfperm = data[ord]
     dataperm = data[ord].values[1:, :]
     
-    # print("the labels/order/label order to read the data columns in")
-    # print(ord)
-    
-    # print("data")
-    # print(data)
-    # print("dfperm")
-    # print(dfperm)
-
-    # print("dataperm")
-    # print(dataperm)
-
-
     #print("get counts at level {}".format(l))
     for i in range(len(dataperm)):  # iterate over the samples
         pred_vals = dataperm[i, :l]
@@ -127,7 +114,7 @@ def estimate_parameters(t, stage, stage_counts, method, alpha_tot):
             probs[i] = (alpha_obs + stage_counts[stage][i]) / (alpha_stage + stage_counts_total)
     return probs
 
-def score(t: ct.CStree, data: list, alpha_tot=1.0, method="BDeu"):
+def score(t, data: list, alpha_tot=1.0, method="BDeu"):
     """Score a CStree.
 
     Args:
@@ -146,7 +133,7 @@ def score(t: ct.CStree, data: list, alpha_tot=1.0, method="BDeu"):
 
     score = 0  # log score
     for l in range(t.p):
-        print("level {} in the tree scoring procedure".format(l))
+        #print("level {} in the tree scoring procedure".format(l))
         level_counts = counts_at_level(t, l, data)
 
         #for s, cnt in level_counts.items():
@@ -187,6 +174,7 @@ def score_order_at_level(order, l, data, strategy="max", max_cvars=1, alpha_tot=
     Returns:
         _type_: _description_
     """
+    import cstrees.cstree as st
     if max_cvars > 2:
         print("Only max_cvars < 3 implemented")
         return None
@@ -198,7 +186,7 @@ def score_order_at_level(order, l, data, strategy="max", max_cvars=1, alpha_tot=
     # here we set the labels/order for the CStree, to be used in the counting.
     tree.labels = order 
     
-    stagings = ct.all_stagings(p, cards, l-1, max_cvars=max_cvars)
+    stagings = learn.all_stagings(p, cards, l-1, max_cvars=max_cvars)
     
     
     if strategy == "max":

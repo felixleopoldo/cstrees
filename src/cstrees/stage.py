@@ -1,5 +1,10 @@
-from cstrees.cstree import *
-from cstrees.csi_relation import *
+import itertools
+import random 
+
+import numpy as np
+
+import cstrees.cstree as ct
+from cstrees import csi_relation
 
 class Stage:
     """
@@ -9,11 +14,16 @@ class Stage:
 
     """
 
-    def __init__(self, list_repr) -> None:
+    def __init__(self, list_repr, color=None) -> None:
         self.level = len(list_repr)-1
         self.list_repr = list_repr
-        self.color = None
+        # Check if singleton, if so set color black
+        if all([isinstance(i, int) for i in list_repr]):
+            self.color = "black"
+        else:
+            self.color = color
         self.csi = self.to_csi()
+        self.probs = None
 
     def __hash__(self) -> int:
         #return hash(tuple([tuple(i) for i in self.list_repr]))
@@ -53,6 +63,12 @@ class Stage:
             if type(e) is set:
                 s *= len(e)
         return s
+    
+    def is_singleton(self):
+        """
+        Checks if the stage is a singleton.
+        """
+        return self.size() == 1
 
     def to_df(self, column_labels):
         """Write sthe stage to dataframe. columns is..?
@@ -84,8 +100,6 @@ class Stage:
         self.probs = np.random.dirichlet(
             [1] * cards[self.level])  # Need to fix this
 
-    def from_df(self):
-        pass
 
     def __sub__(self, stage):
         """ b is typically a sample from the space self.
@@ -139,9 +153,9 @@ class Stage:
             else:
                 context[i] = el
 
-        ci = CI_relation(sepseta, sepsetb, cond_set)
-        context = Context(context)
-        return CSI_relation(ci, context)
+        ci = csi_relation.CI_relation(sepseta, sepsetb, cond_set)
+        context = csi_relation.Context(context)
+        return csi_relation.CSI_relation(ci, context)
 
     def intersects(self, stage):
         """ Checks if the paths of two stages intersect.
@@ -170,7 +184,9 @@ class Stage:
 
     def __str__(self) -> str:
         # return str(self.to_csi()) + "; probs: " + str(self.probs)
-        # return str(self.list_repr) + "; probs: " + str(self.probs)
+        if self.probs is not None:
+            return str(self.list_repr) + "; probs: " + str(self.probs)+ "; color: " + str(self.color)
+        #return str(self.list_repr) + "; probs: " + str(self.probs)
         return str(self.list_repr)
 
 
