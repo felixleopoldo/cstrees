@@ -127,7 +127,7 @@ class CSI_relation:
                 return 0
 
         if not ((len(self.ci.a) == 1) and (len(self.ci.b) == 1)):
-            print("This only works for pairwise csis.")
+            print("This only works for pairwise csis (Xi _|_ Xj | ...).")
             return None
         # print(print(self.ci.sep))
         levels = max(mymax(self.ci.a), mymax(self.ci.b), mymax(
@@ -194,6 +194,14 @@ class CSI_relation:
 
 
 def decomposition(ci: CI_relation):
+    """Generate all possible pairwise CI relations that are implied by decomposition rule.
+
+    Args:
+        ci (CI_relation): A CI relation.
+
+    Returns:
+        list: List of pairwise CI relations.
+    """
 
     cilist = []
     for x in itertools.product(ci.a, ci.b):
@@ -205,7 +213,19 @@ def decomposition(ci: CI_relation):
     return cilist
 
 def powerset(iterable):
-    # "powerset([1,2,3]) --> () (1,) (2,) (3,) (1,2) (1,3) (2,3) (1,2,3)"
+    """Returns the set of all subsets of a set.
+
+    Args:
+        iterable (list): Lest of elements.
+
+    Returns:
+        list: List of all subsets.
+        
+    Example:
+        >>> powerset([1,2,3])
+        () (1,) (2,) (3,) (1,2) (1,3) (2,3) (1,2,3)
+    """
+    
     s = list(iterable)
     return chain.from_iterable(combinations(s, r) for r in range(len(s)+1))
 

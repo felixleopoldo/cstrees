@@ -57,7 +57,7 @@ master_doc = 'index'
 # General information about the project.
 project = 'cstrees'
 project_title = project.title()
-author = 'Liams and the three wise men'
+author = 'Liam and his three wise men.'
 copyright = '2023, %s' % author
 
 

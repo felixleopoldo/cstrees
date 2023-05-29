@@ -186,7 +186,7 @@ def score_order_at_level(order, l, data, strategy="max", max_cvars=1, alpha_tot=
     # here we set the labels/order for the CStree, to be used in the counting.
     tree.labels = order 
     
-    stagings = learn.all_stagings(p, cards, l-1, max_cvars=max_cvars)
+    stagings = learn.all_stagings(cards, l-1, max_cvars=max_cvars)
     
     
     if strategy == "max":
