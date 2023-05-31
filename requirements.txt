@@ -12,3 +12,4 @@ ipython
 ipykernel
 mpl-tools
 causaldag
+pylint
