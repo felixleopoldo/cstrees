@@ -77,12 +77,12 @@ The easiest way is to first create a conda environment
    $ conda activate cstrees   
    ```
 
-This is an example of how to list things you need to use the software and how to install them.
-* graphviz
+graphviz is needed for the plotting, it can be installed using conda by
+
   ```sh
   (cstrees)$ conda install graphviz
   ```
-Might have to install pygraphviz with conda as well.
+
 ### Installation
 
 _The following steps clones the repo._
