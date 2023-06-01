@@ -65,7 +65,6 @@ All info about the package is found in the doucumentation.
 <!-- GETTING STARTED -->
 ## Getting Started Developing
 
-This is an example of how you may give instructions on setting up your project locally.
 To get a local copy up and running follow these simple example steps.
 
 ### Prerequisites
@@ -85,17 +84,13 @@ graphviz is needed for the plotting, it can be installed using conda by
 
 ### Installation
 
-_The following steps clones the repo._
+_The following steps clones the repo and installs the required packages._
 
-1. Clone the repo
-   ```sh
-   (cstrees)$ git clone git@github.com:felixleopoldo/CStrees.git
-   ```
-2. Install PyPi packages
-   ```sh
-    (cstrees)$ cd CStrees
-    (cstrees) CStrees$ pip install -r requirements.txt
-   ```
+  ```sh
+  (cstrees)$ git clone git@github.com:felixleopoldo/CStrees.git
+  (cstrees)$ cd CStrees
+  (cstrees) CStrees$ pip install -r requirements.txt
+  ```
 
 ### Building the docs
 
