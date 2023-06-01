@@ -7,7 +7,7 @@ import networkx as nx
 import numpy as np
 import pandas as pd
 
-import cstrees.scoring as sc
+
 import cstrees.stage as st
 from cstrees import csi_relation
 #logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
@@ -191,7 +191,7 @@ class CStree:
             >>> t.estimate_stage_parameters(x, alpha_tot=1.0, method="BDeu")
 
         """
-
+        import cstrees.scoring as sc
         # Set stage probabilities
 
         for lev, stages in self.stages.items():

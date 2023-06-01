@@ -25,6 +25,7 @@ def all_stagings(cards, l, max_cvars=1):
         A staging with 2 stages for a binary CStree at level 2
         (numbering levels from 0) could e.g. be:
 
+        >>> import cstrees.learning as ctl
         >>> cards = [2]*4
         >>> stagings = ctl.all_stagings(cards, 2, max_cvars=2)
         >>> for i, staging in enumerate(stagings):
@@ -122,6 +123,7 @@ def n_stagings(cards, level, max_cvars=1):
         cvars (int, optional): The maximum number of context variables. Defaults to 1.
     
     Examples:
+        >>> import cstrees.learning as ctl
         >>> cards = [2]*4
         >>> ctl.n_stagings(cards, 2, max_cvars=2)
         8
@@ -149,7 +151,6 @@ def _optimal_staging_at_level(order, data, level, max_cvars=1, alpha_tot=None,
 
     Returns:
         tuple: (optimal staging, optimal score)
-
 
     """
 
@@ -187,8 +188,6 @@ def _optimal_cstree_given_order(order, data, max_cvars=1, alpha_tot=1.0,
         alpha_tot (float, optional): The Dirichlet hyper parameter total pseudo 
         counts. Defaults to 1.0.
         method (str, optional): Parameter prior type. Defaults to "BDeu".
-    Examples:
-
 
     """
 
@@ -247,6 +246,7 @@ def _find_optimal_order(data, strategy="max", max_cvars=1, alpha_tot=1,
         parameter total pseudo counts. Defaults to 1. 
         method (str, optional): Parameter prior type. Defaults to "BDeu".
     Examples:
+        >>> import cstrees.learning as ctl
         >>> optord, score = ctl.find_optimal_order(
         >>> df, strategy="max", max_cvars=2, alpha_tot=1.0, method="BDeu")
         >>> print("optimal order: {}, score {}".format(optord, score))
@@ -291,6 +291,7 @@ def find_optimal_cstree(data, max_cvars=1, alpha_tot=1, method="BDeu"):
         method (str, optional): Parameter prior type. Defaults to "BDeu".
     
     Examples:
+        >>> import cstrees.learning as ctl
         >>> opttree = ctl.find_optimal_cstree(df, max_cvars=2, alpha_tot=1.0, method="BDeu")
         >>> opttree.to_df()
         	a	b	c
