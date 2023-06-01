@@ -122,8 +122,6 @@ The easiest way is to first create a conda environment
    $ conda activate cstrees   
    ```
 
-
-
 This is an example of how to list things you need to use the software and how to install them.
 * graphviz
   ```sh
@@ -142,19 +140,28 @@ _The following steps clones the repo._
 2. Install PyPi packages
    ```sh
     (cstrees)$ cd CStrees
-    (cstrees)$ pip install -r requirements.txt
+    (cstrees) CStrees$ pip install -r requirements.txt
    ```
 
 ### Building the docs
 
-
 ```sh
-(cstrees)$ cd docs
-(cstrees)$ make html
+(cstrees) CStrees$ cd docs
+(cstrees) docs$ make html
 ```
 Open *_build/html/index.html*
 
+### Developing
 
+The *cstree* lib is in the *src* directory, so you need to go there first and 
+e.g. open ipython as
+
+
+```sh
+(cstrees) CStrees$ cd src
+(cstrees) src$ ipython
+
+```
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
