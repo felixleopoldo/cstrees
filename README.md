@@ -88,16 +88,8 @@
 
 [![Product Name Screen Shot][product-screenshot]](https://example.com)
 
-There are many great README templates available on GitHub; however, I didn't find one that really suited my needs so I created this enhanced one. I want to create a README template so amazing that it'll be the last one you ever need -- I think this is it.
+All info about the package is found in the doucumentation.
 
-Here's why:
-* Your time should be focused on creating something amazing. A project that solves a problem and helps others
-* You shouldn't be doing the same tasks over and over like creating a README from scratch
-* You should implement DRY principles to the rest of your life :smile:
-
-Of course, no one template will serve all projects since your needs may be different. So I'll be adding more in the near future. You may also suggest changes by forking this repo and creating a pull request or opening an issue. Thanks to all the people have contributed to expanding this template!
-
-Use the `BLANK_README.md` to get started.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -105,9 +97,10 @@ Use the `BLANK_README.md` to get started.
 
 ### Built With
 
-This section should list any major frameworks/libraries used to bootstrap your project. Leave any add-ons/plugins for the acknowledgements section. Here are a few examples.
 
-* [![Next][Next.js]][Next-url]
+![NumPy](https://img.shields.io/badge/numpy-%23013243.svg?style=for-the-badge&logo=numpy&logoColor=white)
+![Pandas](https://img.shields.io/badge/pandas-%23150458.svg?style=for-the-badge&logo=pandas&logoColor=white)
+![SciPy](https://img.shields.io/badge/SciPy-%230C55A5.svg?style=for-the-badge&logo=scipy&logoColor=%white)
 
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
@@ -115,32 +108,52 @@ This section should list any major frameworks/libraries used to bootstrap your p
 
 
 <!-- GETTING STARTED -->
-## Getting Started
+## Getting Started Developing
 
 This is an example of how you may give instructions on setting up your project locally.
 To get a local copy up and running follow these simple example steps.
 
 ### Prerequisites
 
+The easiest way is to first create a conda environment
+
+```sh
+   $ conda create -n cstrees
+   $ conda activate cstrees   
+   ```
+
+
+
 This is an example of how to list things you need to use the software and how to install them.
 * graphviz
   ```sh
-  conda install graphviz
+  (cstrees)$ conda install graphviz
   ```
-Might have to install pygraphviz withconda as well.
+Might have to install pygraphviz with conda as well.
 ### Installation
 
-_The following steps installs the package._
+_The following steps clones the repo._
 
 1. Clone the repo
    ```sh
-   git clone git@github.com:felixleopoldo/CStrees.git
-   cd CStrees
+   (cstrees)$ git clone git@github.com:felixleopoldo/CStrees.git
+   
    ```
 2. Install PyPi packages
    ```sh
-   pip install -r requirements.txt
+    (cstrees)$ cd CStrees
+    (cstrees)$ pip install -r requirements.txt
    ```
+
+### Building the docs
+
+
+```sh
+(cstrees)$ cd docs
+(cstrees)$ make html
+```
+Open *_build/html/index.html*
+
 
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
@@ -150,41 +163,11 @@ _The following steps installs the package._
 <!-- USAGE EXAMPLES -->
 ## Usage
 
-This example crates the CStree from Figure 1 in (Duarte & Solus, 2022).
-
-
-```python
->>> import cstrees.cstree as ct
->>> import numpy as np
->>> # CStree from Figure 1 in (Duarte & Solus, 2022)
->>> np.random.seed(1)
->>> p = 4
->>> tree = ct.CStree([2]*p)
->>> tree.update_stages({
->>>    0: [],
->>>    1: [ct.Stage([[0, 1], 0])],    # Green
->>>    2: [ct.Stage([0, [0, 1], 0]),  # Blue
->>>        ct.Stage([0, [0, 1], 1]),  # Orange
->>>        ct.Stage([1, [0, 1], 0])]  # Red
->>> })
->>> tree.sample_stage_parameters()
->>> tree.plot()
->>> csi_rels = tree.csi_relations()
->>> for key, val in csi_rels.items():
->>>   for v in val:
->>>     print("{}".format(v))
->>> X1 ⊥ X3, X2=0
->>> X2 ⊥ X4, X1=0, X3=0
->>> X2 ⊥ X4, X1=0, X3=1
->>> X2 ⊥ X4, X1=1, X3=0   
-   ```
+See the docs.
 
 _For more examples, please refer to the [Documentation](https://example.com)_
 
-
-
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
-
 
 
 <!-- ROADMAP -->
@@ -230,8 +213,6 @@ Distributed under the MIT License. See `LICENSE.txt` for more information.
 
 <!-- CONTACT -->
 ## Contact
-
-Your Name - [@your_twitter](https://twitter.com/your_username) - email@example.com
 
 Project Link: [https://github.com/your_username/repo_name](https://github.com/your_username/repo_name)
 

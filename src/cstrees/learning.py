@@ -7,38 +7,73 @@ import cstrees.scoring as sc
 from itertools import permutations
 
 
-def all_stagings(p, cards, l, max_cvars=1):
-    """ Generates an iterator over all stagings of a given level.
-        
+def all_stagings(cards, l, max_cvars=1):
+    """ Returns a generator over all stagings of a given level.
+
     Args:
-        p (int): Number of variables.
-        cards (list): List of cardinalities of the variables.
         l (int): The level of the stage.
+        cards (list): List of cardinalities of the variables. Should be at least of length l+1.
         max_cvars (int, optional): The maximum number of context variables . Defaults to 1.
 
     Raises:
         NotImplementedError: Exception if max_cvars > 2.
 
     Yields:
-        _type_: Iterator over all stagings of a given level.
+        generator: generator over all stagings of a given level.
 
     Examples:
-        A staging with 2 stages for a binary CStree at level 2 
-        (numbering levels from 0) could e.g. be: 
-        
-        >>> staging = [stl.Stage([{0, 1}, 0, {0, 1}]), stl.Stage([{0, 1}, 1, {0, 1}])]
+        A staging with 2 stages for a binary CStree at level 2
+        (numbering levels from 0) could e.g. be:
+
+        >>> import cstrees.learning as ctl
+        >>> cards = [2]*4
+        >>> stagings = ctl.all_stagings(cards, 2, max_cvars=2)
+        >>> for i, staging in enumerate(stagings):
+        >>>     print("staging: {}".format(i))
+        >>>     for stage in staging:
+        >>>         print(stage)
+        staging: 0
+        [{0, 1}]
+        [{0, 1}]
+        staging: 1
+        [0, {0, 1}]
+        [1, {0, 1}]
+        staging: 2
+        [{0, 1}, 0]
+        [{0, 1}, 1]
+        staging: 3
+        [1, {0, 1}]
+        [0, 0]
+        [0, 1]
+        staging: 4
+        [0, {0, 1}]
+        [1, 0]
+        [1, 1]
+        staging: 5
+        [{0, 1}, 1]
+        [0, 0]
+        [1, 0]
+        staging: 6
+        [{0, 1}, 0]
+        [0, 1]
+        [1, 1]
+        staging: 7
+        [0, 0]
+        [1, 0]
+        [0, 1]
+        [1, 1]
 
     """
+
     assert(l < len(cards)-1)
-    assert(l < p-1)
     if max_cvars == 1:
         if l == -1:  # This is an imaginary level -1, it has no stages.
             yield [stl.Stage([])]
             return
 
         # All possible values for each variable
-        
-        vals = [list(range(cards[l])) for l in range(p)]
+
+        vals = [list(range(cards[l])) for l in range(len(cards))]
         for k in range(l+1):  # all variables up to l can be context variables
             # When we restrict to max_cvars = 1, we have two cases:
             # Either all are in 1 color or all are in 2 different colors.
@@ -60,77 +95,101 @@ def all_stagings(p, cards, l, max_cvars=1):
         yield [st]
     elif max_cvars == 2:
         from cstrees.double_cvar_stagings import enumerate_stagings
-        
+
 
         for staging_list in enumerate_stagings(l+1):
-            
+
             staging = []
             for stage_list in staging_list:
                 # Fix repr bug
                 if isinstance(stage_list, set):
                     stage_list = [stage_list]
-                
+
                 stage = stl.Stage(stage_list) #could set colors here cut that takes time maybe.
                 staging.append(stage)
             yield staging
-                
+
     else:
         raise NotImplementedError("max_cvars > 1 not implemented yet")
 
 
-def n_stagings(p, cards, l, max_cvars=1):
+def n_stagings(cards, level, max_cvars=1):
     """ Returns the number of stagings at a given level.
-    
+
     Args:
-        p (int): Number of variables.            
+        p (int): Number of variables.
         cards (list): List of cardinalities of the variables.
-        l (int): The level of the stage.
-        cvars (int, optional): The maximum number of context variables . Defaults to 1.
+        level (int): The level in the CStree.
+        cvars (int, optional): The maximum number of context variables. Defaults to 1.
+    
+    Examples:
+        >>> import cstrees.learning as ctl
+        >>> cards = [2]*4
+        >>> ctl.n_stagings(cards, 2, max_cvars=2)
+        8
 
     """
-    
-    stagings = all_stagings(p, cards, l, max_cvars)
-    for staging in stagings:
-        print([str(s) for s in staging])
-    
-    return sum(len(staging) for staging in stagings)
+
+    stagings = all_stagings(cards, level, max_cvars)
+
+    return sum(1 for _ in stagings)
 
 
-def optimal_staging_at_level(order, data, l, max_cvars=1, alpha_tot=None, method="BDeu"):
-    p = len(order)
+def _optimal_staging_at_level(order, data, level, max_cvars=1, alpha_tot=None, 
+                              method="BDeu"):
+    """Find the optimal staging at a given level.
+
+    Args:
+        order (list): The order of the variables. data (pandas DataFrame): The
+        data as a pandas DataFrame. 
+        level (int): The level of the CStree.
+        max_cvars (int, optional): Max context variables. Defaults to 1.
+        alpha_tot (float, optional): The Dirichlet hyper parameter total pseudo
+        counts. Defaults to None. 
+        method (str, optional): Parameter prior type.
+        Defaults to "BDeu".
+
+    Returns:
+        tuple: (optimal staging, optimal score)
+
+    """
+
     cards = data.iloc[0].values
-    assert(l < len(cards)-1)
+    assert(level < len(cards)-1)
     tree = ct.CStree(cards)
     tree.labels = order
-    
-    stagings = all_stagings(p, cards, l, max_cvars)  # at level l
+
+    stagings = all_stagings(cards, level, max_cvars)
     max_staging = None
     max_staging_score = -np.inf
-    #logging.debug("level: {}".format(l))
 
     for stlist in stagings:
-        #logging.debug("scoring staging: {}".format([str(ss) for ss in stlist]))
-        tree.update_stages({l: stlist})
+
+        tree.update_stages({level: stlist})
         # This needs the stages to be set at the line above.
-        level_counts = sc.counts_at_level(tree, l+1, data)
-        #logging.debug("all counts in the staging")
-        # for k, v in level_counts.items():
-        #    logging.debug("{}: {}".format(k, v))
-        score = sc.score_level(tree, l+1, level_counts, alpha_tot, method)
-        #logging.debug("score: {}".format(score))
+        level_counts = sc.counts_at_level(tree, level+1, data)
+        score = sc.score_level(tree, level+1, level_counts, alpha_tot, method)
+
         if score > max_staging_score:
-            #logging.debug("{} is current max".format(score))
             max_staging_score = score
             max_staging = stlist
 
     return max_staging, max_staging_score
 
 
-def optimal_cstree(order, data, max_cvars=1, alpha_tot=1.0, method="BDeu"):
+def _optimal_cstree_given_order(order, data, max_cvars=1, alpha_tot=1.0, 
+                                method="BDeu"):
+    """Find the optimal CStree for a given order.
 
-    # Order should use the same labels as data?
-    # Order is only intresting when data is involved. Then its the order of the data columns
-    # Otherwise we only talk about levels.
+    Args:
+        order (list): The order of the variables.
+        data (pandas DataFrame): The data as a pandas DataFrame.
+        max_cvars (int, optional): Max context variables. Defaults to 1.
+        alpha_tot (float, optional): The Dirichlet hyper parameter total pseudo 
+        counts. Defaults to 1.0.
+        method (str, optional): Parameter prior type. Defaults to "BDeu".
+
+    """
 
     # BUG?: Maybe these have to be adapted to the order.
     cards = data.iloc[0].values
@@ -139,7 +198,7 @@ def optimal_cstree(order, data, max_cvars=1, alpha_tot=1.0, method="BDeu"):
     stages = {}
     stages[-1] = [stl.Stage([], color="black")]
     for level in range(-1, p-1):  # dont stage the last level
-        max_staging, max_staging_score = optimal_staging_at_level(
+        max_staging, max_staging_score = _optimal_staging_at_level(
             order, data, level, max_cvars, alpha_tot, method)
         stages[level] = max_staging
         #print("max staging: {}".format([str(s) for s in max_staging]))
@@ -147,10 +206,22 @@ def optimal_cstree(order, data, max_cvars=1, alpha_tot=1.0, method="BDeu"):
     # Create CStree
     tree = ct.CStree(cards)
     tree.labels = order
-    
-    # Color each stage in the optimal staging. Singletons are black. 
+
+    # Color each stage in the optimal staging. Singletons are black.
     # This should be done somewhere else probably.
-    colors = ['blueviolet', 'orange', 'navy', 'rebeccapurple', 'darkseagreen', 'darkslategray', 'lightslategray', 'aquamarine', 'lightgoldenrodyellow', 'cornsilk', 'azure', 'chocolate', 'red', 'darkolivegreen', 'chartreuse', 'turquoise', 'olive', 'crimson', 'goldenrod', 'orchid', 'firebrick', 'lawngreen', 'deeppink', 'wheat', 'teal', 'mediumseagreen', 'peru', 'salmon', 'palegreen', 'navajowhite', 'yellowgreen', 'mediumaquamarine', 'darkcyan', 'dodgerblue', 'brown', 'powderblue', 'mistyrose', 'violet', 'darkslategrey', 'midnightblue', 'aliceblue', 'dimgrey', 'palegoldenrod', 'black', 'darkgrey', 'olivedrab', 'linen', 'lightblue', 'thistle', 'greenyellow', 'indianred', 'khaki', 'lightslategrey', 'slateblue', 'purple', 'deepskyblue', 'magenta', 'yellow', 'ivory', 'darkorchid', 'mediumpurple', 'snow', 'dimgray', 'palevioletred', 'darkslateblue', 'sandybrown', 'lightgray', 'lemonchiffon', 'gray', 'silver', 'aqua', 'tomato', 'lightyellow', 'seagreen', 'darkmagenta', 'beige', 'cornflowerblue', 'peachpuff', 'ghostwhite', 'cyan', 'lightcoral', 'hotpink', 'lightpink', 'lightskyblue', 'slategrey', 'tan', 'oldlace', 'steelblue', 'springgreen', 'fuchsia', 'lime', 'papayawhip', 'mediumblue', 'mediumspringgreen', 'darkorange', 'lightgreen', 'blue', 'slategray', 'white', 'saddlebrown', 'mediumturquoise', 'paleturquoise', 'darkblue', 'plum', 'lightseagreen', 'lightgrey', 'blanchedalmond', 'lavenderblush', 'darkkhaki', 'gainsboro', 'lightsalmon', 'darkturquoise', 'moccasin', 'darkgoldenrod', 'mediumorchid', 'honeydew', 'mediumslateblue', 'maroon', 'forestgreen', 'darkgray', 'floralwhite', 'darkgreen', 'lightcyan', 'darksalmon', 'pink', 'royalblue', 'sienna', 'green', 'orangered', 'bisque', 'antiquewhite', 'rosybrown', 'whitesmoke', 'darkred', 'burlywood', 'skyblue', 'mediumvioletred', 'mintcream', 'limegreen', 'lightsteelblue', 'grey', 'coral', 'indigo', 'gold', 'cadetblue']
+    colors = ['blueviolet', 'orange', 'navy', 'rebeccapurple', 'darkseagreen',
+              'darkslategray', 'lightslategray', 'aquamarine',
+              'lightgoldenrodyellow', 'cornsilk', 'azure', 'chocolate',
+              'red', 'darkolivegreen', 'chartreuse', 'turquoise', 'olive',
+              'crimson', 'goldenrod', 'orchid', 'firebrick', 'lawngreen', 
+              'deeppink', 'wheat', 'teal', 'mediumseagreen', 'peru', 'salmon', 
+              'palegreen', 'navajowhite', 'yellowgreen', 'mediumaquamarine', 
+              'darkcyan', 'dodgerblue', 'brown', 'powderblue', 'mistyrose', 
+              'violet', 'darkslategrey', 'midnightblue', 'aliceblue', 
+              'dimgrey', 'palegoldenrod', 'black', 'darkgrey', 'olivedrab', 
+              'linen',  'lightblue', 'thistle', 'greenyellow', 'indianred', 
+              'khaki']
+              
     for level, staging in stages.items():
         for i, stage in enumerate(staging):
             if all([isinstance(i, int) for i in stage.list_repr]):
@@ -162,14 +233,29 @@ def optimal_cstree(order, data, max_cvars=1, alpha_tot=1.0, method="BDeu"):
     return tree
 
 
-def find_optimal_order(data, strategy="max", max_cvars=1, alpha_tot=1, method="BDeu"):
-    """ Find the optimal causal order for the data.
+def _find_optimal_order(data, strategy="max", max_cvars=1, alpha_tot=1, 
+                        method="BDeu"):
+    """ Find the optimal causal order for the data using exhaustive search of
+        the optimal order then the CStree having that order.
+
+    Args:
+        data (pandas DataFrame): The data as a pandas DataFrame. 
+        strategy (str, optional): The scoring strategy to use. Defaults to "max" which mean that the score of an order is the score of the maximal scoring CStree it can contain. 
+        max_cvars (int, optional): Max context variables. Defaults to 1. 
+        alpha_tot (float, optional): The Dirichlet hyper
+        parameter total pseudo counts. Defaults to 1. 
+        method (str, optional): Parameter prior type. Defaults to "BDeu".
+    Examples:
+        >>> import cstrees.learning as ctl
+        >>> optord, score = ctl.find_optimal_order(
+        >>> df, strategy="max", max_cvars=2, alpha_tot=1.0, method="BDeu")
+        >>> print("optimal order: {}, score {}".format(optord, score))
+
     """
 
     p = data.shape[1]
     perms = permutations(list(range(p)))
     labels = data.columns.values
-    cards = data.iloc[0].values
     optimal_order = None
     max_score = -np.inf
 
@@ -182,8 +268,9 @@ def find_optimal_order(data, strategy="max", max_cvars=1, alpha_tot=1, method="B
 
         #print("scoring order: {}".format(order))
         score = sc.score_order(order, data, strategy="max",
-                               max_cvars=max_cvars, alpha_tot=alpha_tot, method=method)
-        print("order: {}, score: {}".format(order, score))
+                               max_cvars=max_cvars, alpha_tot=alpha_tot, 
+                               method=method)
+        #print("order: {}, score: {}".format(order, score))
 
         # if score == max_score:
         #    optimal_orders.append(order)
@@ -195,10 +282,32 @@ def find_optimal_order(data, strategy="max", max_cvars=1, alpha_tot=1, method="B
 
 
 def find_optimal_cstree(data, max_cvars=1, alpha_tot=1, method="BDeu"):
-    opt_order = find_optimal_order(
-        data, max_cvars=max_cvars, alpha_tot=alpha_tot, method=method)
-    print("optimal order: {}".format(opt_order))
+    """ Find the optimal CStree for the data.
 
-    optimal_staging = optimal_cstree(
-        opt_order, data, max_cvars=max_cvars, alpha_tot=alpha_tot, method=method)
-    print("optimal staging: {}".format(optimal_staging))
+    Args:
+        data (pandas DataFrame): The data as a pandas DataFrame.
+        max_cvars (int, optional): Max context variables. Defaults to 1.
+        alpha_tot (float, optional): The Dirichlet hyper parameter total pseudo counts. Defaults to 1.
+        method (str, optional): Parameter prior type. Defaults to "BDeu".
+    
+    Examples:
+        >>> import cstrees.learning as ctl
+        >>> opttree = ctl.find_optimal_cstree(df, max_cvars=2, alpha_tot=1.0, method="BDeu")
+        >>> opttree.to_df()
+        	a	b	c
+        0	2	2	2
+        1	*	-	-
+        2	0	0	-
+        3	1	0	-
+        4	0	1	-
+        5	1	1	-
+
+    """
+    opt_order, _ = _find_optimal_order(
+        data, max_cvars=max_cvars, alpha_tot=alpha_tot, method=method)
+
+    opttree = _optimal_cstree_given_order(opt_order, data,
+                                          max_cvars=max_cvars,
+                                          alpha_tot=alpha_tot, method=method)
+
+    return opttree

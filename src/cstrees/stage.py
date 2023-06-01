@@ -26,7 +26,6 @@ class Stage:
         self.probs = None
 
     def __hash__(self) -> int:
-        #return hash(tuple([tuple(i) for i in self.list_repr]))
         return hash(self.csi.context)
 
     def __eq__(self, __o: object) -> bool:
@@ -153,9 +152,9 @@ class Stage:
             else:
                 context[i] = el
 
-        ci = csi_relation.CI_relation(sepseta, sepsetb, cond_set)
+        ci = csi_relation.CI(sepseta, sepsetb, cond_set)
         context = csi_relation.Context(context)
-        return csi_relation.CSI_relation(ci, context)
+        return csi_relation.CSI(ci, context)
 
     def intersects(self, stage):
         """ Checks if the paths of two stages intersect.

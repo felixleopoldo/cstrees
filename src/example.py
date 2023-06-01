@@ -11,8 +11,6 @@ np.random.seed(1)
 p = 4
 cards = [2] * p
 
-
-
 t = st.sample_cstree(cards, 2, 0.5, 1)
 #t.plot()
 t.sample_stage_parameters()
