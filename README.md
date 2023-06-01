@@ -72,9 +72,9 @@ To get a local copy up and running follow these simple example steps.
 The easiest way is to first create a conda environment
 
 ```sh
-   $ conda create -n cstrees
-   $ conda activate cstrees   
-   ```
+$ conda create -n cstrees
+$ conda activate cstrees   
+```
 
 graphviz is needed for the plotting, it can be installed using conda by
 
