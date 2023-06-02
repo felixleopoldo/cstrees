@@ -200,7 +200,7 @@ class CStree:
 
             stage_counts = sc.counts_at_level(self, lev+1, data)
 
-            for i, stage in enumerate(stages):
+            for stage in stages:
                 probs = sc.estimate_parameters(
                     self, stage, stage_counts, method, alpha_tot)
                 stage.probs = probs

@@ -1,13 +1,13 @@
+from itertools import permutations
+
 import numpy as np
 
 import cstrees.cstree as ct
-from cstrees import csi_relation
 import cstrees.stage as stl
 import cstrees.scoring as sc
-from itertools import permutations
 
 
-def all_stagings(cards, l, max_cvars=1):
+def all_stagings(cards, level, max_cvars=1):
     """ Returns a generator over all stagings of a given level.
 
     Args:
@@ -65,23 +65,23 @@ def all_stagings(cards, l, max_cvars=1):
 
     """
 
-    assert(l < len(cards)-1)
+    assert level < len(cards)-1
     if max_cvars == 1:
-        if l == -1:  # This is an imaginary level -1, it has no stages.
+        if level == -1:  # This is an imaginary level -1, it has no stages.
             yield [stl.Stage([])]
             return
 
         # All possible values for each variable
 
-        vals = [list(range(cards[l])) for l in range(len(cards))]
-        for k in range(l+1):  # all variables up to l can be context variables
+        vals = [list(range(cards[lev])) for lev in range(len(cards))]
+        for k in range(level+1):  # all variables up to l can be context variables
             # When we restrict to max_cvars = 1, we have two cases:
             # Either all are in 1 color or all are in 2 different colors.
             stlist = []  # The staging: list of stl.Stages.
             # Loop through the values of the context variables.
             for v in vals[k]:
                 left = [set(vals[i]) for i in range(k)]
-                right = [set(vals[j]) for j in range(k+1, l+1)]
+                right = [set(vals[j]) for j in range(k+1, level+1)]
                 # For example: [{0,1}, {0,1}, 0, {0, 1}]
                 stagelistrep = left + [v] + right
                 st = stl.Stage(stagelistrep)
@@ -89,15 +89,14 @@ def all_stagings(cards, l, max_cvars=1):
             yield stlist
 
         # The staging with no context variables
-        stagelistrep = [set(v) for v in vals][:l+1]
+        stagelistrep = [set(v) for v in vals][:level+1]
 
         st = stl.Stage(stagelistrep)
         yield [st]
     elif max_cvars == 2:
         from cstrees.double_cvar_stagings import enumerate_stagings
 
-
-        for staging_list in enumerate_stagings(l+1):
+        for staging_list in enumerate_stagings(level+1):
 
             staging = []
             for stage_list in staging_list:
@@ -105,7 +104,8 @@ def all_stagings(cards, l, max_cvars=1):
                 if isinstance(stage_list, set):
                     stage_list = [stage_list]
 
-                stage = stl.Stage(stage_list) #could set colors here cut that takes time maybe.
+                # could set colors here cut that takes time maybe.
+                stage = stl.Stage(stage_list)
                 staging.append(stage)
             yield staging
 
@@ -121,7 +121,7 @@ def n_stagings(cards, level, max_cvars=1):
         cards (list): List of cardinalities of the variables.
         level (int): The level in the CStree.
         cvars (int, optional): The maximum number of context variables. Defaults to 1.
-    
+
     Examples:
         >>> import cstrees.learning as ctl
         >>> cards = [2]*4
@@ -135,17 +135,17 @@ def n_stagings(cards, level, max_cvars=1):
     return sum(1 for _ in stagings)
 
 
-def _optimal_staging_at_level(order, data, level, max_cvars=1, alpha_tot=None, 
+def _optimal_staging_at_level(order, data, level, max_cvars=1, alpha_tot=None,
                               method="BDeu"):
     """Find the optimal staging at a given level.
 
     Args:
         order (list): The order of the variables. data (pandas DataFrame): The
-        data as a pandas DataFrame. 
+        data as a pandas DataFrame.
         level (int): The level of the CStree.
         max_cvars (int, optional): Max context variables. Defaults to 1.
         alpha_tot (float, optional): The Dirichlet hyper parameter total pseudo
-        counts. Defaults to None. 
+        counts. Defaults to None.
         method (str, optional): Parameter prior type.
         Defaults to "BDeu".
 
@@ -155,7 +155,7 @@ def _optimal_staging_at_level(order, data, level, max_cvars=1, alpha_tot=None,
     """
 
     cards = data.iloc[0].values
-    assert(level < len(cards)-1)
+    assert (level < len(cards)-1)
     tree = ct.CStree(cards)
     tree.labels = order
 
@@ -177,7 +177,7 @@ def _optimal_staging_at_level(order, data, level, max_cvars=1, alpha_tot=None,
     return max_staging, max_staging_score
 
 
-def _optimal_cstree_given_order(order, data, max_cvars=1, alpha_tot=1.0, 
+def _optimal_cstree_given_order(order, data, max_cvars=1, alpha_tot=1.0,
                                 method="BDeu"):
     """Find the optimal CStree for a given order.
 
@@ -185,7 +185,7 @@ def _optimal_cstree_given_order(order, data, max_cvars=1, alpha_tot=1.0,
         order (list): The order of the variables.
         data (pandas DataFrame): The data as a pandas DataFrame.
         max_cvars (int, optional): Max context variables. Defaults to 1.
-        alpha_tot (float, optional): The Dirichlet hyper parameter total pseudo 
+        alpha_tot (float, optional): The Dirichlet hyper parameter total pseudo
         counts. Defaults to 1.0.
         method (str, optional): Parameter prior type. Defaults to "BDeu".
 
@@ -213,15 +213,15 @@ def _optimal_cstree_given_order(order, data, max_cvars=1, alpha_tot=1.0,
               'darkslategray', 'lightslategray', 'aquamarine',
               'lightgoldenrodyellow', 'cornsilk', 'azure', 'chocolate',
               'red', 'darkolivegreen', 'chartreuse', 'turquoise', 'olive',
-              'crimson', 'goldenrod', 'orchid', 'firebrick', 'lawngreen', 
-              'deeppink', 'wheat', 'teal', 'mediumseagreen', 'peru', 'salmon', 
-              'palegreen', 'navajowhite', 'yellowgreen', 'mediumaquamarine', 
-              'darkcyan', 'dodgerblue', 'brown', 'powderblue', 'mistyrose', 
-              'violet', 'darkslategrey', 'midnightblue', 'aliceblue', 
-              'dimgrey', 'palegoldenrod', 'black', 'darkgrey', 'olivedrab', 
-              'linen',  'lightblue', 'thistle', 'greenyellow', 'indianred', 
+              'crimson', 'goldenrod', 'orchid', 'firebrick', 'lawngreen',
+              'deeppink', 'wheat', 'teal', 'mediumseagreen', 'peru', 'salmon',
+              'palegreen', 'navajowhite', 'yellowgreen', 'mediumaquamarine',
+              'darkcyan', 'dodgerblue', 'brown', 'powderblue', 'mistyrose',
+              'violet', 'darkslategrey', 'midnightblue', 'aliceblue',
+              'dimgrey', 'palegoldenrod', 'black', 'darkgrey', 'olivedrab',
+              'linen',  'lightblue', 'thistle', 'greenyellow', 'indianred',
               'khaki']
-              
+
     for level, staging in stages.items():
         for i, stage in enumerate(staging):
             if all([isinstance(i, int) for i in stage.list_repr]):
@@ -233,17 +233,17 @@ def _optimal_cstree_given_order(order, data, max_cvars=1, alpha_tot=1.0,
     return tree
 
 
-def _find_optimal_order(data, strategy="max", max_cvars=1, alpha_tot=1, 
+def _find_optimal_order(data, strategy="max", max_cvars=1, alpha_tot=1,
                         method="BDeu"):
     """ Find the optimal causal order for the data using exhaustive search of
         the optimal order then the CStree having that order.
 
     Args:
-        data (pandas DataFrame): The data as a pandas DataFrame. 
-        strategy (str, optional): The scoring strategy to use. Defaults to "max" which mean that the score of an order is the score of the maximal scoring CStree it can contain. 
-        max_cvars (int, optional): Max context variables. Defaults to 1. 
+        data (pandas DataFrame): The data as a pandas DataFrame.
+        strategy (str, optional): The scoring strategy to use. Defaults to "max" which mean that the score of an order is the score of the maximal scoring CStree it can contain.
+        max_cvars (int, optional): Max context variables. Defaults to 1.
         alpha_tot (float, optional): The Dirichlet hyper
-        parameter total pseudo counts. Defaults to 1. 
+        parameter total pseudo counts. Defaults to 1.
         method (str, optional): Parameter prior type. Defaults to "BDeu".
     Examples:
         >>> import cstrees.learning as ctl
@@ -268,7 +268,7 @@ def _find_optimal_order(data, strategy="max", max_cvars=1, alpha_tot=1,
 
         #print("scoring order: {}".format(order))
         score = sc.score_order(order, data, strategy="max",
-                               max_cvars=max_cvars, alpha_tot=alpha_tot, 
+                               max_cvars=max_cvars, alpha_tot=alpha_tot,
                                method=method)
         #print("order: {}, score: {}".format(order, score))
 
@@ -281,6 +281,113 @@ def _find_optimal_order(data, strategy="max", max_cvars=1, alpha_tot=1,
     return optimal_orders, max_score
 
 
+def relocate_node_in_order(order, node, new_pos):
+    """ Relocate a node in an order.
+
+    Args:
+        order (list): The order of the variables.
+        node (str): The node to relocate.
+        new_pos (int): The new position of the node.
+
+    Returns:
+        list: The new order.
+    """
+
+    order.remove(node)
+    order.insert(new_pos, node)
+    return order
+
+
+def move_up(node_index, order):
+    """ Move a node up in an order.
+    """
+    order.insert(node_index+1, order.pop(node_index))
+
+
+def move_down(node_index, order):
+    """ Move a node up in an order.
+    """
+    order.insert(node_index-1, order.pop(node_index))
+
+
+def swap_neigbors_in_order(order, node_index1, node_index2):
+    """ Swap two neighbors in an order.
+
+    Args:
+        order (list): The order of the variables.
+        node_index1 (int): The index of the first node.
+        node_index2 (int): The index of the second node.
+
+    """
+
+
+def gibbs_order_sampler(iterations, data, max_cvars=2, alpha_tot=1,
+                        method="BDeu"):
+    """ Gibbs order sampler.
+    """
+    order_trajectory = []
+    p = data.shape[1]
+    order = list(range(p))
+    scores = []
+
+    node_scores = [0]*p
+    for i in range(p):
+        node_scores[i] = sc._score_order_at_level(order, i, data,
+                                                  strategy="posterior",
+                                                  max_cvars=max_cvars,
+                                                  alpha_tot=alpha_tot,
+                                                  method=method)
+
+    score = np.sum(node_scores)
+    
+    scores.append(score)
+    order_trajectory.append(order)
+
+    for i in range(1, iterations):
+        # pick a random node
+        node_index = np.random.randint(0, p)
+        # calculate the neighborhood scores
+        neig_scores = get_relocation_neighborhood(order_trajectory[i-1],
+                                                  node_index,
+                                                  scores[i-1],
+                                                  node_scores,
+                                                  data,
+                                                  max_cvars=max_cvars,
+                                                  alpha_tot=alpha_tot,
+                                                  method=method)
+
+
+def get_relocation_neighborhood(order, node_index, orderscore, node_scores,
+                                data, max_cvars=2, alpha_tot=1, method="BDeu"):
+    # Move to the right
+    # [1,2,3,i,4,5] => [1,2,3,4,i,5]
+
+    neig_scores = [0] * len(order)
+    neig_scores[node_index] = orderscore
+
+    for i in range(node_index, len(order)-1):
+        move_up(i, order)
+        tmp1 = node_scores[i]
+        tmp2 = node_scores[i+1]
+        node_scores[i] = sc._score_order_at_level(order, i, data,
+                                                  strategy="posterior",
+                                                  max_cvars=max_cvars,
+                                                  alpha_tot=alpha_tot,
+                                                  method=method)
+        node_scores[i+1] = sc._score_order_at_level(order, i+1, data,
+                                                    strategy="posterior",
+                                                    max_cvars=max_cvars,
+                                                    alpha_tot=alpha_tot,
+                                                    method=method)
+
+        orderscore += node_scores[i] + node_scores[i+1] - tmp1 - tmp2
+        neig_scores[i+1] = orderscore
+
+    # Move back and to the left
+    for i in range(node_index, -1, -1):
+        yield relocate_node_in_order(order, order[node_index], i)
+
+
 def find_optimal_cstree(data, max_cvars=1, alpha_tot=1, method="BDeu"):
     """ Find the optimal CStree for the data.
 
@@ -289,12 +396,12 @@ def find_optimal_cstree(data, max_cvars=1, alpha_tot=1, method="BDeu"):
         max_cvars (int, optional): Max context variables. Defaults to 1.
         alpha_tot (float, optional): The Dirichlet hyper parameter total pseudo counts. Defaults to 1.
         method (str, optional): Parameter prior type. Defaults to "BDeu".
-    
+
     Examples:
         >>> import cstrees.learning as ctl
         >>> opttree = ctl.find_optimal_cstree(df, max_cvars=2, alpha_tot=1.0, method="BDeu")
         >>> opttree.to_df()
-        	a	b	c
+                a	b	c
         0	2	2	2
         1	*	-	-
         2	0	0	-
