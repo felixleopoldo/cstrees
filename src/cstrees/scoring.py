@@ -7,7 +7,6 @@ import cstrees.cstree as ct
 import cstrees.stage as st
 
 
-
 def counts_at_level(cstree: ct.CStree, level: int, data):
     """ Collect all the observed counts at a specific level by stages.
         So the counts for level l depends on the stage of level l-1.
@@ -15,17 +14,17 @@ def counts_at_level(cstree: ct.CStree, level: int, data):
         cstree (ct.CStree): A CStree
         level (int): The level to get counts for.
         data (pd.DataFrame): The data.
-    
+
     Example:
         >>> import random
-        >>> import numpy as np    
+        >>> import numpy as np
         >>> import cstrees.cstree as ct
         >>> import cstrees.scoring as sc
         >>> np.random.seed(1)
         >>> random.seed(1)
         >>> tree = ct.sample_cstree([2,2,2,2], max_cvars=1, prob_cvar=0.5, prop_nonsingleton=1)
-        >>> tree.to_df()    
-        	0	1	2	3
+        >>> tree.to_df()
+                0	1	2	3
         0	2	2	2	2
         1	*	-	-	-
         2	*	1	-	-
@@ -43,7 +42,7 @@ def counts_at_level(cstree: ct.CStree, level: int, data):
         Stage: [{0, 1}, 0]; probs: [0.58026003 0.41973997]; color: orange
         Counts: {0: 3}
     """
-    stage_counts =  {}
+    stage_counts = {}
 
     # reorder the columns according to the order.
     # cardinalities are at first row.
@@ -82,7 +81,7 @@ def score_level(cstree, level, level_counts, alpha_tot=1.0, method="BDeu"):
 
     Example:
         >>> import random
-        >>> import numpy as np    
+        >>> import numpy as np
         >>> import cstrees.cstree as ct
         >>> import cstrees.scoring as sc
         >>> np.random.seed(1)
@@ -118,7 +117,8 @@ def score_level(cstree, level, level_counts, alpha_tot=1.0, method="BDeu"):
 
     elif method == "BDeu":
         # TODO: assert that all stages are colored.
-        n_stages = len(cstree.stages[level-1])#max(len(t.stages[l-1]), 1) # level 0 has no stages
+        # max(len(t.stages[l-1]), 1) # level 0 has no stages
+        n_stages = len(cstree.stages[level-1])
         alpha_obs = alpha_tot / (n_stages * cstree.cards[level])
         alpha_stage = alpha_tot / n_stages
 
@@ -127,13 +127,15 @@ def score_level(cstree, level, level_counts, alpha_tot=1.0, method="BDeu"):
         stage_counts_stage = sum(counts.values())
         #print("stage counts: {}".format(stage_counts_stage))
 
-        score += loggamma(alpha_stage) - loggamma(alpha_stage + stage_counts_stage)
+        score += loggamma(alpha_stage) - \
+            loggamma(alpha_stage + stage_counts_stage)
         for val in range(cstree.cards[level]):
             if val not in counts:  # as we only store the observed values
                 continue
             score += loggamma(alpha_obs + counts[val]) - loggamma(alpha_obs)
 
     return score
+
 
 def estimate_parameters(cstree: ct.CStree, stage, stage_counts, method="BDeu", alpha_tot=1.0):
     """Estimate the parameters for a stage.
@@ -147,10 +149,10 @@ def estimate_parameters(cstree: ct.CStree, stage, stage_counts, method="BDeu", a
 
     Returns:
         list: List of probabilities associated with the stage. I.e conditional probabilities for the variable one level up.
-    
+
     Example:
-        >>> import random   
-        >>> import numpy as np    
+        >>> import random
+        >>> import numpy as np
         >>> import cstrees.cstree as ct
         >>> import cstrees.scoring as sc
         >>> np.random.seed(1)
@@ -165,7 +167,7 @@ def estimate_parameters(cstree: ct.CStree, stage, stage_counts, method="BDeu", a
         [{0, 1}, 1]; probs: [0.24134031 0.75865969]; color: blueviolet
         [0.24185463659147868, 0.7581453634085213]
     """
-    level = stage.level + 1 # estimating fot the level above the stage
+    level = stage.level + 1  # estimating fot the level above the stage
     if method == "K2":
         assert alpha_tot == 1
         alpha_obs = alpha_tot
@@ -176,7 +178,7 @@ def estimate_parameters(cstree: ct.CStree, stage, stage_counts, method="BDeu", a
     elif method == "BDeu":
         # TODO: assert that all stages are colored.
         # level 0 has no stages. it has [] actually...
-        n_stages = max(len(cstree.stages[level-1]), 1) 
+        n_stages = max(len(cstree.stages[level-1]), 1)
         alpha_obs = alpha_tot / (n_stages * cstree.cards[level])
         alpha_stage = alpha_tot / n_stages
 
@@ -184,11 +186,18 @@ def estimate_parameters(cstree: ct.CStree, stage, stage_counts, method="BDeu", a
 
     stage_counts_total = sum(stage_counts[stage].values())
     for i in range(cstree.cards[level]):
-        if i not in stage_counts[stage]: # no observations here so use only prior
+        # no observations here so use only prior
+        if i not in stage_counts[stage]:
             probs[i] = alpha_obs / alpha_stage
-        else: # posterior mean or posterior predictive probabilites.
-            probs[i] = (alpha_obs + stage_counts[stage][i]) / (alpha_stage + stage_counts_total)
+        else:  # posterior mean or posterior predictive probabilites.
+            probs[i] = (alpha_obs + stage_counts[stage][i]) / \
+                (alpha_stage + stage_counts_total)
     return probs
+
+
+def cstree_posterior(cstee: ct.CStree, data: pd.DataFrame, alpha_tot=1.0, method="BDeu"):
+    pass
+
 
 def score(cstree: ct.CStree, data: pd.DataFrame, alpha_tot=1.0, method="BDeu"):
     """Score a CStree.
@@ -196,15 +205,15 @@ def score(cstree: ct.CStree, data: pd.DataFrame, alpha_tot=1.0, method="BDeu"):
     Args:
         cstree (ct.CStree): CStree.
         data (pandas DataFrame): The data.
-        alpha_tot (float): Hyper parameter for the stage parameters Dirichlet prior distribution. Defaults to 1.0.        
+        alpha_tot (float): Hyper parameter for the stage parameters Dirichlet prior distribution. Defaults to 1.0.
         method (str, optional): Prior for the stage parameters. Defaults to "BDeu".
 
     Returns:
         float: The score of the CStree.
-        
+
     Example:
         >>> import random
-        >>> import numpy as np    
+        >>> import numpy as np
         >>> import cstrees.cstree as ct
         >>> import cstrees.scoring as sc
         >>> np.random.seed(1)
@@ -215,12 +224,13 @@ def score(cstree: ct.CStree, data: pd.DataFrame, alpha_tot=1.0, method="BDeu"):
         >>> sc.score(tree, df, alpha_tot=1.0, method="BDeu")
         -1829.2311869978726
     """
-    
+
     score = 0  # log score
     for level in range(cstree.p):
         level_counts = counts_at_level(cstree, level, data)
         score += score_level(cstree, level, level_counts, alpha_tot, method)
     return score
+
 
 def score_order(order, data, strategy="max", max_cvars=1, alpha_tot=1.0, method="BDeu"):
     """Score an order.
@@ -231,13 +241,13 @@ def score_order(order, data, strategy="max", max_cvars=1, alpha_tot=1.0, method=
         max_cvars (int, optional): Maximum number of children per variable. Defaults to 1.
         alpha_tot (float, optional): Hyper parameter for the stage parameters Dirichlet prior distribution. Defaults to 1.0.
         method (str, optional): Prior for the stage parameters. Defaults to "BDeu".
-        
+
     Returns:
         float: The score of the order.
-        
+
     Example:
         >>> import random
-        >>> import numpy as np    
+        >>> import numpy as np
         >>> import cstrees.cstree as ct
         >>> import cstrees.scoring as sc
         >>> np.random.seed(1)
@@ -248,14 +258,36 @@ def score_order(order, data, strategy="max", max_cvars=1, alpha_tot=1.0, method=
         >>> sc.score_order([0, 1, 2, 3], df, max_cvars=1, alpha_tot=1.0, method="BDeu")
         -1829.2311869978726
     """
-    
-    score = 0  # log score
-    for level in range(len(order)):
-        s = _score_order_at_level(order, level, data, strategy=strategy, max_cvars=max_cvars, alpha_tot=alpha_tot, method=method)
-        score += s
-    return score
 
-def _score_order_at_level(order, level, data, strategy="max", max_cvars=1, alpha_tot=1.0, method="BDeu"):
+    log_score = 0  # log score
+    for level in range(len(order)):
+        s = _score_order_at_level(order, level, data, strategy=strategy,
+                                  max_cvars=max_cvars, alpha_tot=alpha_tot,
+                                  method=method)
+        if strategy == "max":
+            log_score += s
+        elif strategy == "posterior":
+            print("score at level", level, ":", s)
+            log_score += s  
+    #print(log_score)
+    return log_score
+
+
+def logsumexp(x):
+    """Log sum exp trick function.
+
+    Args:
+        x (numpy array): Array of numbers.
+    Returns:
+        float: The log of the sum of the exponentials of the numbers in x.
+    """
+    
+    m = np.max(x)
+    return m + np.log(np.sum(np.exp(x - m)))
+
+
+def _score_order_at_level(order, level, data, strategy="max", max_cvars=1, 
+                          alpha_tot=1.0, method="BDeu"):
     """ Without singletons, there are 2*level stagings at level level.
         val1 side and val2 side colored in different ways
         val1 side and val2 side colored in the same way
@@ -271,42 +303,62 @@ def _score_order_at_level(order, level, data, strategy="max", max_cvars=1, alpha
     Returns:
         float: The score of the order at level level.
     """
-    
+
     if max_cvars > 2:
         print("Only max_cvars < 3 implemented")
         return None
 
     p = len(order)
 
-    cards = data.iloc[0].values # BUG?: Maybe these have to be adapted to the order.
+    # BUG?: Maybe these have to be adapted to the order.
+    cards = data.iloc[0].values
     tree = ct.CStree(cards)
     # here we set the labels/order for the CStree, to be used in the counting.
     tree.labels = order
 
     stagings = learn.all_stagings(cards, level-1, max_cvars=max_cvars)
 
-
     if strategy == "max":
-        score = -np.inf  # log score
-    elif strategy == "sum":
-        score = 0
+        log_unnorm_post = -np.inf  # log score
+    elif strategy == "posterior":
+        log_unnorm_post = 0
+        log_unnorm_posts = []
 
     # This is a bit clumsy but shoud work.
+    # I think we need to go through all these to get the max value and then
+    # do the logsumexp trick.
     for stlist in stagings:
-        #print(stlist)
+        # print(stlist)
         # print all stges in a stlist
-        #for st in stlist:
+        # for st in stlist:
         #    print(st)
 
-        tree.update_stages({level-1: stlist}) # Need to set the stagings in order to count.
+        # Need to set the stagings in order to count.
+        tree.update_stages({level-1: stlist})
         level_counts = counts_at_level(tree, level, data)
-        tmp = score_level(tree, level, level_counts, alpha_tot, method)
+        log_marg_lik = score_level(
+            tree, level, level_counts, alpha_tot, method)
         #print("level {} score: {}".format(l, tmp))
 
         if strategy == "max":
-            if tmp > score:
-                score = tmp
-        if strategy == "sum":
-            score += tmp
+            if log_marg_lik > log_unnorm_post:
+                log_unnorm_post = log_marg_lik
+        if strategy == "posterior":
+            log_staging_prior = np.log(learn.n_stagings(
+                cards, level-1, max_cvars=max_cvars))
+            log_level_prior = np.log((level+1) / p) # BUG: Is this correct?
+            log_unnorm_post = log_marg_lik - log_staging_prior - log_level_prior
+            log_unnorm_posts.append(log_unnorm_post)
 
-    return score
+            #print("level {} log lik score: {}".format(level, log_unnorm_post))
+
+    if strategy == "posterior":
+        # TODO: Maybe one should use a generator isntead to save some space.
+        # Then one can first fint the max and then to the logsumexp trick.
+        #print("number of stagings: {}".format(len(log_unnorm_posts)))
+        #print("lc: {}".format(log_unnorm_posts))
+        outp = logsumexp(log_unnorm_posts)
+        #print("logsumexp: {}".format(outp))
+        return logsumexp(log_unnorm_posts)
+    elif strategy == "max":
+        return log_unnorm_post

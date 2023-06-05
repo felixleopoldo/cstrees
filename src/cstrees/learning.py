@@ -327,7 +327,9 @@ def gibbs_order_sampler(iterations, data, max_cvars=2, alpha_tot=1,
     """
     order_trajectory = []
     p = data.shape[1]
-    order = list(range(p))
+
+    order = list(data.columns.values)  # list(range(p))
+    print("initial order: {}".format(order))
     scores = []
 
     node_scores = [0]*p
@@ -339,22 +341,40 @@ def gibbs_order_sampler(iterations, data, max_cvars=2, alpha_tot=1,
                                                   method=method)
 
     score = np.sum(node_scores)
-    
+    print("initial score: {}".format(score))
+
     scores.append(score)
     order_trajectory.append(order)
 
     for i in range(1, iterations):
+        print("iteration: {}".format(i))
         # pick a random node
         node_index = np.random.randint(0, p)
         # calculate the neighborhood scores
-        neig_scores = get_relocation_neighborhood(order_trajectory[i-1],
-                                                  node_index,
-                                                  scores[i-1],
-                                                  node_scores,
-                                                  data,
-                                                  max_cvars=max_cvars,
-                                                  alpha_tot=alpha_tot,
-                                                  method=method)
+        prop_probs = get_relocation_neighborhood(order_trajectory[i-1],
+                                                      node_index,
+                                                      scores[i-1],
+                                                      node_scores,
+                                                      data,
+                                                      max_cvars=max_cvars,
+                                                      alpha_tot=alpha_tot,
+                                                      method=method)
+
+        print("proposal probs: {}".format(prop_probs))
+
+        # Select at random from the proposal distribution
+        new_pos = np.random.choice(list(range(len(prop_probs))), p=prop_probs)
+        print("new pos: {}".format(new_pos))
+        
+        order = relocate_node_in_order(order_trajectory[i-1], 
+                                       node_index, new_pos,
+                                       node_scores, data,
+                                       max_cvars=max_cvars,
+                                       alpha_tot=alpha_tot,
+                                       method=method)
+        
+        order_trajectory.append(order)
+        scores.append(np.sum(node_scores)) # O(p)        
 
 
 def get_relocation_neighborhood(order, node_index, orderscore, node_scores,
@@ -362,13 +382,14 @@ def get_relocation_neighborhood(order, node_index, orderscore, node_scores,
     # Move to the right
     # [1,2,3,i,4,5] => [1,2,3,4,i,5]
 
-    neig_scores = [0] * len(order)
-    neig_scores[node_index] = orderscore
-
+    neig_log_scores = [None] * len(order)
+    neig_log_scores[node_index] = orderscore
+    print(order)
     for i in range(node_index, len(order)-1):
-        move_up(i, order)
+        print("moving {} to the right".format(order[i]))
         tmp1 = node_scores[i]
         tmp2 = node_scores[i+1]
+        move_up(i, order)
         node_scores[i] = sc._score_order_at_level(order, i, data,
                                                   strategy="posterior",
                                                   max_cvars=max_cvars,
@@ -381,11 +402,67 @@ def get_relocation_neighborhood(order, node_index, orderscore, node_scores,
                                                     method=method)
 
         orderscore += node_scores[i] + node_scores[i+1] - tmp1 - tmp2
-        neig_scores[i+1] = orderscore
+        neig_log_scores[i+1] = orderscore
+        print(order)
 
-    # Move back and to the left
-    for i in range(node_index, -1, -1):
-        yield relocate_node_in_order(order, order[node_index], i)
+    # Move all the way back. But dont relocate the nodes that have already been
+    # relocated.
+    for i in range(len(order)-1, 0, -1):
+        print("moving {} to the left".format(order[i]))
+        move_down(i, order)
+        # if neig_scores[i-1] is not None:
+        # ge the old node score to subtract from the new score
+        tmp1 = node_scores[i]
+        tmp2 = node_scores[i-1]
+
+        node_scores[i] = sc._score_order_at_level(order, i, data,
+                                                  strategy="posterior",
+                                                  max_cvars=max_cvars,
+                                                  alpha_tot=alpha_tot,
+                                                  method=method)
+        node_scores[i-1] = sc._score_order_at_level(order, i-1, data,
+                                                    strategy="posterior",
+                                                    max_cvars=max_cvars,
+                                                    alpha_tot=alpha_tot,
+                                                    method=method)
+
+        orderscore += node_scores[i] + node_scores[i-1] - tmp1 - tmp2
+        neig_log_scores[i-1] = orderscore
+        print(order)
+        # else:
+        #     # Are the node scores messed up now?
+        #     orderscore = neig_scores[i-1]
+
+    # move back to where we started
+    for i in range(0, node_index):
+        print("moving {} to the right".format(order[i]))
+        tmp1 = node_scores[i]
+        tmp2 = node_scores[i+1]
+        move_up(i, order)
+        node_scores[i] = sc._score_order_at_level(order, i, data,
+                                                  strategy="posterior",
+                                                  max_cvars=max_cvars,
+                                                  alpha_tot=alpha_tot,
+                                                  method=method)
+        node_scores[i+1] = sc._score_order_at_level(order, i+1, data,
+                                                    strategy="posterior",
+                                                    max_cvars=max_cvars,
+                                                    alpha_tot=alpha_tot,
+                                                    method=method)
+
+        orderscore += node_scores[i] + node_scores[i+1] - tmp1 - tmp2
+        neig_log_scores[i+1] = orderscore
+        print(order)
+
+    #print("neig scores: {}".format(neig_log_scores))
+    log_tot_neigh_scores = sc.logsumexp(neig_log_scores)
+    #print("log tot neigh scores: {}".format(log_tot_neigh_scores))
+    log_probs = neig_log_scores - log_tot_neigh_scores
+    #print("log probs: {}".format(log_probs))
+
+    prop_probs = np.exp(log_probs)
+    #print("proposal probs: {}".format(prop_probs))
+    return prop_probs
 
 
 def find_optimal_cstree(data, max_cvars=1, alpha_tot=1, method="BDeu"):
