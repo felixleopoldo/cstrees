@@ -304,10 +304,110 @@ def move_up(node_index, order):
     order.insert(node_index+1, order.pop(node_index))
 
 
+def move_up2(node_index,
+             order,
+             orderscore,
+             node_scores,
+             data,
+             max_cvars=2,
+             alpha_tot=1,
+             method="BDeu"):
+    """ Move a node up in an order.
+    """
+    order.insert(node_index+1, order.pop(node_index))
+
+    tmp1 = node_scores[node_index]
+    tmp2 = node_scores[node_index+1]
+
+    node_scores[node_index] = sc._score_order_at_level(order, node_index, data,
+                                                       strategy="posterior",
+                                                       max_cvars=max_cvars,
+                                                       alpha_tot=alpha_tot,
+                                                       method=method)
+    node_scores[node_index+1] = sc._score_order_at_level(order, node_index+1, data,
+                                                         strategy="posterior",
+                                                         max_cvars=max_cvars,
+                                                         alpha_tot=alpha_tot,
+                                                         method=method)
+
+    orderscore += node_scores[node_index] + \
+        node_scores[node_index+1] - tmp1 - tmp2
+
+    return orderscore
+
+
 def move_down(node_index, order):
     """ Move a node up in an order.
     """
     order.insert(node_index-1, order.pop(node_index))
+
+
+def move_down2(node_index,
+               order,
+               orderscore,
+               node_scores,
+               data,
+               max_cvars=2,
+               alpha_tot=1,
+               method="BDeu"):
+
+    # prev scores
+    tmp1 = node_scores[node_index]
+    tmp2 = node_scores[node_index-1]
+    # move the node
+    order.insert(node_index-1, order.pop(node_index))
+
+    # recompute node scores
+    node_scores[node_index] = sc._score_order_at_level(order, node_index, data,
+                                                       strategy="posterior",
+                                                       max_cvars=max_cvars,
+                                                       alpha_tot=alpha_tot,
+                                                       method=method)
+    node_scores[node_index-1] = sc._score_order_at_level(order, node_index-1, data,
+                                                         strategy="posterior",
+                                                         max_cvars=max_cvars,
+                                                         alpha_tot=alpha_tot,
+                                                         method=method)
+
+    orderscore += node_scores[node_index] + \
+        node_scores[node_index-1] - tmp1 - tmp2
+
+    return orderscore
+
+
+def move_node(node_index_from,
+              node_index_to,
+              order,
+              orderscore,
+              node_scores,
+              data,
+              max_cvars=2,
+              alpha_tot=1,
+              method="BDeu"):
+    """ Move a node up in an order and update the node scores.
+
+    Args:
+        node_index_from (int): The index of the node to move.
+        node_index_to (int): The index to move the node to.
+        order (list): The order of the variables.
+        orderscore (float): The score of the order.
+        node_scores (list): The scores of the nodes.
+        data (pandas.DataFrame): The data.
+        max_cvars (int, optional): The maximum number of context variables. Defaults to 2.
+        alpha_tot (float, optional): The total alpha. Defaults to 1.
+        method (str, optional): The scoring method. Defaults to "BDeu".
+
+    """
+
+    if node_index_from < node_index_to:
+        for i in range(node_index_from, node_index_to):
+            orderscore = move_up2(
+                i, order, orderscore, node_scores, data, max_cvars, alpha_tot, method)
+    else:
+        for i in range(node_index_from, node_index_to, -1):
+            orderscore = move_down2(
+                i, order, orderscore, node_scores, data, max_cvars, alpha_tot, method)
+    return orderscore
 
 
 def swap_neigbors_in_order(order, node_index1, node_index2):
@@ -347,34 +447,42 @@ def gibbs_order_sampler(iterations, data, max_cvars=2, alpha_tot=1,
     order_trajectory.append(order)
 
     for i in range(1, iterations):
-        print("iteration: {}".format(i))
+        print("\niteration: {}".format(i))
         # pick a random node
         node_index = np.random.randint(0, p)
+        node = order_trajectory[i-1][node_index]
+        print("order: {}".format(order_trajectory[i-1]))
+        print("moving node {}".format(node))
         # calculate the neighborhood scores
         prop_probs = get_relocation_neighborhood(order_trajectory[i-1],
-                                                      node_index,
-                                                      scores[i-1],
-                                                      node_scores,
-                                                      data,
-                                                      max_cvars=max_cvars,
-                                                      alpha_tot=alpha_tot,
-                                                      method=method)
+                                                 node_index,
+                                                 scores[i-1],
+                                                 node_scores,
+                                                 data,
+                                                 max_cvars=max_cvars,
+                                                 alpha_tot=alpha_tot,
+                                                 method=method)
 
         print("proposal probs: {}".format(prop_probs))
 
         # Select at random from the proposal distribution
         new_pos = np.random.choice(list(range(len(prop_probs))), p=prop_probs)
-        print("new pos: {}".format(new_pos))
-        
-        order = relocate_node_in_order(order_trajectory[i-1], 
-                                       node_index, new_pos,
-                                       node_scores, data,
-                                       max_cvars=max_cvars,
-                                       alpha_tot=alpha_tot,
-                                       method=method)
-        
-        order_trajectory.append(order)
-        scores.append(np.sum(node_scores)) # O(p)        
+        print("to new pos: {}".format(new_pos))
+
+        neworder = order_trajectory[i-1].copy()
+        orderscore = move_node(node_index, new_pos,
+                  neworder,
+                  scores[i-1],
+                  node_scores, data,
+                  max_cvars=max_cvars,
+                  alpha_tot=alpha_tot,
+                  method=method)
+        print("order: {}".format(neworder))
+        print("score: {}".format(orderscore))
+        order_trajectory.append(neworder)
+        scores.append(orderscore)  # O(p)
+
+    return order_trajectory, scores
 
 
 def get_relocation_neighborhood(order, node_index, orderscore, node_scores,
@@ -384,75 +492,36 @@ def get_relocation_neighborhood(order, node_index, orderscore, node_scores,
 
     neig_log_scores = [None] * len(order)
     neig_log_scores[node_index] = orderscore
-    print(order)
+    # print(order)
     for i in range(node_index, len(order)-1):
-        print("moving {} to the right".format(order[i]))
-        tmp1 = node_scores[i]
-        tmp2 = node_scores[i+1]
-        move_up(i, order)
-        node_scores[i] = sc._score_order_at_level(order, i, data,
-                                                  strategy="posterior",
-                                                  max_cvars=max_cvars,
-                                                  alpha_tot=alpha_tot,
-                                                  method=method)
-        node_scores[i+1] = sc._score_order_at_level(order, i+1, data,
-                                                    strategy="posterior",
-                                                    max_cvars=max_cvars,
-                                                    alpha_tot=alpha_tot,
-                                                    method=method)
+        #print("moving {} to the right".format(order[i]))
 
-        orderscore += node_scores[i] + node_scores[i+1] - tmp1 - tmp2
+        orderscore = move_up2(i, order, orderscore, node_scores, data,
+                              max_cvars=max_cvars, alpha_tot=alpha_tot,
+                              method=method)
+
         neig_log_scores[i+1] = orderscore
-        print(order)
+        # print(order)
 
     # Move all the way back. But dont relocate the nodes that have already been
     # relocated.
     for i in range(len(order)-1, 0, -1):
-        print("moving {} to the left".format(order[i]))
-        move_down(i, order)
-        # if neig_scores[i-1] is not None:
-        # ge the old node score to subtract from the new score
-        tmp1 = node_scores[i]
-        tmp2 = node_scores[i-1]
+        #print("moving {} to the left".format(order[i]))
+        orderscore = move_down2(i, order, orderscore, node_scores, data,
+                                max_cvars=max_cvars, alpha_tot=alpha_tot, method=method)
 
-        node_scores[i] = sc._score_order_at_level(order, i, data,
-                                                  strategy="posterior",
-                                                  max_cvars=max_cvars,
-                                                  alpha_tot=alpha_tot,
-                                                  method=method)
-        node_scores[i-1] = sc._score_order_at_level(order, i-1, data,
-                                                    strategy="posterior",
-                                                    max_cvars=max_cvars,
-                                                    alpha_tot=alpha_tot,
-                                                    method=method)
-
-        orderscore += node_scores[i] + node_scores[i-1] - tmp1 - tmp2
         neig_log_scores[i-1] = orderscore
-        print(order)
-        # else:
-        #     # Are the node scores messed up now?
-        #     orderscore = neig_scores[i-1]
+        # print(order)
 
     # move back to where we started
     for i in range(0, node_index):
-        print("moving {} to the right".format(order[i]))
-        tmp1 = node_scores[i]
-        tmp2 = node_scores[i+1]
-        move_up(i, order)
-        node_scores[i] = sc._score_order_at_level(order, i, data,
-                                                  strategy="posterior",
-                                                  max_cvars=max_cvars,
-                                                  alpha_tot=alpha_tot,
-                                                  method=method)
-        node_scores[i+1] = sc._score_order_at_level(order, i+1, data,
-                                                    strategy="posterior",
-                                                    max_cvars=max_cvars,
-                                                    alpha_tot=alpha_tot,
-                                                    method=method)
+        #print("moving {} to the right".format(order[i]))
+        orderscore = move_up2(i, order, orderscore, node_scores, data,
+                              max_cvars=max_cvars, alpha_tot=alpha_tot,
+                              method=method)
 
-        orderscore += node_scores[i] + node_scores[i+1] - tmp1 - tmp2
         neig_log_scores[i+1] = orderscore
-        print(order)
+        # print(order)
 
     #print("neig scores: {}".format(neig_log_scores))
     log_tot_neigh_scores = sc.logsumexp(neig_log_scores)

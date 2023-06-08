@@ -9,7 +9,7 @@ import cstrees.stage as st
 
 def counts_at_level(cstree: ct.CStree, level: int, data):
     """ Collect all the observed counts at a specific level by stages.
-        So the counts for level l depends on the stage of level l-1.
+    So the counts for level l depends on the stage of level l-1.
     Args:
         cstree (ct.CStree): A CStree
         level (int): The level to get counts for.
