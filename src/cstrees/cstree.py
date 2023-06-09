@@ -68,6 +68,27 @@ class CStree:
         self.color_no = 0
         self.stages = {i: [] for i in range(self.p)}
 
+    def stage_proportion(self, stage: st.Stage):
+        """The proportion of the space this stage represents.
+        
+        Args:
+            cards (list): A list of the cardinalities of the variables in the space.
+        
+        Returns:
+            float: A number between 0 and 1.
+            
+        Example:
+            # assuming all variables are binary
+            >>> s = Stage([0, {0, 1}, 1])
+            >>> s.proportion(cards)
+            0.25        
+        """
+        prop = 1
+        for i, val in enumerate(stage.list_repr):
+            if not isinstance(val, set):
+                prop *= 1/self.cards[i]
+        
+        return prop
 
     def update_stages(self, stages: dict):
         """ Update the stages of the CStree.

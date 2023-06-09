@@ -53,6 +53,8 @@ class Stage:
 
         return True
 
+
+
     def size(self):
         """
         The number of nodes this stage has in the CStree.

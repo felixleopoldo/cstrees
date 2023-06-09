@@ -116,6 +116,7 @@ def score_level(cstree, level, level_counts, alpha_tot=1.0, method="BDeu"):
     #    alpha_stage = alpha_tot / t.n_stages_at_level(l) # TODO: is this ok?
 
     elif method == "BDeu":
+        # BUG This is not correct. 
         # TODO: assert that all stages are colored.
         # max(len(t.stages[l-1]), 1) # level 0 has no stages
         n_stages = len(cstree.stages[level-1])
