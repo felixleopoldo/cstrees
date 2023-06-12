@@ -68,16 +68,18 @@ def counts_at_level(cstree: ct.CStree, level: int, data):
 
 
 def score_level(cstree, level, level_counts, alpha_tot=1.0, method="BDeu"):
-    """BDe score at a level. We could also consider splitting the alpha into
-    colored and non-colored stages.
-
-
+    """ CS-BDeu score at a level folowing 
+    Conor Hughes, Peter Strong, Aditi Shenvi. Score Equivalence for Staged Trees.
+    
     Args:
         cstree (CStree): CStree
         level (int): Level.
         data (pandas DataFrame): Data.
         alpha_tot (float, optional): Hyper parameter for the stage parameters Dirichlet prior distribution. Defaults to 1.0.
         method (str, optional): Parameter estimator. Defaults to "BDeu".
+
+    Reference: 
+        https://arxiv.org/abs/2206.15322
 
     Example:
         >>> import random
@@ -97,34 +99,19 @@ def score_level(cstree, level, level_counts, alpha_tot=1.0, method="BDeu"):
         float: The level score.
     """
 
-    # n_stages_at_level = t.stages[l] # including singleton dont know if I
-    # shold divide by the total number of stages at the level or the observed
-    # ones In BN I think it is the total number of parent settings, but there
-    # there are quite many stages, counting the singleton ones, so the used
-    # alphas would be very small. To make it consistent with BNs we might have
-    # to do so though.
-
-    if method == "K2":
-        assert (alpha_tot == 1)
-        alpha_obs = alpha_tot
-        alpha_stage = alpha_tot * cstree.cards[level]
-    if method == "BD":  # This should be the Cooper-Herzkovits
-        alpha_obs = alpha_tot
-        alpha_stage = alpha_tot * cstree.cards[level]
-    # elif method == "BDe": # not used in practice
-    #    alpha_obs = alpha_tot / (t.n_stages_at_level(l) * t.cards[l]) # TODO: is this ok?
-    #    alpha_stage = alpha_tot / t.n_stages_at_level(l) # TODO: is this ok?
-
-    elif method == "BDeu":
-        # BUG This is not correct. 
-        # TODO: assert that all stages are colored.
-        # max(len(t.stages[l-1]), 1) # level 0 has no stages
-        n_stages = len(cstree.stages[level-1])
-        alpha_obs = alpha_tot / (n_stages * cstree.cards[level])
-        alpha_stage = alpha_tot / n_stages
-
     score = 0  # log score
     for stage, counts in level_counts.items():
+        if method == "K2":
+            assert (alpha_tot == 1)
+            alpha_obs = alpha_tot
+            alpha_stage = alpha_tot * cstree.cards[level]
+        if method == "BD":  # This should be the Cooper-Herzkovits
+            alpha_obs = alpha_tot
+            alpha_stage = alpha_tot * cstree.cards[level]
+        elif method == "BDeu":             
+            alpha_stage = alpha_tot * cstree.stage_proportion(stage)
+            alpha_obs = alpha_stage / cstree.cards[level]
+        
         stage_counts_stage = sum(counts.values())
         #print("stage counts: {}".format(stage_counts_stage))
 

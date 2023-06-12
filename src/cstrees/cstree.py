@@ -80,7 +80,7 @@ class CStree:
         Example:
             # assuming all variables are binary
             >>> s = Stage([0, {0, 1}, 1])
-            >>> s.proportion(cards)
+            >>> cstree.stage_proportion(s)
             0.25        
         """
         prop = 1
@@ -293,7 +293,7 @@ class CStree:
             if not self.tree.has_edge(fr, to):
                 self.tree.add_edge(fr, to)  # check if exists first
                 if fr == ():
-                    self.tree.nodes[fr]["label"] = "∅"
+                    self.tree.nodes[fr]["label"] = "ø"
             else:
                 pass
             self.tree.nodes[to]["label"] = to[-1]
