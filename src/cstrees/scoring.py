@@ -69,6 +69,67 @@ def counts_at_level(cstree: ct.CStree, level: int, data):
             stage_counts[stage][dataperm[i, level]] = 1
     return stage_counts
 
+def context_counts(data):
+    """ Collect all the observed counts at a specific level by stages.
+    So the counts for level l depends on the stage of level l-1.
+    (we probably have to ase these on context instead of stage)
+    Args:
+        cstree (ct.CStree): A CStree
+        level (int): The level to get counts for.
+        data (pd.DataFrame): The data.
+
+    Example:
+        >>> import random
+        >>> import numpy as np
+        >>> import cstrees.cstree as ct
+        >>> import cstrees.scoring as sc
+        >>> np.random.seed(1)
+        >>> random.seed(1)
+        >>> tree = ct.sample_cstree([2,2,2,2], max_cvars=1, prob_cvar=0.5, prop_nonsingleton=1)
+        >>> tree.to_df()
+                0	1	2	3
+        0	2	2	2	2
+        1	*	-	-	-
+        2	*	1	-	-
+        3	*	0	-	-
+        4	0	*	*	-
+        5	1	*	*	-
+        >>> tree.sample_stage_parameters(alpha=1.0)
+        >>> df = tree.sample(1000)
+        >>> counts = sc.counts_at_level(tree, 2, df)
+        >>> for key, val in counts.items():
+        >>>    print("Stage: {}".format(key))
+        >>>    print("Counts: {}".format(val))
+        Stage: [{0, 1}, 1]; probs: [0.24134031 0.75865969]; color: blueviolet
+        Counts: {1: 756, 0: 241}
+        Stage: [{0, 1}, 0]; probs: [0.58026003 0.41973997]; color: orange
+        Counts: {0: 3}
+    """
+    context_counts = {lab: {} for lab in data.labels} # TODO: Maybe it should be context counts instead!
+
+    # reorder the columns according to the order.
+    # cardinalities are at first row.
+
+    #print("get counts at level {}".format(l))
+    for i in data.labels:  # iterate over the samples
+
+
+
+        pred_vals = dataperm[i, :level]
+        stage = cstree.get_stage(pred_vals)  # or context
+        #print('pred_vals: ', pred_vals)
+        #print("stages at level {}: {}".format(l-1, t.stages[l-1]))
+        if stage is None:  # singleton stage. Shold note be any of these in our setting.
+            print("singleton stage")
+        if stage not in stage_counts:
+            # only save the observed ones #[0] * t.cards[l]  # initiate with zeros.x
+            stage_counts[stage] = {}
+        if dataperm[i, level] in stage_counts[stage]:
+            stage_counts[stage][dataperm[i, level]] += 1
+        else:
+            stage_counts[stage][dataperm[i, level]] = 1
+    return stage_counts
+
 
 def score_level(cstree, level, level_counts, alpha_tot=1.0, method="BDeu"):
     """ CS-BDeu score at a level folowing
@@ -125,6 +186,65 @@ def score_level(cstree, level, level_counts, alpha_tot=1.0, method="BDeu"):
             if val not in counts:  # as we only store the observed values
                 continue
             score += loggamma(alpha_obs + counts[val]) - loggamma(alpha_obs)
+
+    return score
+
+def score_context(var, context, cards, counts, alpha_tot=1.0, method="BDeu"):
+    """ CS-BDeu score at a level folowing
+    Conor Hughes, Peter Strong, Aditi Shenvi. Score Equivalence for Staged Trees.
+
+    Args:
+        cstree (CStree): CStree
+        level (int): Level.
+        data (pandas DataFrame): Data.
+        alpha_tot (float, optional): Hyper parameter for the stage parameters Dirichlet prior distribution. Defaults to 1.0.
+        method (str, optional): Parameter estimator. Defaults to "BDeu".
+
+    Reference:
+        https://arxiv.org/abs/2206.15322
+
+    Example:
+        >>> import random
+        >>> import numpy as np
+        >>> import cstrees.cstree as ct
+        >>> import cstrees.scoring as sc
+        >>> np.random.seed(1)
+        >>> random.seed(1)
+        >>> tree = ct.sample_cstree([2,2,2,2], max_cvars=1, prob_cvar=0.5, prop_nonsingleton=1)
+        >>> tree.sample_stage_parameters(alpha=1.0)
+        >>> df = tree.sample(1000)
+        >>> import cstrees.scoring as sc
+        >>> sc.score_level(tree, 2, counts, alpha_tot=1.0, method="BDeu")
+        -556.4949720501456
+
+    Returns:
+        float: The level score.
+    """
+
+    score = 0  # log score
+    
+    if method == "K2":
+        assert (alpha_tot == 1)
+        alpha_obs = alpha_tot
+        alpha_stage = alpha_tot * cards[var]
+    if method == "BD":  # This should be the Cooper-Herzkovits
+        alpha_obs = alpha_tot
+        alpha_stage = alpha_tot * cards[var]
+    elif method == "BDeu":
+        context_prop = 1 / np.prod([cards[c] for c in context])
+        alpha_stage = alpha_tot * context_prop
+        alpha_obs = alpha_stage / cards[var]
+
+    stage_counts = sum(counts.values())
+    #print("stage counts: {}".format(stage_counts_stage))
+
+    # Note that the score is depending on the context in the stage. So
+    # note really th satge as such.
+    score += loggamma(alpha_stage) - loggamma(alpha_stage + stage_counts)
+    for val in range(cards[var]):
+        if val not in counts:  # as we only store the observed values
+            continue
+        score += loggamma(alpha_obs + counts[val]) - loggamma(alpha_obs)
 
     return score
 
@@ -196,30 +316,55 @@ def score_tables(cstree: ct.CStree, data: pd.DataFrame,
 
 
     scores = {lab : None for lab in data.columns}
+    counts = {lab : {} for lab in data.columns}
+    #counts = context_counts(data)
+    # TODO: checkk its the correct cards
+    print(" cards: {}".format(data.loc[0, :].values))
 
+    cards = {var: list(range(data.loc[0, var])) for var in data.columns }
+    #print("cards: {}".format(cards))
     # go through all variables
-    for var in labels:
+    for var in data.columns:
+
         # Iterate through all context sizes
         for csize in range(max_cvars+1):
             # Iterate through all possible contexts
             # remove the current variable from the active labels
             labels = [l for l in data.columns if l != var]
             for context_variables in combinations(labels, csize):
+                
                 # get the active labels like A,B,C
                 active_labels = [l for l in labels if l in context_variables]
                 tmp = {c: None for c in active_labels}
-                # go through all possible contexts
+                
+                # go through all data rows and match to context   
+                for i in range(1, 500):#len(data)):
+                    
+                    context_values = data.loc[i, active_labels].values
+                    cont = {cvar: context_values[i] for i, cvar in enumerate(active_labels)}
+                    context = ""
+                    for cvar, val in sorted(cont.items()):
+                        context += "{}={},".format(cvar, val)
+                    context = context[:-1]
 
-                context_space = [range(c) for c in cstree.cards[active_labels] if c in context_variables]
-                for context in product(*context_space): # like (0,1,1)
-                    # score the context and variable
-                    context = csi_rel.Context({cvar: context[i] for i, cvar in enumerate(active_labels)})
+                    value = data.loc[i, [var]].values[0]
 
-                    counts = get_context_counts(data, var, context)
-                    score = score_context(cstree, var, context, counts, alpha_tot=alpha_tot, method=method)
-                    scores[var][context] = score
+                    if context not in counts[var]:
+                        counts[var][context] = {}
+                    if value not in counts[var][context]:
+                        counts[var][context][value] = 1
+                    else:
+                        counts[var][context][value] += 1
 
-    return scores
+                # loop over all observed contexts. 
+                # or maybe it wiill be hard to keep trak of the contexts now..
+                for cc in counts[var]:                    
+                    score = score_context(var, cc, cards, counts, alpha_tot=alpha_tot, method=method)
+                
+                
+                scores[var][context] = score
+
+    return counts
 
 def score(cstree: ct.CStree, data: pd.DataFrame, alpha_tot=1.0, method="BDeu"):
     """Score a CStree.
@@ -256,7 +401,7 @@ def score(cstree: ct.CStree, data: pd.DataFrame, alpha_tot=1.0, method="BDeu"):
 
 def score_order(order, data, strategy="max", max_cvars=1, alpha_tot=1.0, method="BDeu"):
     """Score an order.
-    
+
     Args:
         order (list): The order of the variables.
         data (pandas DataFrame): The data.
