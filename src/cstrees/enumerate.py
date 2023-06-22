@@ -3,17 +3,17 @@ from copy import deepcopy
 import numpy as np
 
 
-def num_stagings(l: int):
-    return l**3 + 1 if l != 2 else 8
+def num_stagings(lvl: int):
+    return lvl**3 + 1 if lvl != 2 else 8
 
 
-def num_cstrees(n: int):
-    return np.fromiter(map(num_stagings, range(n)), np.uint).prod()
+def num_cstrees(num_lvls: int):
+    return np.fromiter(map(num_stagings, range(num_lvls)), np.uint).prod()
     # replace with .cumprod() to get sequence from 1 to n
 
 
-def enumerate_stagings(n: int):
-    n_cube = [{0, 1} for _ in range(n)]
+def enumerate_stagings(num_lvls: int):
+    n_cube = [{0, 1} for _ in range(num_lvls)]
     cd0 = n_cube
     cd1s = codim_1_subdivs(n_cube)
     cd12s = []
@@ -27,16 +27,16 @@ def enumerate_stagings(n: int):
             sub0_cd1 + sub1_cd1 for sub0_cd1 in sub0_cd1s for sub1_cd1 in sub1_cd1s
         ]
 
-    if n == 2:
+    if num_lvls == 2:
         _ = cd2s.pop(0)
 
     return [cd0] + cd1s + cd12s + cd2s
 
 
 def codim_1_subdivs(cube, fixed_dims=None):
-    n = len(cube)
+    num_lvls = len(cube)
     subdivisions = []
-    for idx in range(n):
+    for idx in range(num_lvls):
         if idx == fixed_dims:
             continue
         subcube_0, subcube_1 = deepcopy(cube), deepcopy(cube)
