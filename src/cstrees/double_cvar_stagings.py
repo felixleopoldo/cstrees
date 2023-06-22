@@ -23,10 +23,29 @@ def max2_cvars_stagings(lvl):
         yield staging
 
 
-def max2_cvars_stagings_general(var_outcomes: list, restricted_to_cvars: tuple = None):
+def max2_cvars_stagings_new(var_outcomes: list, restricted_to_cvars: tuple = None):
     """Enumerate stagings at given level of CStree."""
-    stage_no_context = [var_outcomes]
-    yield stage_no_context
+    var_outcomes = [{0, 1}] * (var_outcomes - 1)  # remove this eventually
+    degen = False
+    staging_no_context = [var_outcomes]
+    yield staging_no_context
+    for var, staging in enumerate(one_cvar_stagings(var_outcomes)):
+        yield staging
+        for substaging_0 in one_cvar_stagings(staging[0], var):
+            yield [staging[1]] + substaging_0
+            first = True
+            for substaging_1 in one_cvar_stagings(staging[1], var):
+                if first:
+                    # makes sure each substaging_1 gets recorded once,
+                    # despite being inside of the loop over
+                    # substaging_0
+                    yield [staging[0]] + substaging_1
+                    first = False
+                    if degen:
+                        break
+                    elif len(var_outcomes) == 2:
+                        degen = True
+                yield substaging_0 + substaging_1
 
 
 def enumerate_binary_stagings(lvl: int):
@@ -68,9 +87,15 @@ def codim_1_subdivs_binary(cube, fixed_dims=None):
     return subdivisions
 
 
-def max1_cvar_stagings(staging: list, fixed_vars: tuple = None):
-    """Enumerate new stagings resulting from one additional cvar to given staging."""
-    pass
+def one_cvar_stagings(staging: list, fixed_var: int = None):
+    """Enumerate new stagings resulting from adding one cvar to given staging."""
+    for var, stage in enumerate(staging):
+        if var == fixed_var:
+            continue
+        substage_0, substage_1 = deepcopy(staging), deepcopy(staging)
+        substage_0[var] = 0
+        substage_1[var] = 1
+        yield [substage_0, substage_1]
 
 
 def enumerate_binary_cstrees(num_lvls: int):
