@@ -14,7 +14,7 @@ def num_cstrees(num_lvls: int):
 
 def enumerate_stagings(num_lvls: int):
     n_cube = [{0, 1} for _ in range(num_lvls)]
-    cd0 = n_cube
+    cd0 = [n_cube]
     cd1s = codim_1_subdivs(n_cube)
     cd12s = []
     cd2s = []
