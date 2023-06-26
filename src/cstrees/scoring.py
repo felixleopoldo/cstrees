@@ -189,7 +189,7 @@ def score_level(cstree, level, level_counts, alpha_tot=1.0, method="BDeu"):
 
     return score
 
-def score_context(var, context, cards, counts, alpha_tot=1.0, method="BDeu"):
+def score_context(var, context, context_vars, cards, counts, alpha_tot=1.0, method="BDeu"):
     """ CS-BDeu score at a level folowing
     Conor Hughes, Peter Strong, Aditi Shenvi. Score Equivalence for Staged Trees.
 
@@ -222,7 +222,7 @@ def score_context(var, context, cards, counts, alpha_tot=1.0, method="BDeu"):
     """
 
     score = 0  # log score
-    
+
     if method == "K2":
         assert (alpha_tot == 1)
         alpha_obs = alpha_tot
@@ -231,20 +231,26 @@ def score_context(var, context, cards, counts, alpha_tot=1.0, method="BDeu"):
         alpha_obs = alpha_tot
         alpha_stage = alpha_tot * cards[var]
     elif method == "BDeu":
-        context_prop = 1 / np.prod([cards[c] for c in context])
+        context_prop = 1 / np.prod([cards[c] for c in context_vars])
         alpha_stage = alpha_tot * context_prop
         alpha_obs = alpha_stage / cards[var]
 
-    stage_counts = sum(counts.values())
+    #print(counts[var][context]["counts"])
+    context_counts = sum(counts[var][context]["counts"].values())
     #print("stage counts: {}".format(stage_counts_stage))
 
     # Note that the score is depending on the context in the stage. So
     # note really th satge as such.
-    score += loggamma(alpha_stage) - loggamma(alpha_stage + stage_counts)
-    for val in range(cards[var]):
-        if val not in counts:  # as we only store the observed values
-            continue
-        score += loggamma(alpha_obs + counts[val]) - loggamma(alpha_obs)
+    score += loggamma(alpha_stage) - loggamma(alpha_stage + context_counts)
+    for val, count in counts[var][context]["counts"].items():
+        #print(val, count)
+        score += loggamma(alpha_obs + count) - loggamma(alpha_obs)
+        counts[var][context]["score"] = score # just temporary
+
+    # for val in range(cards[var]):
+    #     if val not in counts:  # as we only store the observed values
+    #         continue
+    #     score += loggamma(alpha_obs + counts[val]) - loggamma(alpha_obs)
 
     return score
 
@@ -315,13 +321,13 @@ def score_tables(cstree: ct.CStree, data: pd.DataFrame,
                  alpha_tot=1.0, method="BDeu"):
 
 
-    scores = {lab : None for lab in data.columns}
+    scores = {lab : {} for lab in data.columns}
     counts = {lab : {} for lab in data.columns}
     #counts = context_counts(data)
     # TODO: checkk its the correct cards
-    print(" cards: {}".format(data.loc[0, :].values))
+    #print(" cards: {}".format(data.loc[0, :].values))
 
-    cards = {var: list(range(data.loc[0, var])) for var in data.columns }
+    cards_dict = {var: data.loc[0, var] for var in data.columns }
     #print("cards: {}".format(cards))
     # go through all variables
     for var in data.columns:
@@ -332,39 +338,47 @@ def score_tables(cstree: ct.CStree, data: pd.DataFrame,
             # remove the current variable from the active labels
             labels = [l for l in data.columns if l != var]
             for context_variables in combinations(labels, csize):
-                
+
                 # get the active labels like A,B,C
                 active_labels = [l for l in labels if l in context_variables]
                 tmp = {c: None for c in active_labels}
-                
-                # go through all data rows and match to context   
-                for i in range(1, 500):#len(data)):
-                    
-                    context_values = data.loc[i, active_labels].values
-                    cont = {cvar: context_values[i] for i, cvar in enumerate(active_labels)}
+
+                #print("active labels: {}".format(active_labels))
+                if len(active_labels) == 0:
+                    test = data[1:][var].value_counts()
+                else:
+                    test = data[1:].groupby(active_labels)[var].value_counts()
+                #print(test)
+
+                testdf = test.to_frame().rename(columns={var: var+" counts"})
+                for index, r in testdf.iterrows():
+                    value = None
                     context = ""
-                    for cvar, val in sorted(cont.items()):
-                        context += "{}={},".format(cvar, val)
-                    context = context[:-1]
-
-                    value = data.loc[i, [var]].values[0]
-
-                    if context not in counts[var]:
-                        counts[var][context] = {}
-                    if value not in counts[var][context]:
-                        counts[var][context][value] = 1
+                    if len(active_labels) > 0:
+                        for cvarind, val in enumerate(index[:-1]):
+                            context += "{}={},".format(active_labels[cvarind], val)
+                        context = context[:-1]
+                        value = index[-1]
                     else:
-                        counts[var][context][value] += 1
+                        context = "None"
+                        value = index
 
-                # loop over all observed contexts. 
+                    #print(context)
+                    if context not in counts[var]:
+                        counts[var][context] = {"counts": {}}
+                    counts[var][context]["counts"][value] = r.values[0]
+                    counts[var][context]["context_vars"] = active_labels
+
+                # loop over all observed contexts.
                 # or maybe it wiill be hard to keep trak of the contexts now..
-                for cc in counts[var]:                    
-                    score = score_context(var, cc, cards, counts, alpha_tot=alpha_tot, method=method)
-                
-                
-                scores[var][context] = score
+                for cont in counts[var]:
+                    score = score_context(var, cont, active_labels, cards_dict, counts, alpha_tot=alpha_tot, method=method)
 
-    return counts
+
+                    scores[var][cont] = score
+                print("score: {}".format(score))
+
+    return scores, counts
 
 def score(cstree: ct.CStree, data: pd.DataFrame, alpha_tot=1.0, method="BDeu"):
     """Score a CStree.
