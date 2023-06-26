@@ -1,5 +1,6 @@
 from scipy.special import loggamma
 from itertools import combinations, product
+import itertools
 import numpy as np
 import pandas as pd
 
@@ -316,7 +317,7 @@ def estimate_parameters(cstree: ct.CStree, stage, stage_counts, method="BDeu", a
 def cstree_posterior(cstee: ct.CStree, data: pd.DataFrame, alpha_tot=1.0, method="BDeu"):
     pass
 
-def score_tables(cstree: ct.CStree, data: pd.DataFrame,
+def score_tables(data: pd.DataFrame,
                  strategy="posterior", max_cvars=2,
                  alpha_tot=1.0, method="BDeu"):
 
@@ -373,12 +374,67 @@ def score_tables(cstree: ct.CStree, data: pd.DataFrame,
                 # or maybe it wiill be hard to keep trak of the contexts now..
                 for cont in counts[var]:
                     score = score_context(var, cont, active_labels, cards_dict, counts, alpha_tot=alpha_tot, method=method)
-
-
                     scores[var][cont] = score
-                print("score: {}".format(score))
+                #print("score: {}".format(score))
 
-    return scores, counts
+    return scores
+
+def order_score_tables(data: pd.DataFrame,
+                 strategy="posterior", max_cvars=2,
+                 alpha_tot=1.0, method="BDeu"):
+
+    context_scores = score_tables(data, strategy=strategy, max_cvars=max_cvars,
+                                alpha_tot=alpha_tot, method=method)
+    labels = list(data.columns)
+    print("labels: {}".format(labels))
+    cards_dict = {var: data.loc[0, var] for var in data.columns }
+    
+    order_scores = {var: {} for var in labels}
+    for var in labels:
+        print("\nvar: {}".format(var))
+        for subset in csi_rel._powerset(set(labels) - {var}):            
+            # choosing one reperesentateve for each subset
+            level = len(subset)-1
+            print("level: {}".format(level))
+            subset = list(subset)
+            subset.sort()
+            print(subset)
+            subset_str = ','.join([str(v) for v in subset])
+            order_scores[var][subset_str] = 0
+            cards = [cards_dict[l] for l in subset]
+            #print(cards)
+            # get all stagings at level
+            # TODO: add the CStree prior somewhere!!!!!
+            
+            # put the variable t the right and use all_stagings
+            for staging in learn.all_stagings(cards, level, max_cvars):
+                print("staging")
+                stage_score = 0
+                for stage in staging: # this might be empty?
+                    
+                    print("stage {}".format(stage))
+                    print("stage repr: {}".format(stage.list_repr))
+                    # get the context variables
+                    context = ""
+                    if all([isinstance(stl, set) for stl in stage.list_repr]) or (len(stage.list_repr)==0):
+                        context = "None"
+                    else:
+                        for cvarind, val in enumerate(stage.list_repr):
+                            print("cvarind: {}".format(cvarind))
+                            #print("val: {}".format(val))
+                            if isinstance(val, int): # a context variable
+                                context += "{}={},".format(subset[cvarind], val)
+                        context = context[:-1]
+                    
+                    print("context: {}".format(context))
+                    stage_score += context_scores[var][context]
+                    print("context score: {}".format(stage_score))
+                    
+                    order_scores[var][subset_str] += stage_score
+                    
+                    
+                # get the score for the staging
+    return order_scores
 
 def score(cstree: ct.CStree, data: pd.DataFrame, alpha_tot=1.0, method="BDeu"):
     """Score a CStree.

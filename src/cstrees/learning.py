@@ -12,7 +12,7 @@ def all_stagings(cards, level, max_cvars=1):
 
     Args:
         l (int): The level of the stage.
-        cards (list): List of cardinalities of the variables. Should be at least of length l+1.
+        cards (list): List of cardinalities of the variables. Should be at least of length l+1. E.g.: l=2, cards=[2,2,2,2]
         max_cvars (int, optional): The maximum number of context variables . Defaults to 1.
 
     Raises:
@@ -65,7 +65,8 @@ def all_stagings(cards, level, max_cvars=1):
 
     """
 
-    assert level < len(cards)-1
+    assert level < len(cards)
+    #assert level < len(cards)-1
     if max_cvars == 1:
         if level == -1:  # This is an imaginary level -1, it has no stages.
             yield [stl.Stage([])]
