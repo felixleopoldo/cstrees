@@ -469,9 +469,9 @@ def order_score_tables(data: pd.DataFrame,
                     order_scores[var][subset_str] = logsumexp([order_scores[var][subset_str], staging_marg_lik])
 
                 #log_staging_prior = log_n_stagings[staging_level]
-                log_level_prior = np.log(1 / (p- staging_level-1)) # BUG: Is this correct?
-                log_staging_prior = np.log(learn.n_stagings(cards, staging_level, max_cvars=max_cvars))
-                log_unnorm_post = order_scores[var][subset_str] - log_staging_prior - log_level_prior
+                log_level_prior = -np.log(p- staging_level-1) # BUG: Is this correct?
+                log_staging_prior = -np.log(learn.n_stagings(cards, staging_level, max_cvars=max_cvars))
+                log_unnorm_post = order_scores[var][subset_str] + log_staging_prior + log_level_prior
                 print("log_level_prior: {}".format(log_level_prior))
                 print("log_staging_prior: {}".format(log_staging_prior))
                 print("log_likelihood: {}".format(order_scores[var][subset_str]))
@@ -643,15 +643,15 @@ def _score_order_at_level(order, level, data, strategy="max", max_cvars=1,
             if log_marg_lik > log_unnorm_post:
                 log_unnorm_post = log_marg_lik
         if strategy == "posterior":
-            log_staging_prior = np.log(learn.n_stagings(
+            log_staging_prior = -np.log(learn.n_stagings(
                 cards, level-1, max_cvars=max_cvars))
             
             print("stagings level: {}".format(level-1))
-            log_level_prior = np.log(1 / (p-level)) # BUG: Is this correct?
+            log_level_prior = -np.log(p-level) # BUG: Is this correct?
             print("log_level_prior: {}".format(log_level_prior))
             print("log_staging_prior: {}".format(log_staging_prior))
             print("log_marg_lik: {}".format(log_marg_lik))
-            log_unnorm_post = log_marg_lik - log_staging_prior - log_level_prior
+            log_unnorm_post = log_marg_lik + log_staging_prior + log_level_prior
             log_unnorm_posts.append(log_unnorm_post)
             #log_unnorm_posts.append(log_marg_lik)
 
