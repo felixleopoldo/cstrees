@@ -413,6 +413,8 @@ def order_score_tables(data: pd.DataFrame,
     print("labels: {}".format(labels))
     cards_dict = {var: data.loc[0, var] for var in data.columns }
 
+    #log_n_stagings = [np.log(learn.n_stagings(cards, lev, max_cvars=max_cvars)) for lev in range(len(labels))]
+
     p = data.shape[1]
     print(p)
     order_scores = {var: {} for var in labels}
@@ -469,15 +471,11 @@ def order_score_tables(data: pd.DataFrame,
                     print([order_scores[var][subset_str], staging_marg_lik])
                     order_scores[var][subset_str] = logsumexp([order_scores[var][subset_str], staging_marg_lik])
 
+                #log_staging_prior = log_n_stagings[staging_level]
+                log_staging_prior = np.log(learn.n_stagings(cards, staging_level, max_cvars=max_cvars))
+                log_level_prior = np.log((staging_level+2) / p) # BUG: Is this correct?
 
-                #log_staging_prior = np.log(learn.n_stagings(cards, staging_level, max_cvars=max_cvars))
-                #log_level_prior = np.log((staging_level+2) / p) # BUG: Is this correct?
-
-                #order_scores[var][subset_str] = order_scores[var][subset_str] - log_staging_prior - log_level_prior
-
-
-                #log_unnorm_post = log_marg_lik - log_staging_prior - log_level_prior
-                #log_unnorm_posts.append(log_unnorm_post)
+                order_scores[var][subset_str] = order_scores[var][subset_str] - log_staging_prior - log_level_prior
 
     return order_scores
 
@@ -645,12 +643,12 @@ def _score_order_at_level(order, level, data, strategy="max", max_cvars=1,
             if log_marg_lik > log_unnorm_post:
                 log_unnorm_post = log_marg_lik
         if strategy == "posterior":
-            #log_staging_prior = np.log(learn.n_stagings(
-            #    cards, level-1, max_cvars=max_cvars))
-            #log_level_prior = np.log((level+1) / p) # BUG: Is this correct?
-            #log_unnorm_post = log_marg_lik - log_staging_prior - log_level_prior
-            #log_unnorm_posts.append(log_unnorm_post)
-            log_unnorm_posts.append(log_marg_lik)
+            log_staging_prior = np.log(learn.n_stagings(
+                cards, level-1, max_cvars=max_cvars))
+            log_level_prior = np.log((level+1) / p) # BUG: Is this correct?
+            log_unnorm_post = log_marg_lik - log_staging_prior - log_level_prior
+            log_unnorm_posts.append(log_unnorm_post)
+            #log_unnorm_posts.append(log_marg_lik)
 
             #print("level {} log lik score: {}".format(level, log_unnorm_post))
 
