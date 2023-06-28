@@ -1,6 +1,7 @@
 from itertools import permutations
 
 import numpy as np
+from tqdm import tqdm
 
 import cstrees.cstree as ct
 import cstrees.stage as stl
@@ -309,7 +310,7 @@ def move_up2(node_index,
              order,
              orderscore,
              node_scores,
-             data,
+             data, score_table,
              max_cvars=2,
              alpha_tot=1,
              method="BDeu"):
@@ -320,16 +321,36 @@ def move_up2(node_index,
     tmp1 = node_scores[node_index]
     tmp2 = node_scores[node_index+1]
 
-    node_scores[node_index] = sc._score_order_at_level(order, node_index, data,
-                                                       strategy="posterior",
-                                                       max_cvars=max_cvars,
-                                                       alpha_tot=alpha_tot,
-                                                       method=method)
-    node_scores[node_index+1] = sc._score_order_at_level(order, node_index+1, data,
-                                                         strategy="posterior",
-                                                         max_cvars=max_cvars,
-                                                         alpha_tot=alpha_tot,
-                                                         method=method)
+    # node_scores[node_index] = sc._score_order_at_level(order, node_index, data,
+    #                                                    strategy="posterior",
+    #                                                    max_cvars=max_cvars,
+    #                                                    alpha_tot=alpha_tot,
+    #                                                    method=method)
+    # node_scores[node_index+1] = sc._score_order_at_level(order, node_index+1, data,
+    #                                                      strategy="posterior",
+    #                                                      max_cvars=max_cvars,
+    #                                                      alpha_tot=alpha_tot,
+    #                                                      method=method)
+
+    #print("order {}".format(order))
+    pred1 = sc.list_to_score_key(order[:node_index])
+    pred2 = sc.list_to_score_key(order[:node_index+1])
+    node_scores[node_index] = score_table[order[node_index]][pred1]
+    node_scores[node_index+1] = score_table[order[node_index+1]][pred2]
+
+    # score1 = score_table[order[node_index]][pred1]    
+    
+    # print("node {}".format(order[node_index]))
+    # print("pred1: {}".format(pred1))
+    # print("score1: {}".format(score1))
+    # print("node_scores[node_index]: {}".format(node_scores[node_index]))
+    
+    
+    # score2 = score_table[order[node_index+1]][pred2]
+    # print("pred2: {}".format(pred2))
+    # print("score2: {}".format(score2))
+    # print("node_scores[node_index+1]: {}".format(node_scores[node_index+1]))
+    
 
     orderscore += node_scores[node_index] + \
         node_scores[node_index+1] - tmp1 - tmp2
@@ -347,7 +368,7 @@ def move_down2(node_index,
                order,
                orderscore,
                node_scores,
-               data,
+               data, score_table,
                max_cvars=2,
                alpha_tot=1,
                method="BDeu"):
@@ -359,17 +380,23 @@ def move_down2(node_index,
     order.insert(node_index-1, order.pop(node_index))
 
     # recompute node scores
-    node_scores[node_index] = sc._score_order_at_level(order, node_index, data,
-                                                       strategy="posterior",
-                                                       max_cvars=max_cvars,
-                                                       alpha_tot=alpha_tot,
-                                                       method=method)
-    node_scores[node_index-1] = sc._score_order_at_level(order, node_index-1, data,
-                                                         strategy="posterior",
-                                                         max_cvars=max_cvars,
-                                                         alpha_tot=alpha_tot,
-                                                         method=method)
+    # node_scores[node_index] = sc._score_order_at_level(order, node_index, data,
+    #                                                    strategy="posterior",
+    #                                                    max_cvars=max_cvars,
+    #                                                    alpha_tot=alpha_tot,
+    #                                                    method=method)
+    # node_scores[node_index-1] = sc._score_order_at_level(order, node_index-1, data,
+    #                                                      strategy="posterior",
+    #                                                      max_cvars=max_cvars,
+    #                                                      alpha_tot=alpha_tot,
+    #                                                      method=method)
 
+    pred1 = sc.list_to_score_key(order[:node_index])
+    pred2 = sc.list_to_score_key(order[:node_index-1])
+    
+    node_scores[node_index] = score_table[order[node_index]][pred1]
+    node_scores[node_index-1] = score_table[order[node_index-1]][pred2]
+    
     orderscore += node_scores[node_index] + \
         node_scores[node_index-1] - tmp1 - tmp2
 
@@ -381,7 +408,7 @@ def move_node(node_index_from,
               order,
               orderscore,
               node_scores,
-              data,
+              data, score_table,
               max_cvars=2,
               alpha_tot=1,
               method="BDeu"):
@@ -403,11 +430,11 @@ def move_node(node_index_from,
     if node_index_from < node_index_to:
         for i in range(node_index_from, node_index_to):
             orderscore = move_up2(
-                i, order, orderscore, node_scores, data, max_cvars, alpha_tot, method)
+                i, order, orderscore, node_scores, data, score_table,  max_cvars, alpha_tot, method)
     else:
         for i in range(node_index_from, node_index_to, -1):
             orderscore = move_down2(
-                i, order, orderscore, node_scores, data, max_cvars, alpha_tot, method)
+                i, order, orderscore, node_scores, data, score_table, max_cvars, alpha_tot, method)
     return orderscore
 
 
@@ -426,6 +453,11 @@ def gibbs_order_sampler(iterations, data, max_cvars=2, alpha_tot=1,
                         method="BDeu"):
     """ Gibbs order sampler.
     """
+    # Score table for all noded in all positions in the order
+    score_table = sc.order_score_tables(data, max_cvars=max_cvars,
+                                            alpha_tot=alpha_tot,
+                                            method=method)
+    
     order_trajectory = []
     p = data.shape[1]
 
@@ -435,11 +467,20 @@ def gibbs_order_sampler(iterations, data, max_cvars=2, alpha_tot=1,
 
     node_scores = [0]*p
     for i in range(p):
-        node_scores[i] = sc._score_order_at_level(order, i, data,
-                                                  strategy="posterior",
-                                                  max_cvars=max_cvars,
-                                                  alpha_tot=alpha_tot,
-                                                  method=method)
+        # node_scores[i] = sc._score_order_at_level(order, i, data,
+        #                                           strategy="posterior",
+        #                                           max_cvars=max_cvars,
+        #                                           alpha_tot=alpha_tot,
+        #                                           method=method)
+        
+        # possible parents to string
+        subset_str = sc.list_to_score_key(order[:i])
+        
+        #print("node: {} ".format(order[i]))
+        #print("subset: {}".format(subset_str))
+        node_scores[i] = score_table[order[i]][subset_str]
+        #print("node score: {}".format(node_scores[i]))
+        #rint("check: {}".format(check))
 
     score = np.sum(node_scores)
     print("initial score: {}".format(score))
@@ -447,39 +488,40 @@ def gibbs_order_sampler(iterations, data, max_cvars=2, alpha_tot=1,
     scores.append(score)
     order_trajectory.append(order)
 
-    for i in range(1, iterations):
-        print("\niteration: {}".format(i))
+    for i in tqdm(range(1, iterations)):
+        #print("\niteration: {}".format(i))
         # pick a random node
         node_index = np.random.randint(0, p)
         node = order_trajectory[i-1][node_index]
-        print("order: {}".format(order_trajectory[i-1]))
-        print("moving node {}".format(node))
+        #print("order: {}".format(order_trajectory[i-1]))
+        #print("moving node {}".format(node))
         # calculate the neighborhood scores
         prop_probs = get_relocation_neighborhood(order_trajectory[i-1],
                                                  node_index,
                                                  scores[i-1],
                                                  node_scores,
-                                                 data,
+                                                 data, score_table,
                                                  max_cvars=max_cvars,
                                                  alpha_tot=alpha_tot,
                                                  method=method)
 
-        print("proposal probs: {}".format(prop_probs))
+        #print("proposal probs: {}".format(prop_probs))
+        #print("sum: {}".format(np.sum(prop_probs)))
 
         # Select at random from the proposal distribution
         new_pos = np.random.choice(list(range(len(prop_probs))), p=prop_probs)
-        print("to new pos: {}".format(new_pos))
+        #print("to new pos: {}".format(new_pos))
 
         neworder = order_trajectory[i-1].copy()
         orderscore = move_node(node_index, new_pos,
                   neworder,
                   scores[i-1],
-                  node_scores, data,
+                  node_scores, data, score_table,
                   max_cvars=max_cvars,
                   alpha_tot=alpha_tot,
                   method=method)
-        print("order: {}".format(neworder))
-        print("score: {}".format(orderscore))
+        #print("order: {}".format(neworder))
+        #print("score: {}".format(orderscore))
         order_trajectory.append(neworder)
         scores.append(orderscore)  # O(p)
 
@@ -487,7 +529,9 @@ def gibbs_order_sampler(iterations, data, max_cvars=2, alpha_tot=1,
 
 
 def get_relocation_neighborhood(order, node_index, orderscore, node_scores,
-                                data, max_cvars=2, alpha_tot=1, method="BDeu"):
+                                data, 
+                                score_table,
+                                max_cvars=2, alpha_tot=1, method="BDeu"):
     # Move to the right
     # [1,2,3,i,4,5] => [1,2,3,4,i,5]
 
@@ -497,7 +541,7 @@ def get_relocation_neighborhood(order, node_index, orderscore, node_scores,
     for i in range(node_index, len(order)-1):
         #print("moving {} to the right".format(order[i]))
 
-        orderscore = move_up2(i, order, orderscore, node_scores, data,
+        orderscore = move_up2(i, order, orderscore, node_scores, data, score_table,
                               max_cvars=max_cvars, alpha_tot=alpha_tot,
                               method=method)
 
@@ -508,7 +552,7 @@ def get_relocation_neighborhood(order, node_index, orderscore, node_scores,
     # relocated.
     for i in range(len(order)-1, 0, -1):
         #print("moving {} to the left".format(order[i]))
-        orderscore = move_down2(i, order, orderscore, node_scores, data,
+        orderscore = move_down2(i, order, orderscore, node_scores, data, score_table,
                                 max_cvars=max_cvars, alpha_tot=alpha_tot, method=method)
 
         neig_log_scores[i-1] = orderscore
@@ -517,7 +561,7 @@ def get_relocation_neighborhood(order, node_index, orderscore, node_scores,
     # move back to where we started
     for i in range(0, node_index):
         #print("moving {} to the right".format(order[i]))
-        orderscore = move_up2(i, order, orderscore, node_scores, data,
+        orderscore = move_up2(i, order, orderscore, node_scores, data, score_table,
                               max_cvars=max_cvars, alpha_tot=alpha_tot,
                               method=method)
 

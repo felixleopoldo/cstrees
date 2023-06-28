@@ -177,6 +177,10 @@ def score_level(cstree, level, level_counts, alpha_tot=1.0, method="BDeu"):
             alpha_obs = alpha_tot
             alpha_stage = alpha_tot * cstree.cards[level]
         elif method == "BDeu":
+            # print all variables
+            #print("stage: {}".format(stage))
+            #print("alpha_tot: {}".format(alpha_tot))
+            
             alpha_stage = alpha_tot * cstree.stage_proportion(stage)
             alpha_obs = alpha_stage / cstree.cards[level]
 
@@ -364,7 +368,7 @@ def score_tables(data: pd.DataFrame,
                     test = data[1:].groupby(active_labels)[var].value_counts()
                 #print(test)
 
-                testdf = test.to_frame().rename(columns={var: var+" counts"})
+                testdf = test.to_frame().rename(columns={var: str(var)+" counts"})
                 for index, r in testdf.iterrows():
                     value = None
                     context = ""
@@ -403,12 +407,22 @@ def score_tables(data: pd.DataFrame,
     #pp(counts)
     return scores
 
+def list_to_score_key(labels: list):
+    subset = labels
+    subset.sort()        
+    subset_str = ','.join([str(v) for v in subset])
+    if subset_str == "":
+        subset_str = "None"
+    return subset_str    
+
 def order_score_tables(data: pd.DataFrame,
                  strategy="posterior", max_cvars=2,
                  alpha_tot=1.0, method="BDeu"):
 
     context_scores = score_tables(data, strategy=strategy, max_cvars=max_cvars,
                                 alpha_tot=alpha_tot, method=method)
+    
+    
     labels = list(data.columns)
     #print("labels: {}".format(labels))
     cards_dict = {var: data.loc[0, var] for var in data.columns }
@@ -418,13 +432,12 @@ def order_score_tables(data: pd.DataFrame,
     p = data.shape[1]
     #print(p)
     order_scores = {var: {} for var in labels}
-    #for var in tqdm(labels):
-    for var in labels:
-        #print("\nVARIABLE: {}".format(var))
+    for var in tqdm(labels, desc="Calculating positional order scores for each variable"):
+        #print("VARIABLE: {}".format(var))
         for subset in csi_rel._powerset(set(labels) - {var}):
-            # choosing one reperesentateve for each subset
+            # choosing one representative for each subset
             staging_level = len(subset)-1
-            print("staging level: {}".format(staging_level))
+            #print("staging level: {}".format(staging_level))
             subset = list(subset)
             subset.sort()
             #print(subset)
@@ -472,9 +485,9 @@ def order_score_tables(data: pd.DataFrame,
             log_level_prior = -np.log(p- staging_level-1) # BUG: Is this correct?
             log_staging_prior = -np.log(learn.n_stagings(cards, staging_level, max_cvars=max_cvars))
             log_unnorm_post = order_scores[var][subset_str] + log_staging_prior + log_level_prior
-            print("log_level_prior: {}".format(log_level_prior))
-            print("log_staging_prior: {}".format(log_staging_prior))
-            print("log_likelihood: {}".format(order_scores[var][subset_str]))
+            #print("log_level_prior: {}".format(log_level_prior))
+            #print("log_staging_prior: {}".format(log_staging_prior))
+            #print("log_likelihood: {}".format(order_scores[var][subset_str]))
             order_scores[var][subset_str] = log_unnorm_post
 
     return order_scores
@@ -646,14 +659,9 @@ def _score_order_at_level(order, level, data, strategy="max", max_cvars=1,
             log_staging_prior = -np.log(learn.n_stagings(
                 cards, level-1, max_cvars=max_cvars))
             
-            print("stagings level: {}".format(level-1))
             log_level_prior = -np.log(p-level) # BUG: Is this correct?
-            print("log_level_prior: {}".format(log_level_prior))
-            print("log_staging_prior: {}".format(log_staging_prior))
-            print("log_marg_lik: {}".format(log_marg_lik))
             log_unnorm_post = log_marg_lik + log_staging_prior + log_level_prior
             log_unnorm_posts.append(log_unnorm_post)
-            #log_unnorm_posts.append(log_marg_lik)
 
             #print("level {} log lik score: {}".format(level, log_unnorm_post))
 
