@@ -1,4 +1,5 @@
 from itertools import permutations
+import random
 
 import numpy as np
 from tqdm import tqdm
@@ -310,10 +311,7 @@ def move_up2(node_index,
              order,
              orderscore,
              node_scores,
-             data, score_table,
-             max_cvars=2,
-             alpha_tot=1,
-             method="BDeu"):
+             score_table):
     """ Move a node up in an order.
     """
     order.insert(node_index+1, order.pop(node_index))
@@ -368,10 +366,7 @@ def move_down2(node_index,
                order,
                orderscore,
                node_scores,
-               data, score_table,
-               max_cvars=2,
-               alpha_tot=1,
-               method="BDeu"):
+               score_table):
 
     # prev scores
     tmp1 = node_scores[node_index]
@@ -408,10 +403,7 @@ def move_node(node_index_from,
               order,
               orderscore,
               node_scores,
-              data, score_table,
-              max_cvars=2,
-              alpha_tot=1,
-              method="BDeu"):
+               score_table):
     """ Move a node up in an order and update the node scores.
 
     Args:
@@ -429,12 +421,11 @@ def move_node(node_index_from,
 
     if node_index_from < node_index_to:
         for i in range(node_index_from, node_index_to):
-            orderscore = move_up2(
-                i, order, orderscore, node_scores, data, score_table,  max_cvars, alpha_tot, method)
+            orderscore = move_up2(i, order, orderscore, node_scores, score_table)
     else:
         for i in range(node_index_from, node_index_to, -1):
             orderscore = move_down2(
-                i, order, orderscore, node_scores, data, score_table, max_cvars, alpha_tot, method)
+                i, order, orderscore, node_scores, score_table)
     return orderscore
 
 
@@ -449,30 +440,26 @@ def swap_neigbors_in_order(order, node_index1, node_index2):
     """
 
 
-def gibbs_order_sampler(iterations, data, max_cvars=2, alpha_tot=1,
-                        method="BDeu"):
+def gibbs_order_sampler(iterations, score_table):
     """ Gibbs order sampler.
     """
     # Score table for all noded in all positions in the order
-    score_table = sc.order_score_tables(data, max_cvars=max_cvars,
-                                            alpha_tot=alpha_tot,
-                                            method=method)
+    # score_table = sc.order_score_tables(data, max_cvars=max_cvars,
+    #                                         alpha_tot=alpha_tot,
+    #                                         method=method)
     
     order_trajectory = []
-    p = data.shape[1]
+    #p = data.shape[1]
+    p = len(score_table)
 
-    order = list(data.columns.values)  # list(range(p))
+    #order = list(data.columns.values)  # list(range(p))
+    order = list(score_table.keys()) #list(data.columns.values)  # list(range(p))
+    #random.shuffle(order)
     print("initial order: {}".format(order))
     scores = []
 
     node_scores = [0]*p
     for i in range(p):
-        # node_scores[i] = sc._score_order_at_level(order, i, data,
-        #                                           strategy="posterior",
-        #                                           max_cvars=max_cvars,
-        #                                           alpha_tot=alpha_tot,
-        #                                           method=method)
-        
         # possible parents to string
         subset_str = sc.list_to_score_key(order[:i])
         
@@ -488,7 +475,7 @@ def gibbs_order_sampler(iterations, data, max_cvars=2, alpha_tot=1,
     scores.append(score)
     order_trajectory.append(order)
 
-    for i in tqdm(range(1, iterations)):
+    for i in tqdm(range(1, iterations+1), desc="Gibbs order sampler"):
         #print("\niteration: {}".format(i))
         # pick a random node
         node_index = np.random.randint(0, p)
@@ -500,10 +487,7 @@ def gibbs_order_sampler(iterations, data, max_cvars=2, alpha_tot=1,
                                                  node_index,
                                                  scores[i-1],
                                                  node_scores,
-                                                 data, score_table,
-                                                 max_cvars=max_cvars,
-                                                 alpha_tot=alpha_tot,
-                                                 method=method)
+                                                 score_table)
 
         #print("proposal probs: {}".format(prop_probs))
         #print("sum: {}".format(np.sum(prop_probs)))
@@ -516,10 +500,8 @@ def gibbs_order_sampler(iterations, data, max_cvars=2, alpha_tot=1,
         orderscore = move_node(node_index, new_pos,
                   neworder,
                   scores[i-1],
-                  node_scores, data, score_table,
-                  max_cvars=max_cvars,
-                  alpha_tot=alpha_tot,
-                  method=method)
+                  node_scores, 
+                  score_table)
         #print("order: {}".format(neworder))
         #print("score: {}".format(orderscore))
         order_trajectory.append(neworder)
@@ -529,9 +511,7 @@ def gibbs_order_sampler(iterations, data, max_cvars=2, alpha_tot=1,
 
 
 def get_relocation_neighborhood(order, node_index, orderscore, node_scores,
-                                data, 
-                                score_table,
-                                max_cvars=2, alpha_tot=1, method="BDeu"):
+                                score_table):
     # Move to the right
     # [1,2,3,i,4,5] => [1,2,3,4,i,5]
 
@@ -541,9 +521,7 @@ def get_relocation_neighborhood(order, node_index, orderscore, node_scores,
     for i in range(node_index, len(order)-1):
         #print("moving {} to the right".format(order[i]))
 
-        orderscore = move_up2(i, order, orderscore, node_scores, data, score_table,
-                              max_cvars=max_cvars, alpha_tot=alpha_tot,
-                              method=method)
+        orderscore = move_up2(i, order, orderscore, node_scores, score_table)
 
         neig_log_scores[i+1] = orderscore
         # print(order)
@@ -552,8 +530,7 @@ def get_relocation_neighborhood(order, node_index, orderscore, node_scores,
     # relocated.
     for i in range(len(order)-1, 0, -1):
         #print("moving {} to the left".format(order[i]))
-        orderscore = move_down2(i, order, orderscore, node_scores, data, score_table,
-                                max_cvars=max_cvars, alpha_tot=alpha_tot, method=method)
+        orderscore = move_down2(i, order, orderscore, node_scores, score_table)
 
         neig_log_scores[i-1] = orderscore
         # print(order)
@@ -561,9 +538,7 @@ def get_relocation_neighborhood(order, node_index, orderscore, node_scores,
     # move back to where we started
     for i in range(0, node_index):
         #print("moving {} to the right".format(order[i]))
-        orderscore = move_up2(i, order, orderscore, node_scores, data, score_table,
-                              max_cvars=max_cvars, alpha_tot=alpha_tot,
-                              method=method)
+        orderscore = move_up2(i, order, orderscore, node_scores, score_table)
 
         neig_log_scores[i+1] = orderscore
         # print(order)
