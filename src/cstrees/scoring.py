@@ -468,14 +468,14 @@ def order_score_tables(data: pd.DataFrame,
                     #print([order_scores[var][subset_str], staging_marg_lik])
                     order_scores[var][subset_str] = logsumexp([order_scores[var][subset_str], staging_marg_lik])
 
-                #log_staging_prior = log_n_stagings[staging_level]
-                log_level_prior = -np.log(p- staging_level-1) # BUG: Is this correct?
-                log_staging_prior = -np.log(learn.n_stagings(cards, staging_level, max_cvars=max_cvars))
-                log_unnorm_post = order_scores[var][subset_str] + log_staging_prior + log_level_prior
-                print("log_level_prior: {}".format(log_level_prior))
-                print("log_staging_prior: {}".format(log_staging_prior))
-                print("log_likelihood: {}".format(order_scores[var][subset_str]))
-                order_scores[var][subset_str] = log_unnorm_post
+            #log_staging_prior = log_n_stagings[staging_level]
+            log_level_prior = -np.log(p- staging_level-1) # BUG: Is this correct?
+            log_staging_prior = -np.log(learn.n_stagings(cards, staging_level, max_cvars=max_cvars))
+            log_unnorm_post = order_scores[var][subset_str] + log_staging_prior + log_level_prior
+            print("log_level_prior: {}".format(log_level_prior))
+            print("log_staging_prior: {}".format(log_staging_prior))
+            print("log_likelihood: {}".format(order_scores[var][subset_str]))
+            order_scores[var][subset_str] = log_unnorm_post
 
     return order_scores
 
