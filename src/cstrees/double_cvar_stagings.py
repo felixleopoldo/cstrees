@@ -109,3 +109,12 @@ def enumerate_binary_cstrees(num_lvls: int):
         for staging in enumerate_binary_stagings(num_lvls - 1)
         for cstree in enumerate_binary_cstrees(num_lvls - 1)
     )
+
+
+"""notes for finishing generalization beyond binary vars with unrestricted cvar set:
+- change from excluding fixed_var to only including unfixed_vars
+  - should be input list of (lists or sets), or dict?
+  - account for this inside inner loops somehow
+- prod and (maybe) zip still useful
+- need to add loop within zip (like for max1_cvar case)
+"""
