@@ -9,6 +9,7 @@ pandas
 ipython
 ipykernel
 mpl-tools
+tqdm
 
 pylint
 

@@ -454,7 +454,7 @@ def gibbs_order_sampler(iterations, score_table):
 
     #order = list(data.columns.values)  # list(range(p))
     order = list(score_table.keys()) #list(data.columns.values)  # list(range(p))
-    #random.shuffle(order)
+    random.shuffle(order)
     print("initial order: {}".format(order))
     scores = []
 
