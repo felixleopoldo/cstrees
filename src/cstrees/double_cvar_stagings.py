@@ -37,10 +37,7 @@ def one_cvar_stagings(staging: list, fixed_var: int = None):
     for var, stage in enumerate(staging):
         if var == fixed_var:
             continue
-        substage_0, substage_1 = deepcopy(staging), deepcopy(staging)
-        substage_0[var] = 0
-        substage_1[var] = 1
-        yield [substage_0, substage_1]
+        yield [staging[:var] + [outcome] + staging[var + 1 :] for outcome in stage]
 
 
 """notes for finishing generalization beyond binary vars with unrestricted cvar set:
