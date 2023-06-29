@@ -1,6 +1,6 @@
 """Enumerate CStrees and stagings with up to 2 context variables."""
 from copy import deepcopy
-from itertools import chain
+from itertools import chain, product
 
 import numpy as np
 
@@ -16,14 +16,14 @@ def num_binary_cstrees(num_lvls: int):
     # replace with .cumprod() to get sequence from 1 to n
 
 
-def max2_cvars_stagings(lvl):
+def max2_cvars_stagings_old(lvl):
     """Convert to iter."""
     tmp = enumerate_binary_stagings(lvl - 1)
     for staging in tmp:
         yield staging
 
 
-def max2_cvars_stagings_new(var_outcomes: list, restricted_to_cvars: tuple = None):
+def max2_cvars_stagings(var_outcomes: list, restricted_to_cvars: tuple = None):
     """Enumerate stagings at given level of CStree."""
     var_outcomes = [{0, 1}] * (var_outcomes - 1)  # remove this eventually
     degen = False
@@ -31,21 +31,21 @@ def max2_cvars_stagings_new(var_outcomes: list, restricted_to_cvars: tuple = Non
     yield staging_no_context
     for var, staging in enumerate(one_cvar_stagings(var_outcomes)):
         yield staging
-        for substaging_0 in one_cvar_stagings(staging[0], var):
+        zipped = zip(
+            one_cvar_stagings(staging[0], var), one_cvar_stagings(staging[1], var)
+        )
+        for substaging_0, substaging_1 in zipped:
+            yield [staging[0]] + substaging_1
             yield [staging[1]] + substaging_0
-            first = True
-            for substaging_1 in one_cvar_stagings(staging[1], var):
-                if first:
-                    # makes sure each substaging_1 gets recorded once,
-                    # despite being inside of the loop over
-                    # substaging_0
-                    yield [staging[0]] + substaging_1
-                    first = False
-                    if degen:
-                        break
-                    elif len(var_outcomes) == 2:
-                        degen = True
-                yield substaging_0 + substaging_1
+        prod = product(
+            one_cvar_stagings(staging[0], var), one_cvar_stagings(staging[1], var)
+        )
+        for substaging_0, substaging_1 in prod:
+            if degen:
+                break
+            yield substaging_0 + substaging_1
+            if len(var_outcomes) == 2:
+                degen = True
 
 
 def enumerate_binary_stagings(lvl: int):

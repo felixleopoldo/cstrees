@@ -1,6 +1,3 @@
-from itertools import zip_longest
-from copy import deepcopy
-
 import src.cstrees.double_cvar_stagings as dcs
 
 
@@ -18,15 +15,23 @@ def test_enumerate_binary_cstrees():
 
 def test_max2_cvars_stagings():
     for n in range(4, 10):
-        new_stagings = list(dcs.max2_cvars_stagings(n))
         old_stagings = list(dcs.max2_cvars_stagings_old(n))
+        new_stagings = list(dcs.max2_cvars_stagings(n))
         assert len(new_stagings) == len(old_stagings)
-        non_unique = deepcopy(old_stagings)
-        for idx, staging in enumerate(old_stagings):
-            non_unique.remove(staging)
-            try:
-                non_unique.remove(staging)
-                print(n, idx, staging)
-                assert False
-            except ValueError:
-                continue
+        zipped = zip(old_stagings, new_stagings)
+        for idx, (old_staging, new_staging) in enumerate(zipped):
+            assert old_staging in new_stagings
+            assert new_staging in old_stagings
+            assert new_staging not in new_stagings[idx + 1 :]
+            # try:
+            #     assert old_staging in new_stagings
+            # except AssertionError:
+            #     print(f"{old_staging} not in `new_stagings`")
+            # try:
+            #     assert new_staging in old_stagings
+            # except AssertionError:
+            #     print(f"{new_staging} not in `old_stagings`")
+            # try:
+            #     assert new_staging not in new_stagings[idx + 1 :]
+            # except AssertionError:
+            #     print(f"{new_staging} repeated in `new_stagings`")
