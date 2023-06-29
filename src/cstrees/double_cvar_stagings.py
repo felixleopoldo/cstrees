@@ -2,23 +2,14 @@
 from copy import deepcopy
 from itertools import product
 
-import numpy as np
 
-
-def num_binary_stagings(lvl: int):
+def num_stagings(lvl: int):
     """Use formula to compute number of stagings at given level of binary CStree ."""
     return lvl**3 + 1 if lvl != 2 else 8
 
 
-def num_binary_cstrees(num_lvls: int):
-    """Use formula to compute number of binary CStrees for given number of levels."""
-    return np.fromiter(map(num_binary_stagings, range(num_lvls)), np.uint).prod()
-    # replace with .cumprod() to get sequence from 1 to n
-
-
 def max2_cvars_stagings(var_outcomes: list, restricted_to_cvars: tuple = None):
     """Enumerate stagings at given level of CStree."""
-    var_outcomes = [{0, 1}] * (var_outcomes - 1)  # remove this eventually
     degen = False
     staging_no_context = [var_outcomes]
     yield staging_no_context
