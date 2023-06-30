@@ -1,6 +1,5 @@
 """Enumerate CStrees and stagings with up to 2 context variables."""
-from copy import deepcopy
-from itertools import product
+from itertools import combination, product
 
 
 def num_stagings(lvl: int):
@@ -8,13 +7,19 @@ def num_stagings(lvl: int):
     return lvl**3 + 1 if lvl != 2 else 8
 
 
-def max2_cvars_stagings(var_outcomes: list, restricted_to_cvars: tuple = None):
+def max2_cvars_stagings(var_outcomes: list, possible_cvars: tuple = None):
     """Enumerate stagings at given level of CStree."""
+    if restricted_to_cvars is None:
+        num_vars = len(var_outcomes)
+        restricted_to_cvars = reversed(tuple(combination(num_vars, num_vars - 1)))
     degen = False
     staging_no_context = [var_outcomes]
     yield staging_no_context
-    for var, staging in enumerate(one_cvar_stagings(var_outcomes)):
+    for var, staging in enumerate(one_cvar_stagings(var_outcomes, possible_cvars)):
         yield staging
+        for stage in staging:
+            yield [stage] + None
+            pass
         zipped = zip(
             one_cvar_stagings(staging[0], var), one_cvar_stagings(staging[1], var)
         )
@@ -32,11 +37,11 @@ def max2_cvars_stagings(var_outcomes: list, restricted_to_cvars: tuple = None):
                 degen = True
 
 
-def one_cvar_stagings(staging: list, fixed_var: int = None):
+def one_cvar_stagings(staging: list, possible_cvars: tuple):
     """Enumerate new stagings resulting from adding one cvar to given staging."""
-    for var, stage in enumerate(staging):
-        if var == fixed_var:
-            continue
+    num_vars = len(staging[0])
+    pcv_mask = (var in possible_cvars for var in range(num_vars))
+    for var, stage in zip(possible_cvars, compress(staging, pcv_mask)):
         yield [staging[:var] + [outcome] + staging[var + 1 :] for outcome in stage]
 
 
