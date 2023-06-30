@@ -9,20 +9,17 @@ def num_stagings(lvl: int):
 
 def max2_cvars_stagings(var_outcomes: list, possible_cvars: tuple = None):
     """Enumerate stagings at given level of CStree."""
-    if restricted_to_cvars is None:
-        num_vars = len(var_outcomes)
-        restricted_to_cvars = reversed(tuple(combination(num_vars, num_vars - 1)))
-    degen = False
     staging_no_context = [var_outcomes]
     yield staging_no_context
-    for var, staging in enumerate(one_cvar_stagings(var_outcomes, possible_cvars)):
+    degen = False
+    num_vars = len(var_outcomes)
+    sub_possible_cvs = reversed(tuple(combination(num_vars, num_vars - 1)))
+    zipped = zip(sub_possible_cvs, one_cvar_stagings(var_outcomes, possible_cvars))
+    for possible_cvs, staging in zipped:
         yield staging
-        for stage in staging:
-            yield [stage] + None
-            pass
         zipped = zip(
             one_cvar_stagings(staging[0], var), one_cvar_stagings(staging[1], var)
-        )
+        )  # need to replace var here with possible_cvs
         for substaging_0, substaging_1 in zipped:
             yield [staging[0]] + substaging_1
             yield [staging[1]] + substaging_0
@@ -43,12 +40,3 @@ def one_cvar_stagings(staging: list, possible_cvars: tuple):
     pcv_mask = (var in possible_cvars for var in range(num_vars))
     for var, stage in zip(possible_cvars, compress(staging, pcv_mask)):
         yield [staging[:var] + [outcome] + staging[var + 1 :] for outcome in stage]
-
-
-"""notes for finishing generalization beyond binary vars with unrestricted cvar set:
-- change from excluding fixed_var to only including unfixed_vars
-  - should be input list of (lists or sets), or dict?
-  - account for this inside inner loops somehow
-- prod and (maybe) zip still useful
-- need to add loop within zip (like for max1_cvar case)
-"""
