@@ -307,32 +307,20 @@ def score_tables(data: pd.DataFrame,
                     else:
                         context = "None"
                         value = index
-
-                    #print(context)
+                    
                     if context not in counts[var]:
                         counts[var][context] = {"counts": {}}
                     counts[var][context]["counts"][value] = r.values[0]
                     counts[var][context]["context_vars"] = active_labels
-                #print("counts: {}".format(counts[var][context]["counts"]))
-                # loop over all observed contexts.
-                # or maybe it wiill be hard to keep track of the contexts now..
 
-                
-                #print("scoring var: {}, cont: {}".format(var, context))
-                #score = score_context(var, context, active_labels, cards_dict, counts, alpha_tot=alpha_tot, method=method)
-                #scores[var][context] = score
-
-            # print("going through contexts in counts[{}]: {}".format(var, counts[var]))
-
-        for count_context in counts[var]: # this may double count some contexts
-            #print("\nscoring var: {}, cont: {}".format(var, count_context))
+        for count_context in counts[var]:             
             active_labels = counts[var][count_context]["context_vars"]
             score = score_context(var, count_context, active_labels, cards_dict, counts, alpha_tot=alpha_tot, method=method)
             scores[var][count_context] = score
-            #print("score: {}".format(score))
+            
     #print("counts:")
     #pp(counts)
-    return scores
+    return scores, counts
 
 def list_to_score_key(labels: list):
     subset = labels
@@ -354,7 +342,7 @@ def log_n_stagings_tables(labels, cards_dict, max_cvars=2):
         for subset in csi_rel._powerset(cur_cards):
             staging_lev = len(subset) - 1
             subset_str = list_to_score_key(list(subset))
-            #print("subset_str: {}".format(subset_str))
+            
             if subset_str not in n_stagings:                
                 n_stagings[subset_str] = np.log(learn.n_stagings(list(subset), 
                                                           staging_lev, 
@@ -365,7 +353,7 @@ def order_score_tables(data: pd.DataFrame,
                  strategy="posterior", max_cvars=2,
                  alpha_tot=1.0, method="BDeu"):
 
-    context_scores = score_tables(data, strategy=strategy, max_cvars=max_cvars,
+    context_scores, context_counts = score_tables(data, strategy=strategy, max_cvars=max_cvars,
                                 alpha_tot=alpha_tot, method=method)
     
     
@@ -373,8 +361,7 @@ def order_score_tables(data: pd.DataFrame,
     #print("labels: {}".format(labels))
     cards_dict = {var: data.loc[0, var] for var in data.columns }
 
-    log_n_stagings = log_n_stagings_tables(labels, cards_dict, max_cvars=max_cvars)
-    print("log_n_stagings: {}".format(log_n_stagings))
+    log_n_stagings = log_n_stagings_tables(labels, cards_dict, max_cvars=max_cvars)    
 
     p = data.shape[1]
     #print(p)
@@ -434,7 +421,7 @@ def order_score_tables(data: pd.DataFrame,
             log_unnorm_post = order_scores[var][subset_str] + log_staging_prior + log_level_prior
             order_scores[var][subset_str] = log_unnorm_post
 
-    return order_scores
+    return order_scores, context_counts
 
 def score(cstree: ct.CStree, data: pd.DataFrame, alpha_tot=1.0, method="BDeu"):
     """Score a CStree.

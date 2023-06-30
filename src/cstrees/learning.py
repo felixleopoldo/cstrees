@@ -179,6 +179,59 @@ def _optimal_staging_at_level(order, data, level, max_cvars=1, alpha_tot=None,
 
     return max_staging, max_staging_score
 
+def _optimal_staging_at_level(order, context_scores, cards_dict, level, max_cvars=1, alpha_tot=None,
+                              method="BDeu"):
+    """Find the optimal staging at a given level.
+
+    Args:
+        order (list): The order of the variables. data (pandas DataFrame): The
+        data as a pandas DataFrame.
+        level (int): The level of the CStree.
+        max_cvars (int, optional): Max context variables. Defaults to 1.
+        alpha_tot (float, optional): The Dirichlet hyper parameter total pseudo
+        counts. Defaults to None.
+        method (str, optional): Parameter prior type.
+        Defaults to "BDeu".
+
+    Returns:
+        tuple: (optimal staging, optimal score)
+
+    """
+
+    #cards = data.iloc[0].values
+    cards = [cards_dict[var] for var in order]
+    
+    assert (level < len(cards)-1)
+    tree = ct.CStree(cards)
+    tree.labels = order
+
+    stagings = all_stagings(cards, level, max_cvars)
+    max_staging = None
+    max_staging_score = -np.inf
+
+    for stage in stagings:
+        stage_context = ""
+        if all([isinstance(stl, set) for stl in stage.list_repr]) or (len(stage.list_repr)==0):
+            stage_context = "None"
+        else:
+            for cvarind, val in enumerate(stage.list_repr):
+                if isinstance(val, int): # a context variable
+                    stage_context += "{}={},".format(subset[cvarind], val)
+            stage_context = stage_context[:-1]
+
+
+
+        #tree.update_stages({level: stlist})
+        ## This needs the stages to be set at the line above.
+        #level_counts = sc.counts_at_level(tree, level+1, data)
+        #score = sc.score_level(tree, level+1, level_counts, alpha_tot, method)
+        score = context_scores[var][stage_context]
+        if score > max_staging_score:
+            max_staging_score = score
+            max_staging = stage
+
+    return max_staging, max_staging_score
+
 
 def _optimal_cstree_given_order(order, data, max_cvars=1, alpha_tot=1.0,
                                 method="BDeu"):
@@ -195,7 +248,64 @@ def _optimal_cstree_given_order(order, data, max_cvars=1, alpha_tot=1.0,
     """
 
     # BUG?: Maybe these have to be adapted to the order.
-    cards = data.iloc[0].values
+    #cards = data.iloc[0].values
+    cards = data.loc[0, order]
+    p = len(order)
+
+    stages = {}
+    stages[-1] = [stl.Stage([], color="black")]
+    for level in range(-1, p-1):  # dont stage the last level
+        max_staging, max_staging_score = _optimal_staging_at_level(
+            order, data, level, max_cvars, alpha_tot, method)
+        stages[level] = max_staging
+        #print("max staging: {}".format([str(s) for s in max_staging]))
+
+    # Create CStree
+    tree = ct.CStree(cards)
+    tree.labels = order
+
+    # Color each stage in the optimal staging. Singletons are black.
+    # This should be done somewhere else probably.
+    colors = ['blueviolet', 'orange', 'navy', 'rebeccapurple', 'darkseagreen',
+              'darkslategray', 'lightslategray', 'aquamarine',
+              'lightgoldenrodyellow', 'cornsilk', 'azure', 'chocolate',
+              'red', 'darkolivegreen', 'chartreuse', 'turquoise', 'olive',
+              'crimson', 'goldenrod', 'orchid', 'firebrick', 'lawngreen',
+              'deeppink', 'wheat', 'teal', 'mediumseagreen', 'peru', 'salmon',
+              'palegreen', 'navajowhite', 'yellowgreen', 'mediumaquamarine',
+              'darkcyan', 'dodgerblue', 'brown', 'powderblue', 'mistyrose',
+              'violet', 'darkslategrey', 'midnightblue', 'aliceblue',
+              'dimgrey', 'palegoldenrod', 'black', 'darkgrey', 'olivedrab',
+              'linen',  'lightblue', 'thistle', 'greenyellow', 'indianred',
+              'khaki']
+
+    for level, staging in stages.items():
+        for i, stage in enumerate(staging):
+            if all([isinstance(i, int) for i in stage.list_repr]):
+                stage.color = "black"
+            else:
+                stage.color = colors[i]
+    tree.update_stages(stages)
+
+    return tree
+
+def _optimal_cstree_given_order(order, data, max_cvars=1, alpha_tot=1.0,
+                                method="BDeu"):
+    """Find the optimal CStree for a given order.
+
+    Args:
+        order (list): The order of the variables.
+        data (pandas DataFrame): The data as a pandas DataFrame.
+        max_cvars (int, optional): Max context variables. Defaults to 1.
+        alpha_tot (float, optional): The Dirichlet hyper parameter total pseudo
+        counts. Defaults to 1.0.
+        method (str, optional): Parameter prior type. Defaults to "BDeu".
+
+    """
+
+    # BUG?: Maybe these have to be adapted to the order.
+    #cards = data.iloc[0].values
+    cards = data.loc[0, order]
     p = len(order)
 
     stages = {}
