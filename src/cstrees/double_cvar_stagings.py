@@ -48,9 +48,10 @@ def codim_1_subdivs(
         splittable_subboxes = range(len(box))
     for dims_to_split in product(*(splittable_dims for _ in splittable_subboxes)):
         cd1_subdiv = []
-        for (subbox_idx, subbox), dim in zip(enumerate(box), dims_to_split):
-            points = box[0][dim]
+        for subbox_idx, subbox in enumerate(box):
             if subbox_idx in splittable_subboxes:
+                dim = dims_to_split[splittable_subboxes.index(subbox_idx)]
+                points = box[0][dim]
                 for point in points:
                     cd1_subdiv += [subbox[:dim] + [point] + subbox[dim + 1 :]]
             else:

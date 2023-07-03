@@ -8,13 +8,4 @@ def test_max2_cvars_stagings_binary():
         stagings = list(dcs.codim_max2_boxes(var_outcomes))
         assert num_binary_stagings == len(stagings)
         for idx, staging in enumerate(stagings):
-            print(lvl)
             assert staging not in stagings[idx + 1 :]
-
-
-def writing_test(n):
-    n = 2
-    box = [{0, 1}] * n
-    splittable_dims = tuple(range(n))
-    for subbox in dcs.codim_max2_boxes(box, splittable_dims):
-        print(subbox)
