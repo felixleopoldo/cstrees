@@ -31,8 +31,12 @@ def codim_max2_boxes(box: list, splittable_dims: tuple = None):
         for subset_size in range(1, num_cd1_boxes):
             subsets = combinations(range(num_cd1_boxes), subset_size)
             for subset in subsets:
+                # the following loop splits all dims in the subset in
+                # the same way, but could be that we need to loop
+                # again and split it in all ways?
                 for cd12_subdiv in codim_1_subdivs(cd1_subdiv, poss_split_dims, subset):
                     yield cd12_subdiv
+                    # should be able to fit another for loop here
                 # for fixed_dim, fixed_cd1_box in enumerate(cd1_box):
                 #     to_split = [cd1_box[i] for i in sub_poss_split_dims]
                 # # if len(sub_cd1_box) == 1:
@@ -72,13 +76,6 @@ def codim_1_subdivs(
         splittable_subboxes = range(len(box))
     for dim in splittable_dims:
         points = box[0][dim]
-        # yield [
-        #     subbox[:dim] + [point] + subbox[dim + 1 :]
-        #     if subbox_idx in splittable_subboxes
-        #     else subbox
-        #     for subbox_idx, subbox in enumerate(box)
-        #     for point in points
-        # ]
         cd1_subdiv = []
         for subbox_idx, subbox in enumerate(box):
             if subbox_idx in splittable_subboxes:
@@ -87,3 +84,10 @@ def codim_1_subdivs(
             else:
                 cd1_subdiv += [subbox]
         yield cd1_subdiv
+        # yield [
+        #     subbox[:dim] + [point] + subbox[dim + 1 :]
+        #     if subbox_idx in splittable_subboxes
+        #     else subbox
+        #     for subbox_idx, subbox in enumerate(box)
+        #     for point in points
+        # ]
