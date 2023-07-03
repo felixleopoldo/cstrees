@@ -1,6 +1,5 @@
 """Enumerate CStrees and stagings with up to 2 context variables."""
-from itertools import combinations, product, compress, zip_longest
-from copy import deepcopy
+from itertools import combinations, product
 
 
 def num_stagings(lvl: int):
