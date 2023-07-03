@@ -179,8 +179,8 @@ def _optimal_staging_at_level(order, data, level, max_cvars=1, alpha_tot=None,
 
     return max_staging, max_staging_score
 
-def _optimal_staging_at_level(order, context_scores, cards_dict, level, max_cvars=1, alpha_tot=None,
-                              method="BDeu"):
+def _optimal_staging_at_level(order, context_scores, level, 
+                              max_cvars=1, alpha_tot=None, method="BDeu"):
     """Find the optimal staging at a given level.
 
     Args:
@@ -197,34 +197,20 @@ def _optimal_staging_at_level(order, context_scores, cards_dict, level, max_cvar
         tuple: (optimal staging, optimal score)
 
     """
-
-    #cards = data.iloc[0].values
-    cards = [cards_dict[var] for var in order]
-    
+    print("context_scores: ", context_scores)
+    cards = [context_scores["cards"][var] for var in order]
+    var = order[level]
     assert (level < len(cards)-1)
-    tree = ct.CStree(cards)
-    tree.labels = order
 
     stagings = all_stagings(cards, level, max_cvars)
     max_staging = None
     max_staging_score = -np.inf
 
     for stage in stagings:
-        stage_context = ""
-        if all([isinstance(stl, set) for stl in stage.list_repr]) or (len(stage.list_repr)==0):
-            stage_context = "None"
-        else:
-            for cvarind, val in enumerate(stage.list_repr):
-                if isinstance(val, int): # a context variable
-                    stage_context += "{}={},".format(subset[cvarind], val)
-            stage_context = stage_context[:-1]
-
-
-
-        #tree.update_stages({level: stlist})
-        ## This needs the stages to be set at the line above.
-        #level_counts = sc.counts_at_level(tree, level+1, data)
-        #score = sc.score_level(tree, level+1, level_counts, alpha_tot, method)
+        # get context string        
+        context_vars = sorted([order[i] for i in stage.context.context.keys()])        
+        stage_context = sc.stage_to_context_key(stage, context_vars)
+        
         score = context_scores[var][stage_context]
         if score > max_staging_score:
             max_staging_score = score
@@ -289,7 +275,7 @@ def _optimal_cstree_given_order(order, data, max_cvars=1, alpha_tot=1.0,
 
     return tree
 
-def _optimal_cstree_given_order(order, data, max_cvars=1, alpha_tot=1.0,
+def _optimal_cstree_given_order(order, context_scores, max_cvars=1, alpha_tot=1.0,
                                 method="BDeu"):
     """Find the optimal CStree for a given order.
 
@@ -305,19 +291,20 @@ def _optimal_cstree_given_order(order, data, max_cvars=1, alpha_tot=1.0,
 
     # BUG?: Maybe these have to be adapted to the order.
     #cards = data.iloc[0].values
-    cards = data.loc[0, order]
+    #cards = data.loc[0, order]
+    #cards_dict = {var: card for var, card in zip(order, cards)}
     p = len(order)
 
     stages = {}
     stages[-1] = [stl.Stage([], color="black")]
     for level in range(-1, p-1):  # dont stage the last level
         max_staging, max_staging_score = _optimal_staging_at_level(
-            order, data, level, max_cvars, alpha_tot, method)
+            order, context_scores, level, max_cvars, alpha_tot, method)
         stages[level] = max_staging
         #print("max staging: {}".format([str(s) for s in max_staging]))
 
     # Create CStree
-    tree = ct.CStree(cards)
+    tree = ct.CStree([context_scores["cards"][var] for var in order])
     tree.labels = order
 
     # Color each stage in the optimal staging. Singletons are black.
@@ -325,15 +312,7 @@ def _optimal_cstree_given_order(order, data, max_cvars=1, alpha_tot=1.0,
     colors = ['blueviolet', 'orange', 'navy', 'rebeccapurple', 'darkseagreen',
               'darkslategray', 'lightslategray', 'aquamarine',
               'lightgoldenrodyellow', 'cornsilk', 'azure', 'chocolate',
-              'red', 'darkolivegreen', 'chartreuse', 'turquoise', 'olive',
-              'crimson', 'goldenrod', 'orchid', 'firebrick', 'lawngreen',
-              'deeppink', 'wheat', 'teal', 'mediumseagreen', 'peru', 'salmon',
-              'palegreen', 'navajowhite', 'yellowgreen', 'mediumaquamarine',
-              'darkcyan', 'dodgerblue', 'brown', 'powderblue', 'mistyrose',
-              'violet', 'darkslategrey', 'midnightblue', 'aliceblue',
-              'dimgrey', 'palegoldenrod', 'black', 'darkgrey', 'olivedrab',
-              'linen',  'lightblue', 'thistle', 'greenyellow', 'indianred',
-              'khaki']
+              'red', 'darkolivegreen']
 
     for level, staging in stages.items():
         for i, stage in enumerate(staging):
@@ -429,36 +408,11 @@ def move_up2(node_index,
     tmp1 = node_scores[node_index]
     tmp2 = node_scores[node_index+1]
 
-    # node_scores[node_index] = sc._score_order_at_level(order, node_index, data,
-    #                                                    strategy="posterior",
-    #                                                    max_cvars=max_cvars,
-    #                                                    alpha_tot=alpha_tot,
-    #                                                    method=method)
-    # node_scores[node_index+1] = sc._score_order_at_level(order, node_index+1, data,
-    #                                                      strategy="posterior",
-    #                                                      max_cvars=max_cvars,
-    #                                                      alpha_tot=alpha_tot,
-    #                                                      method=method)
-
     #print("order {}".format(order))
     pred1 = sc.list_to_score_key(order[:node_index])
     pred2 = sc.list_to_score_key(order[:node_index+1])
     node_scores[node_index] = score_table[order[node_index]][pred1]
-    node_scores[node_index+1] = score_table[order[node_index+1]][pred2]
-
-    # score1 = score_table[order[node_index]][pred1]    
-    
-    # print("node {}".format(order[node_index]))
-    # print("pred1: {}".format(pred1))
-    # print("score1: {}".format(score1))
-    # print("node_scores[node_index]: {}".format(node_scores[node_index]))
-    
-    
-    # score2 = score_table[order[node_index+1]][pred2]
-    # print("pred2: {}".format(pred2))
-    # print("score2: {}".format(score2))
-    # print("node_scores[node_index+1]: {}".format(node_scores[node_index+1]))
-    
+    node_scores[node_index+1] = score_table[order[node_index+1]][pred2]    
 
     orderscore += node_scores[node_index] + \
         node_scores[node_index+1] - tmp1 - tmp2
@@ -483,18 +437,6 @@ def move_down2(node_index,
     tmp2 = node_scores[node_index-1]
     # move the node
     order.insert(node_index-1, order.pop(node_index))
-
-    # recompute node scores
-    # node_scores[node_index] = sc._score_order_at_level(order, node_index, data,
-    #                                                    strategy="posterior",
-    #                                                    max_cvars=max_cvars,
-    #                                                    alpha_tot=alpha_tot,
-    #                                                    method=method)
-    # node_scores[node_index-1] = sc._score_order_at_level(order, node_index-1, data,
-    #                                                      strategy="posterior",
-    #                                                      max_cvars=max_cvars,
-    #                                                      alpha_tot=alpha_tot,
-    #                                                      method=method)
 
     pred1 = sc.list_to_score_key(order[:node_index])
     pred2 = sc.list_to_score_key(order[:node_index-1])

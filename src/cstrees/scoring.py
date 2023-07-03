@@ -264,14 +264,19 @@ def score_tables(data: pd.DataFrame,
                  strategy="posterior", max_cvars=2,
                  alpha_tot=1.0, method="BDeu"):
 
-
-    scores = {lab : {} for lab in data.columns}
-    counts = {lab : {} for lab in data.columns}
+    cards_dict = {var: data.loc[0, var] for var in data.columns }
+    scores = {}
+    scores["cards"] = cards_dict
+    scores["scores"] = {lab : {} for lab in data.columns}
+    
+    counts = {}
+    counts["cards"] = cards_dict
+    counts["var_counts"] = {lab : {} for lab in data.columns}
     #counts = context_counts(data)
     # TODO: checkk its the correct cards
     #print(" cards: {}".format(data.loc[0, :].values))
 
-    cards_dict = {var: data.loc[0, var] for var in data.columns }
+    
     #print("cards: {}".format(cards))
     # go through all variables
     for var in tqdm(data.columns, desc="Context score tables"):
@@ -298,6 +303,8 @@ def score_tables(data: pd.DataFrame,
                 testdf = test.to_frame().rename(columns={var: str(var)+" counts"})
                 for index, r in testdf.iterrows():
                     value = None
+                    
+                    
                     context = ""
                     if len(active_labels) > 0:
                         for cvarind, val in enumerate(index[:-1]):
@@ -308,15 +315,15 @@ def score_tables(data: pd.DataFrame,
                         context = "None"
                         value = index
                     
-                    if context not in counts[var]:
-                        counts[var][context] = {"counts": {}}
-                    counts[var][context]["counts"][value] = r.values[0]
-                    counts[var][context]["context_vars"] = active_labels
+                    if context not in counts["var_counts"][var]:
+                        counts["var_counts"][var][context] = {"counts": {}}
+                    counts["var_counts"][var][context]["counts"][value] = r.values[0]
+                    counts["var_counts"][var][context]["context_vars"] = active_labels
 
-        for count_context in counts[var]:             
-            active_labels = counts[var][count_context]["context_vars"]
-            score = score_context(var, count_context, active_labels, cards_dict, counts, alpha_tot=alpha_tot, method=method)
-            scores[var][count_context] = score
+        for count_context in counts["var_counts"][var]:             
+            active_labels = counts["var_counts"][var][count_context]["context_vars"]
+            score = score_context(var, count_context, active_labels, cards_dict, counts["var_counts"], alpha_tot=alpha_tot, method=method)
+            scores["scores"][var][count_context] = score
             
     #print("counts:")
     #pp(counts)
@@ -328,7 +335,21 @@ def list_to_score_key(labels: list):
     subset_str = ','.join([str(v) for v in subset])
     if subset_str == "":
         subset_str = "None"
-    return subset_str    
+    return subset_str
+
+def stage_to_context_key(stage: st.Stage, subset: list):
+    stage_context = ""
+    if stage.to_csi().context.context == {}:
+        stage_context = "None"
+    else:
+        # {subset[cvarind]: val for cvarind, val in stage.to_csi().context.context.items()}        
+        for cvarind, val in enumerate(stage.list_repr):
+            if isinstance(val, int): # a context variable
+                stage_context += "{}={},".format(subset[cvarind], val)
+        stage_context = stage_context[:-1]
+
+    return stage_context
+    
 
 def log_n_stagings_tables(labels, cards_dict, max_cvars=2):
     n_stagings = {}
@@ -368,46 +389,28 @@ def order_score_tables(data: pd.DataFrame,
     order_scores = {var: {} for var in labels}
     for var in tqdm(labels, desc="Order score tables"):
         #print("VARIABLE: {}".format(var))
+        # Ths subset are the variables before var in the order
         for subset in csi_rel._powerset(set(labels) - {var}):
             # choosing one representative for each subset
             staging_level = len(subset)-1
             #print("staging level: {}".format(staging_level))
-            subset = list(subset)
-            subset.sort()
-            #print(subset)
-            subset_str = ','.join([str(v) for v in subset])
-            if subset_str == "":
-                subset_str = "None"
+            
+            subset_str = list_to_score_key(list(subset))
+            
             order_scores[var][subset_str] = 0
             cards = [cards_dict[l] for l in subset]
 
-            # put the variable t the right and use all_stagings
+            # put the variable to the right and use all_stagings
             for i, staging in enumerate(learn.all_stagings(cards, staging_level, max_cvars)):
 
-                #print("\ngoing trough stages in staging at level {}".format(staging_level))
                 staging_marg_lik = 0
 
                 if staging == []: # special case at level -1
-                    staging_marg_lik = context_scores[var]["None"]
+                    staging_marg_lik = context_scores["scores"][var]["None"]
 
-                for stage in staging: # this might be empty?
-                    #print("stage {}".format(stage))
-                    # get the context variables
-                    stage_context = ""
-                    if all([isinstance(stl, set) for stl in stage.list_repr]) or (len(stage.list_repr)==0):
-                        stage_context = "None"
-                    else:
-                        for cvarind, val in enumerate(stage.list_repr):
-                            if isinstance(val, int): # a context variable
-                                stage_context += "{}={},".format(subset[cvarind], val)
-                        stage_context = stage_context[:-1]
-
-
-                    #print("context {} score: {}".format(stage_context, context_scores[var][stage_context]))
-                    staging_marg_lik += context_scores[var][stage_context]
-
-
-                #print("staging score: {}".format(staging_marg_lik))
+                for stage in staging:
+                    stage_context = stage_to_context_key(stage, subset)
+                    staging_marg_lik += context_scores["scores"][var][stage_context]
 
                 if i == 0: # this is for the log sum trick. It needs a starting scores.
                     order_scores[var][subset_str] = staging_marg_lik
@@ -421,7 +424,7 @@ def order_score_tables(data: pd.DataFrame,
             log_unnorm_post = order_scores[var][subset_str] + log_staging_prior + log_level_prior
             order_scores[var][subset_str] = log_unnorm_post
 
-    return order_scores, context_counts
+    return order_scores, context_scores, context_counts
 
 def score(cstree: ct.CStree, data: pd.DataFrame, alpha_tot=1.0, method="BDeu"):
     """Score a CStree.
