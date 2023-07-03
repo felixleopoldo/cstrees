@@ -18,21 +18,21 @@ def codim_max2_boxes(box: list, splittable_dims: tuple = None):
 
     num_dims = len(box)
     sub_splittable_dims = reversed(tuple(combinations(range(num_dims), num_dims - 1)))
-    z_cd1_boxes = zip(
-        sub_splittable_dims, codim_1_boxes(box, splittable_dims, num_dims)
+    z_cd1_subdivs = zip(
+        sub_splittable_dims, codim_1_subdivs(box, splittable_dims, num_dims)
     )
-    for poss_split_dims, cd1_box in z_cd1_boxes:
-        yield cd1_box
+    for poss_split_dims, cd1_subdiv in z_cd1_subdivs:
+        yield cd1_subdiv
 
-        num_poss_split_dims = len(poss_split_dims)
-        for subset_size in range(1, num_poss_split_dims + 1):
-            subsets = combinations(poss_split_dims, subset_size)
-            for sub_poss_split_dims in subsets:
-                sub_cd1_box = [cd1_box[i] for i in sub_poss_split_dims]
-                if len(sub_cd1_box) == 1:
-                    sub_cd1_box = sub_cd1_box[0]
-                cd2_boxes = codim_1_boxes(sub_cd1_box, sub_poss_split_dims, num_dims)
-                print("test", list(cd2_boxes))
+        num_cd1_boxes = len(cd1_subdiv)
+        for subset_size in range(1, num_cd1_boxes):
+            subsets = combinations(range(num_cd1_boxes), subset_size)
+            for subset in subsets:
+                for fixed_dim, fixed_cd1_box in enumerate(cd1_box):
+                    to_split = [cd1_box[i] for i in sub_poss_split_dims]
+                # if len(sub_cd1_box) == 1:
+                #     sub_cd1_box = sub_cd1_box[0]
+                cd2_boxes = codim_1_subdivs(sub_cd1_box, sub_poss_split_dims, num_dims)
                 for cd2_box in cd2_boxes:
                     mask = (i in sub_poss_split_dims for i in range(num_dims))
                     zipped = zip_longest(mask, cd2_box, cd1_box)
@@ -42,8 +42,8 @@ def codim_max2_boxes(box: list, splittable_dims: tuple = None):
                     ]
 
         prod = product(
-            codim_1_boxes(cd1_box[0], poss_split_dims, num_dims),
-            codim_1_boxes(cd1_box[1], poss_split_dims, num_dims),
+            codim_1_subdivs(cd1_box[0], poss_split_dims, num_dims),
+            codim_1_subdivs(cd1_box[1], poss_split_dims, num_dims),
         )  # need to replace var here with possible_cvs
         for substaging_0, substaging_1 in prod:
             if degen:
@@ -53,9 +53,13 @@ def codim_max2_boxes(box: list, splittable_dims: tuple = None):
                 degen = True
 
 
-def codim_1_boxes(box: list, splittable_dims: tuple, num_dims: int):
-    """Enumerate new stagings resulting from adding one cvar to given staging."""
-    # assert num_dims == len(box)
-    splittable_mask = (dim in splittable_dims for dim in range(num_dims))
-    for dim, subbox in zip(splittable_dims, compress(box, splittable_mask)):
-        yield [box[:dim] + [point] + box[dim + 1 :] for point in subbox]
+def codim_1_subdivs(box: list, splittable_dims: tuple):
+    """Enumerate codimension-1 subdivisions of the given (subdivision of a) box."""
+    num_dims = len(box[0])
+    for dim in splittable_dims:
+        points = box[0][dim]
+        yield [
+            subbox[:dim] + [point] + subbox[dim + 1 :]
+            for point in points
+            for subbox in box
+        ]
