@@ -74,20 +74,37 @@ def codim_1_subdivs(
     """Enumerate codimension-1 subdivisions of the given (subdivision of a) box."""
     if splittable_subboxes is None:
         splittable_subboxes = range(len(box))
-    for dim in splittable_dims:
-        points = box[0][dim]
+    for dims_to_split in product(*(splittable_dims for _ in splittable_subboxes)):
         cd1_subdiv = []
-        for subbox_idx, subbox in enumerate(box):
+        for (subbox_idx, subbox), dim in zip(enumerate(box), dims_to_split):
+            points = box[0][dim]
             if subbox_idx in splittable_subboxes:
                 for point in points:
                     cd1_subdiv += [subbox[:dim] + [point] + subbox[dim + 1 :]]
             else:
                 cd1_subdiv += [subbox]
         yield cd1_subdiv
-        # yield [
-        #     subbox[:dim] + [point] + subbox[dim + 1 :]
-        #     if subbox_idx in splittable_subboxes
-        #     else subbox
-        #     for subbox_idx, subbox in enumerate(box)
-        #     for point in points
-        # ]
+
+    # for subbox_idx in splittable_subboxes:
+    #     for dim in splittable_dims:
+    #         points = box[0][dim]
+    #         cd1_subdiv = []
+
+    # for dim in dims_to_split:
+    #     points = box[0][dim]
+    #     cd1_subdiv = []
+    #     for subbox_idx, subbox in enumerate(box):
+    #         if subbox_idx in splittable_subboxes:
+    #             for point in points:
+    #                 cd1_subdiv += [subbox[:dim] + [point] + subbox[dim + 1 :]]
+    #         else:
+    #             cd1_subdiv += [subbox]
+    #     yield cd1_subdiv
+
+    # yield [
+    #     subbox[:dim] + [point] + subbox[dim + 1 :]
+    #     if subbox_idx in splittable_subboxes
+    #     else subbox
+    #     for subbox_idx, subbox in enumerate(box)
+    #     for point in points
+    # ]
