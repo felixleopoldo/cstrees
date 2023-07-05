@@ -179,7 +179,7 @@ def _optimal_staging_at_level(order, data, level, max_cvars=1, alpha_tot=None,
 
     return max_staging, max_staging_score
 
-def _optimal_staging_at_level(order, context_scores, level, 
+def _optimal_staging_at_level(order, context_scores, level,
                               max_cvars=1, alpha_tot=None, method="BDeu"):
     """Find the optimal staging at a given level.
 
@@ -197,24 +197,30 @@ def _optimal_staging_at_level(order, context_scores, level,
         tuple: (optimal staging, optimal score)
 
     """
-    print("context_scores: ", context_scores)
     cards = [context_scores["cards"][var] for var in order]
     var = order[level]
+
     assert (level < len(cards)-1)
 
     stagings = all_stagings(cards, level, max_cvars)
     max_staging = None
     max_staging_score = -np.inf
 
-    for stage in stagings:
-        # get context string        
-        context_vars = sorted([order[i] for i in stage.context.context.keys()])        
-        stage_context = sc.stage_to_context_key(stage, context_vars)
-        
-        score = context_scores[var][stage_context]
-        if score > max_staging_score:
-            max_staging_score = score
-            max_staging = stage
+    for staging in stagings:
+        staging_score = 0
+        for stage in staging:
+            
+            if stage.level == -1:
+                staging_score = context_scores["scores"][var]["None"]                
+                continue
+
+            stage_context = sc.stage_to_context_key(stage, order)
+            score = context_scores["scores"][var][stage_context]
+            staging_score += score
+            
+        if staging_score > max_staging_score:
+            max_staging_score = staging_score
+            max_staging = staging
 
     return max_staging, max_staging_score
 
@@ -266,8 +272,10 @@ def _optimal_cstree_given_order(order, data, max_cvars=1, alpha_tot=1.0,
               'khaki']
 
     for level, staging in stages.items():
+        print("level: {}".format(level))
         for i, stage in enumerate(staging):
-            if all([isinstance(i, int) for i in stage.list_repr]):
+            print("level: {}, stage: {}".format(level, stage))
+            if (level > 0) and all([isinstance(i, int) for i in stage.list_repr]):
                 stage.color = "black"
             else:
                 stage.color = colors[i]
@@ -316,10 +324,12 @@ def _optimal_cstree_given_order(order, context_scores, max_cvars=1, alpha_tot=1.
 
     for level, staging in stages.items():
         for i, stage in enumerate(staging):
-            if all([isinstance(i, int) for i in stage.list_repr]):
+            print("level: {}, stage: {}".format(level, stage))
+            if (level>0) and all([isinstance(i, int) for i in stage.list_repr]):
                 stage.color = "black"
             else:
                 stage.color = colors[i]
+            print("stage color: {}".format(stage.color))
     tree.update_stages(stages)
 
     return tree
@@ -412,7 +422,7 @@ def move_up2(node_index,
     pred1 = sc.list_to_score_key(order[:node_index])
     pred2 = sc.list_to_score_key(order[:node_index+1])
     node_scores[node_index] = score_table[order[node_index]][pred1]
-    node_scores[node_index+1] = score_table[order[node_index+1]][pred2]    
+    node_scores[node_index+1] = score_table[order[node_index+1]][pred2]
 
     orderscore += node_scores[node_index] + \
         node_scores[node_index+1] - tmp1 - tmp2
@@ -440,10 +450,10 @@ def move_down2(node_index,
 
     pred1 = sc.list_to_score_key(order[:node_index])
     pred2 = sc.list_to_score_key(order[:node_index-1])
-    
+
     node_scores[node_index] = score_table[order[node_index]][pred1]
     node_scores[node_index-1] = score_table[order[node_index-1]][pred2]
-    
+
     orderscore += node_scores[node_index] + \
         node_scores[node_index-1] - tmp1 - tmp2
 
@@ -499,7 +509,7 @@ def gibbs_order_sampler(iterations, score_table):
     # score_table = sc.order_score_tables(data, max_cvars=max_cvars,
     #                                         alpha_tot=alpha_tot,
     #                                         method=method)
-    
+
     order_trajectory = []
     #p = data.shape[1]
     p = len(score_table)
@@ -514,7 +524,7 @@ def gibbs_order_sampler(iterations, score_table):
     for i in range(p):
         # possible parents to string
         subset_str = sc.list_to_score_key(order[:i])
-        
+
         #print("node: {} ".format(order[i]))
         #print("subset: {}".format(subset_str))
         node_scores[i] = score_table[order[i]][subset_str]
@@ -552,7 +562,7 @@ def gibbs_order_sampler(iterations, score_table):
         orderscore = move_node(node_index, new_pos,
                   neworder,
                   scores[i-1],
-                  node_scores, 
+                  node_scores,
                   score_table)
         #print("order: {}".format(neworder))
         #print("score: {}".format(orderscore))

@@ -240,9 +240,10 @@ def estimate_parameters(cstree: ct.CStree, stage, stage_counts, method="BDeu", a
     elif method == "BDeu":
         # TODO: assert that all stages are colored.
         # level 0 has no stages. it has [] actually...
-        n_stages = max(len(cstree.stages[level-1]), 1)
-        alpha_obs = alpha_tot / (n_stages * cstree.cards[level])
-        alpha_stage = alpha_tot / n_stages
+        alpha_stage = alpha_tot * cstree.stage_proportion(stage)
+        alpha_obs = alpha_stage / cstree.cards[level]
+        
+       
 
     probs = [None] * cstree.cards[level]
 
@@ -337,15 +338,22 @@ def list_to_score_key(labels: list):
         subset_str = "None"
     return subset_str
 
-def stage_to_context_key(stage: st.Stage, subset: list):
+def stage_to_context_key(stage: st.Stage, labels: list):
     stage_context = ""
+    #print("context: {}".format(str(stage.to_csi().context)))
     if stage.to_csi().context.context == {}:
         stage_context = "None"
     else:
         # {subset[cvarind]: val for cvarind, val in stage.to_csi().context.context.items()}        
+        # need to relabel first
+        cvars = {}
         for cvarind, val in enumerate(stage.list_repr):
+            
             if isinstance(val, int): # a context variable
-                stage_context += "{}={},".format(subset[cvarind], val)
+                cvars[labels[cvarind]] = val
+        
+        for cvar, val in sorted(cvars.items()):
+            stage_context += "{}={},".format(cvar, val)
         stage_context = stage_context[:-1]
 
     return stage_context
