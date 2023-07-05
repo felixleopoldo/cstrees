@@ -166,13 +166,17 @@ class CStree:
 
         # cardinalities header
         d = {self.labels[i]: [c] for i, c in enumerate(self.cards)}
-        df = pd.DataFrame(d, columns=self.labels)
-
+        max_card = max(self.cards)
+        labs = self.labels + ["PROB_"+str(i) for i in range(max_card)]
+        #df = pd.DataFrame(d, columns=self.labels)
+        df = pd.DataFrame(d, columns=labs)
+            
         for l, stages in self.stages.items():
             if l == -1:
                 continue
-            for s in stages:
-                dftmp = s.to_df(self.labels)
+            for s in stages:                
+                #dftmp = s.to_df(self.labels, maxcard=max_card)
+                dftmp = s.to_df(labs, max_card=max_card)
                 df = pd.concat([df, dftmp])
         df.reset_index(drop=True, inplace=True)
 

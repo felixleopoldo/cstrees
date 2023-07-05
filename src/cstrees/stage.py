@@ -71,7 +71,7 @@ class Stage:
         """
         return self.size() == 1
 
-    def to_df(self, column_labels):
+    def to_df(self, column_labels, max_card=None):
         """Write sthe stage to dataframe. columns is..?
 
         Args:
@@ -84,7 +84,7 @@ class Stage:
 
         d = {}
 
-        for i in range(len(column_labels)):
+        for i in range(len(column_labels) - max_card):
             if i < len(self.list_repr):
                 if type(self.list_repr[i]) == set:
                     d[column_labels[i]] = ["*"]
@@ -93,8 +93,10 @@ class Stage:
             else:
                 d[column_labels[i]] = ["-"]
 
-        df = pd.DataFrame(d, columns=column_labels)
+        df = pd.DataFrame(d, columns=column_labels[:-max_card])
+        df_prop = pd.DataFrame({"PROB_"+str(i):[prob] for i, prob in enumerate(self.probs)})
 
+        df = pd.concat([df, df_prop], axis=1)
         return df
 
     def set_random_params(self, cards):
