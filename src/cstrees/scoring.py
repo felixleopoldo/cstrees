@@ -48,7 +48,7 @@ def counts_at_level(cstree: ct.CStree, level: int, data):
         Stage: [{0, 1}, 0]; probs: [0.58026003 0.41973997]; color: orange
         Counts: {0: 3}
     """
-    stage_counts = {} # TODO: Maybe it should be context counts instead!
+    stage_counts = {}  # TODO: Maybe it should be context counts instead!
 
     # reorder the columns according to the order.
     # cardinalities are at first row.
@@ -72,73 +72,81 @@ def counts_at_level(cstree: ct.CStree, level: int, data):
             stage_counts[stage][dataperm[i, level]] = 1
     return stage_counts
 
+# score_level(cstree, level, context_scores):
+#     var = cstree.labels[level]
+#     context_scores = context_scores[var]
+#     context_str = 
+#     score = 0
+#     for stage in cstree.stages[level]:
+#         stage_to_context_key(stage, )
 
-def score_level(cstree, level, level_counts, alpha_tot=1.0, method="BDeu"):
-    """ CS-BDeu score at a level folowing
-    Conor Hughes, Peter Strong, Aditi Shenvi. Score Equivalence for Staged Trees.
+# def score_level(cstree, level, level_counts, alpha_tot=1.0, method="BDeu"):
+#     """ CS-BDeu score at a level folowing
+#     Conor Hughes, Peter Strong, Aditi Shenvi. Score Equivalence for Staged Trees.
 
-    Args:
-        cstree (CStree): CStree
-        level (int): Level.
-        data (pandas DataFrame): Data.
-        alpha_tot (float, optional): Hyper parameter for the stage parameters Dirichlet prior distribution. Defaults to 1.0.
-        method (str, optional): Parameter estimator. Defaults to "BDeu".
+#     Args:
+#         cstree (CStree): CStree
+#         level (int): Level.
+#         data (pandas DataFrame): Data.
+#         alpha_tot (float, optional): Hyper parameter for the stage parameters Dirichlet prior distribution. Defaults to 1.0.
+#         method (str, optional): Parameter estimator. Defaults to "BDeu".
 
-    Reference:
-        https://arxiv.org/abs/2206.15322
+#     Reference:
+#         https://arxiv.org/abs/2206.15322
 
-    Example:
-        >>> import random
-        >>> import numpy as np
-        >>> import cstrees.cstree as ct
-        >>> import cstrees.scoring as sc
-        >>> np.random.seed(1)
-        >>> random.seed(1)
-        >>> tree = ct.sample_cstree([2,2,2,2], max_cvars=1, prob_cvar=0.5, prop_nonsingleton=1)
-        >>> tree.sample_stage_parameters(alpha=1.0)
-        >>> df = tree.sample(1000)
-        >>> import cstrees.scoring as sc
-        >>> sc.score_level(tree, 2, counts, alpha_tot=1.0, method="BDeu")
-        -556.4949720501456
+#     Example:
+#         >>> import random
+#         >>> import numpy as np
+#         >>> import cstrees.cstree as ct
+#         >>> import cstrees.scoring as sc
+#         >>> np.random.seed(1)
+#         >>> random.seed(1)
+#         >>> tree = ct.sample_cstree([2,2,2,2], max_cvars=1, prob_cvar=0.5, prop_nonsingleton=1)
+#         >>> tree.sample_stage_parameters(alpha=1.0)
+#         >>> df = tree.sample(1000)
+#         >>> import cstrees.scoring as sc
+#         >>> sc.score_level(tree, 2, counts, alpha_tot=1.0, method="BDeu")
+#         -556.4949720501456
 
-    Returns:
-        float: The level score.
-    """
+#     Returns:
+#         float: The level score.
+#     """
 
-    staging_score = 0  # log score
-    for stage, counts in level_counts.items():
-        #print("\nstage: {}".format(stage))
-        if method == "K2":
-            assert (alpha_tot == 1)
-            alpha_obs = alpha_tot
-            alpha_stage = alpha_tot * cstree.cards[level]
-        if method == "BD":  # This should be the Cooper-Herzkovits
-            alpha_obs = alpha_tot
-            alpha_stage = alpha_tot * cstree.cards[level]
-        elif method == "BDeu":
-            # print all variables
-            #print("stage: {}".format(stage))
-            #print("alpha_tot: {}".format(alpha_tot))
+#     staging_score = 0  # log score
+#     for stage, counts in level_counts.items():
+#         #print("\nstage: {}".format(stage))
+#         if method == "K2":
+#             assert (alpha_tot == 1)
+#             alpha_obs = alpha_tot
+#             alpha_stage = alpha_tot * cstree.cards[level]
+#         if method == "BD":  # This should be the Cooper-Herzkovits
+#             alpha_obs = alpha_tot
+#             alpha_stage = alpha_tot * cstree.cards[level]
+#         elif method == "BDeu":
+#             # print all variables
+#             #print("stage: {}".format(stage))
+#             #print("alpha_tot: {}".format(alpha_tot))
 
-            alpha_stage = alpha_tot * cstree.stage_proportion(stage)
-            alpha_obs = alpha_stage / cstree.cards[level]
+#             alpha_stage = alpha_tot * cstree.stage_proportion(stage)
+#             alpha_obs = alpha_stage / cstree.cards[level]
 
-        stage_counts = sum(counts.values())
-        #print("stage counts: {}".format(stage_counts))
-        #print("stage alpha: {}".format(alpha_stage))
+#         stage_counts = sum(counts.values())
+#         #print("stage counts: {}".format(stage_counts))
+#         #print("stage alpha: {}".format(alpha_stage))
 
-        # Note that the score is depending on the context in the stage. So
-        # note really th satge as such.
-        score = loggamma(alpha_stage) - loggamma(alpha_stage + stage_counts)
-        #print("stage all values score: {}".format(score))
-        for val in range(cstree.cards[level]):
-            if val not in counts:  # as we only store the observed values
-                continue
+#         # Note that the score is depending on the context in the stage. So
+#         # note really th satge as such.
+#         score = loggamma(alpha_stage) - loggamma(alpha_stage + stage_counts)
+#         #print("stage all values score: {}".format(score))
+#         for val in range(cstree.cards[level]):
+#             if val not in counts:  # as we only store the observed values
+#                 continue
 
-            #print("value score {}:".format(loggamma(alpha_obs + counts[val]) - loggamma(alpha_obs)))
-            score += loggamma(alpha_obs + counts[val]) - loggamma(alpha_obs)
-        staging_score += score
-    return staging_score
+#             #print("value score {}:".format(loggamma(alpha_obs + counts[val]) - loggamma(alpha_obs)))
+#             score += loggamma(alpha_obs + counts[val]) - loggamma(alpha_obs)
+#         staging_score += score
+#     return staging_score
+
 
 def score_context(var, context, context_vars, cards, counts, alpha_tot=1.0, method="BDeu"):
     """ CS-BDeu score at a level folowing
@@ -191,10 +199,10 @@ def score_context(var, context, context_vars, cards, counts, alpha_tot=1.0, meth
     score = loggamma(alpha_context) - loggamma(alpha_context + context_counts)
     #print("all values score: {}".format(score))
     for val, count in counts[var][context]["counts"].items():
-        #print(val, count) # value does not matter
+        # print(val, count) # value does not matter
         #print("value score: {}".format(loggamma(alpha_obs + count) - loggamma(alpha_obs)))
         score += loggamma(alpha_obs + count) - loggamma(alpha_obs)
-    #counts[var][context]["score"] = score # just temporary
+    # counts[var][context]["score"] = score # just temporary
 
     return score
 
@@ -260,18 +268,17 @@ def score_tables(data: pd.DataFrame,
                  strategy="posterior", max_cvars=2,
                  alpha_tot=1.0, method="BDeu"):
 
-    cards_dict = {var: data.loc[0, var] for var in data.columns }
+    cards_dict = {var: data.loc[0, var] for var in data.columns}
     scores = {}
     scores["cards"] = cards_dict
-    scores["scores"] = {lab : {} for lab in data.columns}
+    scores["scores"] = {lab: {} for lab in data.columns}
 
     counts = {}
     counts["cards"] = cards_dict
-    counts["var_counts"] = {lab : {} for lab in data.columns}
+    counts["var_counts"] = {lab: {} for lab in data.columns}
     #counts = context_counts(data)
     # TODO: checkk its the correct cards
     #print(" cards: {}".format(data.loc[0, :].values))
-
 
     #print("cards: {}".format(cards))
     # go through all variables
@@ -294,17 +301,18 @@ def score_tables(data: pd.DataFrame,
                     test = data[1:][var].value_counts()
                 else:
                     test = data[1:].groupby(active_labels)[var].value_counts()
-                #print(test)
+                # print(test)
 
-                testdf = test.to_frame().rename(columns={var: str(var)+" counts"})
+                testdf = test.to_frame().rename(
+                    columns={var: str(var)+" counts"})
                 for index, r in testdf.iterrows():
                     value = None
-
 
                     context = ""
                     if len(active_labels) > 0:
                         for cvarind, val in enumerate(index[:-1]):
-                            context += "{}={},".format(active_labels[cvarind], val)
+                            context += "{}={},".format(
+                                active_labels[cvarind], val)
                         context = context[:-1]
                         value = index[-1]
                     else:
@@ -318,12 +326,14 @@ def score_tables(data: pd.DataFrame,
 
         for count_context in counts["var_counts"][var]:
             active_labels = counts["var_counts"][var][count_context]["context_vars"]
-            score = score_context(var, count_context, active_labels, cards_dict, counts["var_counts"], alpha_tot=alpha_tot, method=method)
+            score = score_context(var, count_context, active_labels, cards_dict,
+                                  counts["var_counts"], alpha_tot=alpha_tot, method=method)
             scores["scores"][var][count_context] = score
 
-    #print("counts:")
-    #pp(counts)
+    # print("counts:")
+    # pp(counts)
     return scores, counts
+
 
 def list_to_score_key(labels: list):
     subset = labels
@@ -332,6 +342,7 @@ def list_to_score_key(labels: list):
     if subset_str == "":
         subset_str = "None"
     return subset_str
+
 
 def stage_to_context_key(stage: st.Stage, labels: list):
     stage_context = ""
@@ -344,7 +355,7 @@ def stage_to_context_key(stage: st.Stage, labels: list):
         cvars = {}
         for cvarind, val in enumerate(stage.list_repr):
 
-            if isinstance(val, int): # a context variable
+            if isinstance(val, int):  # a context variable
                 cvars[labels[cvarind]] = val
 
         for cvar, val in sorted(cvars.items()):
@@ -369,26 +380,27 @@ def log_n_stagings_tables(labels, cards_dict, max_cvars=2):
 
             if subset_str not in n_stagings:
                 n_stagings[subset_str] = np.log(learn.n_stagings(list(subset),
-                                                          staging_lev,
-                                                          max_cvars=max_cvars))
+                                                                 staging_lev,
+                                                                 max_cvars=max_cvars))
     return n_stagings
 
+
 def order_score_tables(data: pd.DataFrame,
-                 strategy="posterior", max_cvars=2,
-                 alpha_tot=1.0, method="BDeu"):
+                       strategy="posterior", max_cvars=2,
+                       alpha_tot=1.0, method="BDeu"):
 
     context_scores, context_counts = score_tables(data, strategy=strategy, max_cvars=max_cvars,
-                                alpha_tot=alpha_tot, method=method)
-
+                                                  alpha_tot=alpha_tot, method=method)
 
     labels = list(data.columns)
     #print("labels: {}".format(labels))
-    cards_dict = {var: data.loc[0, var] for var in data.columns }
+    cards_dict = {var: data.loc[0, var] for var in data.columns}
 
-    log_n_stagings = log_n_stagings_tables(labels, cards_dict, max_cvars=max_cvars)
+    log_n_stagings = log_n_stagings_tables(
+        labels, cards_dict, max_cvars=max_cvars)
 
     p = data.shape[1]
-    #print(p)
+    # print(p)
     order_scores = {var: {} for var in labels}
     for var in tqdm(labels, desc="Order score tables"):
         #print("VARIABLE: {}".format(var))
@@ -408,26 +420,28 @@ def order_score_tables(data: pd.DataFrame,
 
                 staging_marg_lik = 0
 
-                if staging == []: # special case at level -1
+                if staging == []:  # special case at level -1
                     staging_marg_lik = context_scores["scores"][var]["None"]
 
                 for stage in staging:
                     stage_context = stage_to_context_key(stage, subset)
                     staging_marg_lik += context_scores["scores"][var][stage_context]
 
-                if i == 0: # this is for the log sum trick. It needs a starting scores.
+                if i == 0:  # this is for the log sum trick. It needs a starting scores.
                     order_scores[var][subset_str] = staging_marg_lik
                 else:
-                    order_scores[var][subset_str] = logsumexp([order_scores[var][subset_str], staging_marg_lik])
-
+                    order_scores[var][subset_str] = logsumexp(
+                        [order_scores[var][subset_str], staging_marg_lik])
 
             cards_str = list_to_score_key(cards[:staging_level+1])
             log_staging_prior = -log_n_stagings[cards_str]
-            log_level_prior = -np.log(p- staging_level-1)
-            log_unnorm_post = order_scores[var][subset_str] + log_staging_prior + log_level_prior
+            log_level_prior = -np.log(p - staging_level-1)
+            log_unnorm_post = order_scores[var][subset_str] + \
+                log_staging_prior + log_level_prior
             order_scores[var][subset_str] = log_unnorm_post
 
     return order_scores, context_scores, context_counts
+
 
 def score(cstree: ct.CStree, data: pd.DataFrame, alpha_tot=1.0, method="BDeu"):
     """Score a CStree.
@@ -461,6 +475,7 @@ def score(cstree: ct.CStree, data: pd.DataFrame, alpha_tot=1.0, method="BDeu"):
         score += score_level(cstree, level, level_counts, alpha_tot, method)
     return score
 
+
 def score_order(order, order_scores):
     log_score = 0  # log score
     for level, var in enumerate(order):
@@ -475,48 +490,6 @@ def score_order(order, order_scores):
     return log_score
 
 
-# def score_order(order, score_table, strategy="max", max_cvars=1, alpha_tot=1.0, method="BDeu"):
-#     """Score an order.
-
-#     Args:
-#         order (list): The order of the variables.
-#         data (pandas DataFrame): The data.
-#         strategy (str, optional): Strategy for scoring. Defaults to "max".
-#         max_cvars (int, optional): Maximum number of children per variable. Defaults to 1.
-#         alpha_tot (float, optional): Hyper parameter for the stage parameters Dirichlet prior distribution. Defaults to 1.0.
-#         method (str, optional): Prior for the stage parameters. Defaults to "BDeu".
-
-#     Returns:
-#         float: The score of the order.
-
-#     Example:
-#         >>> import random
-#         >>> import numpy as np
-#         >>> import cstrees.cstree as ct
-#         >>> import cstrees.scoring as sc
-#         >>> np.random.seed(1)
-#         >>> random.seed(1)
-#         >>> tree = ct.sample_cstree([2,2,2,2], max_cvars=1, prob_cvar=0.5, prop_nonsingleton=1)
-#         >>> tree.sample_stage_parameters(alpha=1.0)
-#         >>> df = tree.sample(1000)
-#         >>> sc.score_order([0, 1, 2, 3], df, max_cvars=1, alpha_tot=1.0, method="BDeu")
-#         -1829.2311869978726
-#     """
-
-#     log_score = 0  # log score
-#     for level in range(len(order)):
-#         s = _score_order_at_level(order, level, data, strategy=strategy,
-#                                   max_cvars=max_cvars, alpha_tot=alpha_tot,
-#                                   method=method)
-#         if strategy == "max":
-#             log_score += s
-#         elif strategy == "posterior":
-#             print("score at level", level, ":", s)
-#             log_score += s
-#     #print(log_score)
-#     return log_score
-
-
 def logsumexp(x):
     """Log sum exp trick function.
 
@@ -529,84 +502,3 @@ def logsumexp(x):
     m = np.max(x)
     return m + np.log(np.sum(np.exp(x - m)))
 
-
-# def _score_order_at_level(order, level, data, strategy="max", max_cvars=1,
-#                           alpha_tot=1.0, method="BDeu"):
-#     """ Without singletons, there are 2*level stagings at level level.
-#         val1 side and val2 side colored in different ways
-#         val1 side and val2 side colored in the same way
-
-#     Args:
-#         order (list): The order of the variables.
-#         level (int): The level at which to score.
-#         data (pandas DataFrame): The data.
-#         max_cvars (int, optional): _description_. Defaults to 1.
-#         alpha_tot (float, optional): _description_. Defaults to 1.0.
-#         method (str, optional): _description_. Defaults to "BDeu".
-
-#     Returns:
-#         float: The score of the order at level level.
-#     """
-
-#     if max_cvars > 2:
-#         print("Only max_cvars < 3 implemented")
-#         return None
-
-#     p = len(order)
-
-#     # BUG?: Maybe these have to be adapted to the order.
-#     cards = data.iloc[0].values
-#     tree = ct.CStree(cards)
-#     # here we set the labels/order for the CStree, to be used in the counting.
-#     tree.labels = order
-#     #print("var: {}".format(tree.labels[level]))
-#     stagings = learn.all_stagings(cards, level-1, max_cvars=max_cvars)
-
-#     if strategy == "max":
-#         log_unnorm_post = -np.inf  # log score
-#     elif strategy == "posterior":
-#         log_unnorm_post = 0
-#         log_unnorm_posts = []
-
-#     # This is a bit clumsy but shoud work.
-#     # I think we need to go through all these to get the max value and then
-#     # do the logsumexp trick.
-#     for stlist in stagings:
-#         # print(stlist)
-#         # print all stges in a stlist
-#         # for st in stlist:
-#         #    print(st)
-
-#         # Need to set the stagings in order to count.
-#         tree.update_stages({level-1: stlist})
-#         level_counts = counts_at_level(tree, level, data)
-#         #for st, cnts in level_counts.items():
-#         #    print(st, cnts)
-
-#         log_marg_lik = score_level(
-#             tree, level, level_counts, alpha_tot, method)
-#         # print("level {} score: {}".format(l, tmp))
-
-#         if strategy == "max":
-#             if log_marg_lik > log_unnorm_post:
-#                 log_unnorm_post = log_marg_lik
-#         if strategy == "posterior":
-#             log_staging_prior = -np.log(learn.n_stagings(
-#                 cards, level-1, max_cvars=max_cvars))
-
-#             log_level_prior = -np.log(p-level) # BUG: Is this correct?
-#             log_unnorm_post = log_marg_lik + log_staging_prior + log_level_prior
-#             log_unnorm_posts.append(log_unnorm_post)
-
-#             #print("level {} log lik score: {}".format(level, log_unnorm_post))
-
-#     if strategy == "posterior":
-#         # TODO: Maybe one should use a generator isntead to save some space.
-#         # Then one can first fint the max and then to the logsumexp trick.
-#         #print("number of stagings: {}".format(len(log_unnorm_posts)))
-#         #print("lc: {}".format(log_unnorm_posts))
-#         outp = logsumexp(log_unnorm_posts)
-#         #print("logsumexp: {}".format(outp))
-#         return logsumexp(log_unnorm_posts)
-#     elif strategy == "max":
-#         return log_unnorm_post

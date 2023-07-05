@@ -138,46 +138,6 @@ def n_stagings(cards, level, max_cvars=1):
     return sum(1 for _ in stagings)
 
 
-# def _optimal_staging_at_level(order, data, level, max_cvars=1, alpha_tot=None,
-#                               method="BDeu"):
-#     """Find the optimal staging at a given level.
-
-#     Args:
-#         order (list): The order of the variables. data (pandas DataFrame): The
-#         data as a pandas DataFrame.
-#         level (int): The level of the CStree.
-#         max_cvars (int, optional): Max context variables. Defaults to 1.
-#         alpha_tot (float, optional): The Dirichlet hyper parameter total pseudo
-#         counts. Defaults to None.
-#         method (str, optional): Parameter prior type.
-#         Defaults to "BDeu".
-
-#     Returns:
-#         tuple: (optimal staging, optimal score)
-
-#     """
-
-#     cards = data.iloc[0].values
-#     assert (level < len(cards)-1)
-#     tree = ct.CStree(cards)
-#     tree.labels = order
-
-#     stagings = all_stagings(cards, level, max_cvars)
-#     max_staging = None
-#     max_staging_score = -np.inf
-
-#     for stlist in stagings:
-
-#         tree.update_stages({level: stlist})
-#         # This needs the stages to be set at the line above.
-#         level_counts = sc.counts_at_level(tree, level+1, data)
-#         score = sc.score_level(tree, level+1, level_counts, alpha_tot, method)
-
-#         if score > max_staging_score:
-#             max_staging_score = score
-#             max_staging = stlist
-
-#     return max_staging, max_staging_score
 
 def _optimal_staging_at_level(order, context_scores, level, max_cvars=2):
     """Find the optimal staging at a given level.
@@ -223,64 +183,6 @@ def _optimal_staging_at_level(order, context_scores, level, max_cvars=2):
 
     return max_staging, max_staging_score
 
-
-# def _optimal_cstree_given_order(order, data, max_cvars=1, alpha_tot=1.0,
-#                                 method="BDeu"):
-#     """Find the optimal CStree for a given order.
-
-#     Args:
-#         order (list): The order of the variables.
-#         data (pandas DataFrame): The data as a pandas DataFrame.
-#         max_cvars (int, optional): Max context variables. Defaults to 1.
-#         alpha_tot (float, optional): The Dirichlet hyper parameter total pseudo
-#         counts. Defaults to 1.0.
-#         method (str, optional): Parameter prior type. Defaults to "BDeu".
-
-#     """
-
-#     # BUG?: Maybe these have to be adapted to the order.
-#     #cards = data.iloc[0].values
-#     cards = data.loc[0, order]
-#     p = len(order)
-
-#     stages = {}
-#     stages[-1] = [stl.Stage([], color="black")]
-#     for level in range(-1, p-1):  # dont stage the last level
-#         max_staging, max_staging_score = _optimal_staging_at_level(
-#             order, data, level, max_cvars, alpha_tot, method)
-#         stages[level] = max_staging
-#         #print("max staging: {}".format([str(s) for s in max_staging]))
-
-#     # Create CStree
-#     tree = ct.CStree(cards)
-#     tree.labels = order
-
-#     # Color each stage in the optimal staging. Singletons are black.
-#     # This should be done somewhere else probably.
-#     colors = ['blueviolet', 'orange', 'navy', 'rebeccapurple', 'darkseagreen',
-#               'darkslategray', 'lightslategray', 'aquamarine',
-#               'lightgoldenrodyellow', 'cornsilk', 'azure', 'chocolate',
-#               'red', 'darkolivegreen', 'chartreuse', 'turquoise', 'olive',
-#               'crimson', 'goldenrod', 'orchid', 'firebrick', 'lawngreen',
-#               'deeppink', 'wheat', 'teal', 'mediumseagreen', 'peru', 'salmon',
-#               'palegreen', 'navajowhite', 'yellowgreen', 'mediumaquamarine',
-#               'darkcyan', 'dodgerblue', 'brown', 'powderblue', 'mistyrose',
-#               'violet', 'darkslategrey', 'midnightblue', 'aliceblue',
-#               'dimgrey', 'palegoldenrod', 'black', 'darkgrey', 'olivedrab',
-#               'linen',  'lightblue', 'thistle', 'greenyellow', 'indianred',
-#               'khaki']
-
-#     for level, staging in stages.items():
-#         print("level: {}".format(level))
-#         for i, stage in enumerate(staging):
-#             print("level: {}, stage: {}".format(level, stage))
-#             if (level > 0) and all([isinstance(i, int) for i in stage.list_repr]):
-#                 stage.color = "black"
-#             else:
-#                 stage.color = colors[i]
-#     tree.update_stages(stages)
-
-#     return tree
 
 def _optimal_cstree_given_order(order, context_scores, max_cvars=2):
     """Find the optimal CStree for a given order.
@@ -397,13 +299,7 @@ def relocate_node_in_order(order, node, new_pos):
     return order
 
 
-def move_up(node_index, order):
-    """ Move a node up in an order.
-    """
-    order.insert(node_index+1, order.pop(node_index))
-
-
-def move_up2(node_index,
+def move_up(node_index,
              order,
              orderscore,
              node_scores,
@@ -427,13 +323,7 @@ def move_up2(node_index,
     return orderscore
 
 
-def move_down(node_index, order):
-    """ Move a node up in an order.
-    """
-    order.insert(node_index-1, order.pop(node_index))
-
-
-def move_down2(node_index,
+def move_down(node_index,
                order,
                orderscore,
                node_scores,
@@ -480,10 +370,10 @@ def move_node(node_index_from,
 
     if node_index_from < node_index_to:
         for i in range(node_index_from, node_index_to):
-            orderscore = move_up2(i, order, orderscore, node_scores, score_table)
+            orderscore = move_up(i, order, orderscore, node_scores, score_table)
     else:
         for i in range(node_index_from, node_index_to, -1):
-            orderscore = move_down2(
+            orderscore = move_down(
                 i, order, orderscore, node_scores, score_table)
     return orderscore
 
@@ -580,7 +470,7 @@ def get_relocation_neighborhood(order, node_index, orderscore, node_scores,
     for i in range(node_index, len(order)-1):
         #print("moving {} to the right".format(order[i]))
 
-        orderscore = move_up2(i, order, orderscore, node_scores, score_table)
+        orderscore = move_up(i, order, orderscore, node_scores, score_table)
 
         neig_log_scores[i+1] = orderscore
         # print(order)
@@ -589,7 +479,7 @@ def get_relocation_neighborhood(order, node_index, orderscore, node_scores,
     # relocated.
     for i in range(len(order)-1, 0, -1):
         #print("moving {} to the left".format(order[i]))
-        orderscore = move_down2(i, order, orderscore, node_scores, score_table)
+        orderscore = move_down(i, order, orderscore, node_scores, score_table)
 
         neig_log_scores[i-1] = orderscore
         # print(order)
@@ -597,7 +487,7 @@ def get_relocation_neighborhood(order, node_index, orderscore, node_scores,
     # move back to where we started
     for i in range(0, node_index):
         #print("moving {} to the right".format(order[i]))
-        orderscore = move_up2(i, order, orderscore, node_scores, score_table)
+        orderscore = move_up(i, order, orderscore, node_scores, score_table)
 
         neig_log_scores[i+1] = orderscore
         # print(order)
@@ -635,11 +525,14 @@ def find_optimal_cstree(data, max_cvars=1, alpha_tot=1, method="BDeu"):
         5	1	1	-
 
     """
-    opt_order, _ = _find_optimal_order(
-        data, max_cvars=max_cvars, alpha_tot=alpha_tot, method=method)
+    score_table, context_scores, context_counts = sc.order_score_tables(data, 
+                                                                    max_cvars=max_cvars, 
+                                                                    alpha_tot=alpha_tot, 
+                                                                    method=method)
+    
+    opt_order, _ = _find_optimal_order(score_table)
 
-    opttree = _optimal_cstree_given_order(opt_order, data,
-                                          max_cvars=max_cvars,
-                                          alpha_tot=alpha_tot, method=method)
+    opttree = _optimal_cstree_given_order(opt_order, context_scores,
+                                          max_cvars=max_cvars)
 
     return opttree
