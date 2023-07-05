@@ -251,7 +251,7 @@ class CStree:
             # Seems like a stage at level l holds the probtable for the variabel at level l+1.
             for i, ch in enumerate(children):
                 stage = self.get_stage(node)
-                print(stage)
+                #print(stage)
                 if stage != None:  # NO singleton stages allowed!
                     prob = stage.probs[i]
                     self.tree[node][ch]["cond_prob"] = prob
