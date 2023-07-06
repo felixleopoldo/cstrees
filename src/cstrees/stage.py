@@ -53,8 +53,6 @@ class Stage:
 
         return True
 
-
-
     def size(self):
         """
         The number of nodes this stage has in the CStree.
@@ -71,7 +69,7 @@ class Stage:
         """
         return self.size() == 1
 
-    def to_df(self, column_labels, max_card=None):
+    def to_df(self, column_labels, max_card=None, write_probs=False):
         """Write sthe stage to dataframe. columns is..?
 
         Args:
@@ -83,8 +81,13 @@ class Stage:
         import pandas as pd
 
         d = {}
+        if write_probs:
+            cols = range(len(column_labels) - max_card)
+        else:
+            cols = range(len(column_labels))
 
-        for i in range(len(column_labels) - max_card):
+        #for i in range(len(column_labels) - max_card):
+        for i in cols:
             if i < len(self.list_repr):
                 if type(self.list_repr[i]) == set:
                     d[column_labels[i]] = ["*"]
@@ -92,11 +95,13 @@ class Stage:
                     d[column_labels[i]] = [self.list_repr[i]]
             else:
                 d[column_labels[i]] = ["-"]
-
-        df = pd.DataFrame(d, columns=column_labels[:-max_card])
-        df_prop = pd.DataFrame({"PROB_"+str(i):[prob] for i, prob in enumerate(self.probs)})
-
-        df = pd.concat([df, df_prop], axis=1)
+        
+        if (self.probs is not None) and write_probs:            
+            df = pd.DataFrame(d, columns=column_labels[:-max_card])
+            df_prop = pd.DataFrame({"PROB_"+str(i):[prob] for i, prob in enumerate(self.probs)})
+            df = pd.concat([df, df_prop], axis=1)
+        else:
+            df = pd.DataFrame(d, columns=column_labels)
         return df
 
     def set_random_params(self, cards):

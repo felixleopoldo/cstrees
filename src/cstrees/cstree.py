@@ -112,7 +112,8 @@ class CStree:
 
         """
         self.stages.update(stages)
-        self.stages[-1] = [st.Stage([], color="black")]
+        if -1 not in self.stages:
+            self.stages[-1] = [st.Stage([], color="black")]
 
 
     def get_stage(self, node: tuple):
@@ -132,17 +133,18 @@ class CStree:
         stage = None
         if lev in self.stages:
             for s in self.stages[lev]:
+                
                 if node in s:
                     stage = s
                     break
-
+        
         if stage is None:
             print("No stage found for {}".format(node))
 
         assert(stage is not None)
         return stage
 
-    def to_df(self):
+    def to_df(self, write_probs=False):
         """ Converts the CStree to a pandas dataframe.
 
         Returns:
@@ -167,16 +169,20 @@ class CStree:
         # cardinalities header
         d = {self.labels[i]: [c] for i, c in enumerate(self.cards)}
         max_card = max(self.cards)
-        labs = self.labels + ["PROB_"+str(i) for i in range(max_card)]
+        
+        if write_probs:
+            labs = self.labels + ["PROB_"+str(i) for i in range(max_card)]
+        else:
+            labs = self.labels
         #df = pd.DataFrame(d, columns=self.labels)
         df = pd.DataFrame(d, columns=labs)
             
         for l, stages in self.stages.items():
-            if l == -1:
-                continue
+            #if l == -1:
+            #    continue
             for s in stages:                
                 #dftmp = s.to_df(self.labels, maxcard=max_card)
-                dftmp = s.to_df(labs, max_card=max_card)
+                dftmp = s.to_df(labs, max_card=max_card, write_probs=write_probs)
                 df = pd.concat([df, dftmp])
         df.reset_index(drop=True, inplace=True)
 
@@ -230,7 +236,6 @@ class CStree:
                     self, stage, stage_counts, method, alpha_tot)
                 stage.probs = probs
 
-
         self._set_tree_probs()
 
     def _set_tree_probs(self, alpha=1):
@@ -249,14 +254,15 @@ class CStree:
         for node in self.tree.nodes():
             if len(node) == self.p:
                 continue
-
+            #print(node)
             children = sorted(list(self.tree.successors(node)))
             probs = np.random.dirichlet([alpha] * self.cards[len(node)])
             # Seems like a stage at level l holds the probtable for the variabel at level l+1.
             for i, ch in enumerate(children):
                 stage = self.get_stage(node)
+                
                 #print(stage)
-                if stage != None:  # NO singleton stages allowed!
+                if (stage != None):  # NO singleton stages allowed!
                     prob = stage.probs[i]
                     self.tree[node][ch]["cond_prob"] = prob
                     self.tree[node][ch]["label"] = round(prob, 2)
@@ -737,14 +743,21 @@ def df_to_cstree(df):
         0  1  1  1  -
         0  1  0  1  -
     """
-    cards = cards = df.iloc[0].values  # [int(x[1]) for x in df.columns]
-
-    stagings = {i: [] for i in range(len(cards))}
-    stagings[-1] = [st.Stage([])]
+    collabs= list(df.columns)
+    if "PROB_0" in collabs:        
+        nvars = collabs.index("PROB_0")
+    else:
+        nvars = len(collabs)
+    
+    cards = df.iloc[0,:nvars].values  # [int(x[1]) for x in df.columns]
+    
+    stagings = {i: [] for i in range(-1,len(cards))}
+    
+    #stagings[-1] = [st.Stage([])]
     cstree = CStree(cards)
-    cstree.labels = df.columns
-
-    for row in df[1:].iterrows():
+    cstree.labels = list(df.columns[:nvars])
+    
+    for row in df.iloc[1:,:nvars].iterrows():
         stage_list = []
         for level, val in enumerate(row[1]):
             if level == len(cards):
@@ -753,12 +766,24 @@ def df_to_cstree(df):
                 stage_list.append(set(range(cards[level])))
             elif val == "-":
                 s = st.Stage(stage_list)
+                s.color = cstree.colors[row[0]]
+                # Now we reed the probabilities, if there are any                
+                s.probs = df.iloc[row[0], nvars:].values
+                #print(s)
                 stagings[level-1].append(s)
                 break
             else:
                 stage_list.append(int(val))
 
     cstree.update_stages(stagings)
+    
+    # print all stages
+    # for lev, stages in cstree.stages.items():
+    #     for stage in stages:
+    #         print(stage)
+
+    
+    cstree._set_tree_probs()
 
     return cstree
 
