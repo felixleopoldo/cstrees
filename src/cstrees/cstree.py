@@ -766,6 +766,7 @@ def df_to_cstree(df):
                 stage_list.append(set(range(cards[level])))
             elif val == "-":
                 s = st.Stage(stage_list)
+                if s.size() == 0:
                 s.color = cstree.colors[row[0]]
                 # Now we reed the probabilities, if there are any                
                 s.probs = df.iloc[row[0], nvars:].values
