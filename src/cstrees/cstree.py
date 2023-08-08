@@ -773,7 +773,7 @@ def df_to_cstree(df, read_probs=True):
             if val == "*":
                 stage_list.append(set(range(cards[level])))
             elif val == "-":
-                # Reached stop mark "-", so create a stage of it.
+                # Reached stop mark "-", so create a stage of stage_list.
                 s = st.Stage(stage_list)
                 
                 if s.size() == 1: # Singleton stage? Or maybe root stage?.

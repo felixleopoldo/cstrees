@@ -406,9 +406,9 @@ def order_score_tables(data: pd.DataFrame,
     for var in tqdm(labels, desc="Order score tables"):
         #print("VARIABLE: {}".format(var))
         # Ths subset are the variables before var in the order
-        # TODO: possible to restrict to some variables
+        # TODO: possible to restrict to some variables?
         for subset in csi_rel._powerset(set(labels) - {var}):
-            # choosing one representative for each subset
+            # choosing one representative order for each subset
             staging_level = len(subset)-1
             #print("staging level: {}".format(staging_level))
 
@@ -417,7 +417,8 @@ def order_score_tables(data: pd.DataFrame,
             order_scores[var][subset_str] = 0
             cards = [cards_dict[l] for l in subset]
 
-            # put the variable to the right and use all_stagings
+            # put the variable to the right and use all_stagings.
+            # Should be possitble to restrict to some variables in all_stagings.
             for i, staging in enumerate(learn.all_stagings(cards, staging_level, max_cvars)):
 
                 staging_marg_lik = 0

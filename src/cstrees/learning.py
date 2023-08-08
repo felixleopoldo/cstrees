@@ -97,9 +97,10 @@ def all_stagings(cards, level, max_cvars=1):
         st = stl.Stage(stagelistrep)
         yield [st]
     elif max_cvars == 2:
-        from cstrees.double_cvar_stagings import max2_cvars_stagings
+        from cstrees.double_cvar_stagings import codim_max2_boxes
 
-        for staging_list in max2_cvars_stagings(level+1):
+        # (0,1)
+        for staging_list in codim_max2_boxes(cards[:level+1]):
 
             staging = []
             for stage_list in staging_list:
