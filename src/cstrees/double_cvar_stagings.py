@@ -8,8 +8,10 @@ def num_stagings(lvl: int):
 
 
 # def max2_cvars_stagings(var_outcomes: list, possible_cvars: tuple = None):
-def codim_max2_boxes(box: list, splittable_dims: tuple = None):
+def codim_max2_boxes(cards: list, splittable_dims: tuple = None):
     """Enumerate stagings at given level of CStree."""
+    box = [set(range(card)) for card in cards]
+
     codim_0_box = [box]
     yield codim_0_box
 
