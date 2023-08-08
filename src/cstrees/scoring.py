@@ -290,7 +290,8 @@ def score_tables(data: pd.DataFrame,
             # remove the current variable from the active labels
             labels = [l for l in data.columns if l != var]
             #print("context size: {}".format(csize))
-            for context_variables in combinations(labels, csize):
+            # TODO: resrict to some possible context variables. Shold be an input.
+            for context_variables in combinations(labels, csize): 
                 #print("context variables: {}".format(context_variables))
                 # get the active labels like A,B,C
                 active_labels = [l for l in labels if l in context_variables]
@@ -405,6 +406,7 @@ def order_score_tables(data: pd.DataFrame,
     for var in tqdm(labels, desc="Order score tables"):
         #print("VARIABLE: {}".format(var))
         # Ths subset are the variables before var in the order
+        # TODO: possible to restrict to some variables
         for subset in csi_rel._powerset(set(labels) - {var}):
             # choosing one representative for each subset
             staging_level = len(subset)-1
