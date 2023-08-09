@@ -8,9 +8,18 @@ def num_stagings(lvl: int) -> int:
     return lvl**3 + 1 if lvl != 2 else 8
 
 
-# def max2_cvars_stagings(var_outcomes: list, possible_cvars: tuple = None):
-def codim_max2_boxes(cards: list, splittable_dims: Iterable[int] = []) -> Generator:
-    """Enumerate stagings at given level of CStree."""
+def codim_max2_boxes(
+    cards: Iterable, splittable_coords: Iterable[int] = []
+) -> Generator:
+    """Enumerate ways of subdividing a given box; interpreted as stagings at given level of CStree.
+
+    Args:
+        cards: Cardinality of the set of values each coordinate/random
+    variable may take
+        splittable_dims: Coordinates of box considered for splitting
+    when making subdivisions; interpreted as indices of possible
+    context variables.
+    """
     box = [set(range(card)) for card in cards]
 
     codim_0_box = [box]
@@ -18,13 +27,15 @@ def codim_max2_boxes(cards: list, splittable_dims: Iterable[int] = []) -> Genera
 
     degen = False
 
-    num_dims = len(box)
-    if len(splittable_dims) == 0:
-        splittable_dims = range(num_dims)
-    sub_split_len = len(splittable_dims) - 1
-    sub_splittable_dims = reversed(tuple(combinations(splittable_dims, sub_split_len)))
+    dim = len(box)
+    if len(splittable_coords) == 0:
+        splittable_coords = range(dim)
+    sub_split_len = len(splittable_coords) - 1
+    sub_splittable_coords = reversed(
+        tuple(combinations(splittable_coords, sub_split_len))
+    )
     z_cd1_subdivs = zip(
-        sub_splittable_dims, codim_1_subdivs(codim_0_box, splittable_dims)
+        sub_splittable_coords, codim_1_subdivs(codim_0_box, splittable_coords)
     )
     for poss_split_dims, cd1_subdiv in z_cd1_subdivs:
         yield cd1_subdiv
