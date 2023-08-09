@@ -20,6 +20,8 @@ def codim_max2_boxes(
     when making subdivisions; interpreted as indices of possible
     context variables.
     """
+    
+    
     box = [set(range(card)) for card in cards]
 
     codim_0_box = [box]
