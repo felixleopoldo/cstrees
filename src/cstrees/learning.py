@@ -66,7 +66,7 @@ def all_stagings(cards, level, max_cvars=1):
         [1, 1]
 
     """
-
+    
     assert level < len(cards)
     #assert level < len(cards)-1
     if max_cvars == 1:
@@ -98,8 +98,10 @@ def all_stagings(cards, level, max_cvars=1):
         yield [st]
     elif max_cvars == 2:
         from cstrees.double_cvar_stagings import codim_max2_boxes
-
-        # (0,1)
+        if level == -1:  # This is an imaginary level -1, it has no stages.
+            yield [stl.Stage([])]
+            return
+        
         for staging_list in codim_max2_boxes(cards[:level+1]):
 
             staging = []
@@ -159,17 +161,16 @@ def _optimal_staging_at_level(order, context_scores, level, max_cvars=2):
     """
     cards = [context_scores["cards"][var] for var in order]
     var = order[level+1] # +1?
-
+    
     assert (level < len(cards)-1)
 
-    stagings = all_stagings(cards, level+1, max_cvars) # Just added +1 here and it worked...
+    stagings = all_stagings(cards, level, max_cvars)
     max_staging = None
     max_staging_score = -np.inf
-    #print("level", level)
+    
     for staging in stagings:
         staging_score = 0
         for stage in staging:
-            #print(stage)
             if stage.level == -1:
                 staging_score = context_scores["scores"][var]["None"]
                 continue
@@ -218,7 +219,7 @@ def _optimal_cstree_given_order(order, context_scores, max_cvars=2):
 
     # Color each stage in the optimal staging. Singletons are black.
     # This should be done somewhere else probably.
-    colors = ['blueviolet', 'orange', 'navy', 'rebeccapurple', 'darkseagreen',
+    colors = ['peru','blueviolet', 'orange', 'navy', 'rebeccapurple', 'darkseagreen',
               'darkslategray', 'lightslategray', 'aquamarine',
               'lightgoldenrodyellow', 'cornsilk', 'azure', 'chocolate',
               'red', 'darkolivegreen']
@@ -226,7 +227,7 @@ def _optimal_cstree_given_order(order, context_scores, max_cvars=2):
     for level, staging in stages.items():
         for i, stage in enumerate(staging):
             #print("level: {}, stage: {}".format(level, stage))
-            if (level>0) and all([isinstance(i, int) for i in stage.list_repr]):
+            if (level==-1) or ((level>0) and all([isinstance(i, int) for i in stage.list_repr])):
                 stage.color = "black"
             else:
                 stage.color = colors[i]
