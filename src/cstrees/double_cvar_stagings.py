@@ -20,7 +20,8 @@ def codim_max2_boxes(cards: list, splittable_dims: tuple = None):
     num_dims = len(box)
     if splittable_dims is None:
         splittable_dims = range(num_dims)
-    sub_splittable_dims = reversed(tuple(combinations(splittable_dims, num_dims - 1)))
+    sub_split_len = len(splittable_dims) - 1
+    sub_splittable_dims = reversed(tuple(combinations(splittable_dims, sub_split_len)))
     z_cd1_subdivs = zip(
         sub_splittable_dims, codim_1_subdivs(codim_0_box, splittable_dims)
     )
