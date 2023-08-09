@@ -1,14 +1,15 @@
-"""Enumerate CStrees and stagings with up to 2 context variables."""
+"""Enumerate stagings with up to 2 context variables ."""
+from typing import Generator, Iterable
 from itertools import combinations, product
 
 
-def num_stagings(lvl: int):
+def num_stagings(lvl: int) -> int:
     """Use formula to compute number of stagings at given level of binary CStree ."""
     return lvl**3 + 1 if lvl != 2 else 8
 
 
 # def max2_cvars_stagings(var_outcomes: list, possible_cvars: tuple = None):
-def codim_max2_boxes(cards: list, splittable_dims: tuple = None):
+def codim_max2_boxes(cards: list, splittable_dims: Iterable[int] = []) -> Generator:
     """Enumerate stagings at given level of CStree."""
     box = [set(range(card)) for card in cards]
 
@@ -18,7 +19,7 @@ def codim_max2_boxes(cards: list, splittable_dims: tuple = None):
     degen = False
 
     num_dims = len(box)
-    if splittable_dims is None:
+    if len(splittable_dims) == 0:
         splittable_dims = range(num_dims)
     sub_split_len = len(splittable_dims) - 1
     sub_splittable_dims = reversed(tuple(combinations(splittable_dims, sub_split_len)))
@@ -43,11 +44,11 @@ def codim_max2_boxes(cards: list, splittable_dims: tuple = None):
 
 
 def codim_1_subdivs(
-    box: list, splittable_dims: tuple, splittable_subboxes: tuple = None
-):
+    box: list, splittable_dims: Iterable[int], splittable_subboxes: list = []
+) -> Generator:
     """Enumerate codimension-1 subdivisions of the given (subdivision of a) box."""
-    if splittable_subboxes is None:
-        splittable_subboxes = range(len(box))
+    if len(splittable_subboxes) == 0:
+        splittable_subboxes = list(range(len(box)))
     for dims_to_split in product(*(splittable_dims for _ in splittable_subboxes)):
         cd1_subdiv = []
         for subbox_idx, subbox in enumerate(box):
