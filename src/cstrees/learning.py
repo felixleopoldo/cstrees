@@ -173,7 +173,7 @@ def _optimal_staging_at_level(order, context_scores, level, max_cvars=2, poss_cv
 
     # should restrict to poss_cvars here, using cards I guess.
     #stagings = all_stagings(cards, level, max_cvars)
-    stagings = all_stagings(cards, level, max_cvars)
+    stagings = all_stagings(cards, level, max_cvars) #, poss_cvars=poss_cvars)
     max_staging = None
     max_staging_score = -np.inf
     
