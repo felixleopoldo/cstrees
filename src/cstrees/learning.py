@@ -9,14 +9,14 @@ import cstrees.stage as stl
 import cstrees.scoring as sc
 
 
-def all_stagings(cards, level, max_cvars=1):
+def all_stagings(cards, level, max_cvars=1, poss_cvars=[]):
     """ Returns a generator over all stagings of a given level.
 
     Args:
         l (int): The level of the stage.
         cards (list): List of cardinalities of the variables. Should be at least of length l+1. E.g.: l=2, cards=[2,2,2,2]
         max_cvars (int, optional): The maximum number of context variables . Defaults to 1.
-
+        poss_cvars (list, optional): The possible context variables. Defaults to None.
     Raises:
         NotImplementedError: Exception if max_cvars > 2.
 
@@ -69,40 +69,42 @@ def all_stagings(cards, level, max_cvars=1):
     
     assert level < len(cards)
     #assert level < len(cards)-1
-    if max_cvars == 1:
-        if level == -1:  # This is an imaginary level -1, it has no stages.
-            yield [stl.Stage([])]
-            return
+    # if max_cvars == 1: # I guess this is not needed as a special case anymore, Alex?
+    #     if level == -1:  # This is an imaginary level -1, it has no stages.
+    #         yield [stl.Stage([])]
+    #         return
 
-        # All possible values for each variable
+    #     # All possible values for each variable
 
-        vals = [list(range(cards[lev])) for lev in range(len(cards))]
-        for k in range(level+1):  # all variables up to l can be context variables
-            # When we restrict to max_cvars = 1, we have two cases:
-            # Either all are in 1 color or all are in 2 different colors.
-            stlist = []  # The staging: list of stl.Stages.
-            # Loop through the values of the context variables.
-            for v in vals[k]:
-                left = [set(vals[i]) for i in range(k)]
-                right = [set(vals[j]) for j in range(k+1, level+1)]
-                # For example: [{0,1}, {0,1}, 0, {0, 1}]
-                stagelistrep = left + [v] + right
-                st = stl.Stage(stagelistrep)
-                stlist += [st]
-            yield stlist
+    #     vals = [list(range(cards[lev])) for lev in range(len(cards))]
+    #     for k in range(level+1):  # all variables up to l can be context variables
+    #         # When we restrict to max_cvars = 1, we have two cases:
+    #         # Either all are in 1 color or all are in 2 different colors.
+    #         stlist = []  # The staging: list of stl.Stages.
+    #         # Loop through the values of the context variables.
+    #         for v in vals[k]:
+    #             left = [set(vals[i]) for i in range(k)]
+    #             right = [set(vals[j]) for j in range(k+1, level+1)]
+    #             # For example: [{0,1}, {0,1}, 0, {0, 1}]
+    #             stagelistrep = left + [v] + right
+    #             st = stl.Stage(stagelistrep)
+    #             stlist += [st]
+    #         yield stlist
 
-        # The staging with no context variables
-        stagelistrep = [set(v) for v in vals][:level+1]
+    #     # The staging with no context variables
+    #     stagelistrep = [set(v) for v in vals][:level+1]
 
-        st = stl.Stage(stagelistrep)
-        yield [st]
-    elif max_cvars == 2:
+    #     st = stl.Stage(stagelistrep)
+    #     yield [st]
+    #elif max_cvars == 2:
+
+    if max_cvars <= 2:
         from cstrees.double_cvar_stagings import codim_max2_boxes
         if level == -1:  # This is an imaginary level -1, it has no stages.
             yield [stl.Stage([])]
             return
         
-        for staging_list in codim_max2_boxes(cards[:level+1]):
+        for staging_list in codim_max2_boxes(cards[:level+1], splittable_coords=poss_cvars):
 
             staging = []
             for stage_list in staging_list:
@@ -116,7 +118,7 @@ def all_stagings(cards, level, max_cvars=1):
             yield staging
 
     else:
-        raise NotImplementedError("max_cvars > 1 not implemented yet")
+        raise NotImplementedError("max_cvars > 2 not implemented yet")
 
 
 def n_stagings(cards, level, max_cvars=1):
@@ -142,7 +144,7 @@ def n_stagings(cards, level, max_cvars=1):
 
 
 
-def _optimal_staging_at_level(order, context_scores, level, max_cvars=2):
+def _optimal_staging_at_level(order, context_scores, level, max_cvars=2, poss_cvars=[]):
     """Find the optimal staging at a given level.
 
     Args:
@@ -162,8 +164,15 @@ def _optimal_staging_at_level(order, context_scores, level, max_cvars=2):
     cards = [context_scores["cards"][var] for var in order]
     var = order[level+1] # +1?
     
+    #how do i get the right labels whenrestricted cvars
+    labels = ["a", "b", "c", "d"]
+    poss_cvars = ["a", "c"]
+    
+    
     assert (level < len(cards)-1)
 
+    # should restrict to poss_cvars here, using cards I guess.
+    #stagings = all_stagings(cards, level, max_cvars)
     stagings = all_stagings(cards, level, max_cvars)
     max_staging = None
     max_staging_score = -np.inf
@@ -175,7 +184,8 @@ def _optimal_staging_at_level(order, context_scores, level, max_cvars=2):
                 staging_score = context_scores["scores"][var]["None"]
                 continue
 
-            stage_context = sc.stage_to_context_key(stage, order)
+            stage_context = sc.stage_to_context_key(stage, poss_cvars[var])
+            #stage_context = sc.stage_to_context_key(stage, order) # Possible BUG using order
             score = context_scores["scores"][var][stage_context]
             staging_score += score
         
@@ -186,7 +196,7 @@ def _optimal_staging_at_level(order, context_scores, level, max_cvars=2):
     return max_staging, max_staging_score
 
 
-def _optimal_cstree_given_order(order, context_scores, max_cvars=2):
+def _optimal_cstree_given_order(order, context_scores, max_cvars=2, poss_cvars=[]):
     """Find the optimal CStree for a given order.
 
     Args:
@@ -209,7 +219,7 @@ def _optimal_cstree_given_order(order, context_scores, max_cvars=2):
     stages[-1] = [stl.Stage([], color="black")]
     for level in range(-1, p-1):  # dont stage the last level
         max_staging, max_staging_score = _optimal_staging_at_level(
-            order, context_scores, level, max_cvars=max_cvars)
+            order, context_scores, level, max_cvars=max_cvars, poss_cvars=poss_cvars)
         stages[level] = max_staging
         #print("max staging: {}".format([str(s) for s in max_staging]))
 
@@ -237,7 +247,7 @@ def _optimal_cstree_given_order(order, context_scores, max_cvars=2):
     return tree
 
 
-def _find_optimal_order(score_table):
+def _find_optimal_order(score_table, poss_cvars=[]):
     """ Find the optimal causal order for the data using exhaustive search of
         the optimal order then the CStree having that order.
 
@@ -272,7 +282,7 @@ def _find_optimal_order(score_table):
         #order = [labels[i] for i in order]
 
         #print("scoring order: {}".format(order))
-        score = sc.score_order(order, score_table)
+        score = sc.score_order(order, score_table, poss_cvars=poss_cvars)
         #print("order: {}, score: {}".format(order, score))
 
         # if score == max_score:
@@ -535,6 +545,6 @@ def find_optimal_cstree(data, max_cvars=1, alpha_tot=1, method="BDeu"):
     opt_order, _ = _find_optimal_order(score_table)
 
     opttree = _optimal_cstree_given_order(opt_order, context_scores,
-                                          max_cvars=max_cvars)
+                                          max_cvars=max_cvars, poss_cvars=[])
 
     return opttree

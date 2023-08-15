@@ -265,7 +265,7 @@ def estimate_parameters(cstree: ct.CStree, stage, stage_counts, method="BDeu", a
 
 
 def score_tables(data: pd.DataFrame,
-                 strategy="posterior", max_cvars=2,
+                 strategy="posterior", max_cvars=2, poss_cvars=[],
                  alpha_tot=1.0, method="BDeu"):
 
     cards_dict = {var: data.loc[0, var] for var in data.columns}
@@ -290,8 +290,9 @@ def score_tables(data: pd.DataFrame,
             # remove the current variable from the active labels
             labels = [l for l in data.columns if l != var]
             #print("context size: {}".format(csize))
-            # TODO: resrict to some possible context variables. Shold be an input.
-            for context_variables in combinations(labels, csize): 
+            # Restricting to some possible context variables.
+            #for context_variables in combinations(labels, csize):
+            for context_variables in combinations([l for l in labels if l in poss_cvars[var]], csize):
                 #print("context variables: {}".format(context_variables))
                 # get the active labels like A,B,C
                 active_labels = [l for l in labels if l in context_variables]
@@ -325,6 +326,7 @@ def score_tables(data: pd.DataFrame,
                     counts["var_counts"][var][context]["counts"][value] = r.values[0]
                     counts["var_counts"][var][context]["context_vars"] = active_labels
 
+        # Using the counts to compute the scores
         for count_context in counts["var_counts"][var]:
             active_labels = counts["var_counts"][var][count_context]["context_vars"]
             score = score_context(var, count_context, active_labels, cards_dict,
@@ -388,9 +390,11 @@ def log_n_stagings_tables(labels, cards_dict, max_cvars=2):
 
 def order_score_tables(data: pd.DataFrame,
                        strategy="posterior", max_cvars=2,
+                       poss_cvars={},
                        alpha_tot=1.0, method="BDeu"):
 
     context_scores, context_counts = score_tables(data, strategy=strategy, max_cvars=max_cvars,
+                                                  poss_cvars=poss_cvars,
                                                   alpha_tot=alpha_tot, method=method)
 
     labels = list(data.columns)
@@ -404,10 +408,12 @@ def order_score_tables(data: pd.DataFrame,
     # print(p)
     order_scores = {var: {} for var in labels}
     for var in tqdm(labels, desc="Order score tables"):
+        
         #print("VARIABLE: {}".format(var))
         # Ths subset are the variables before var in the order
-        # TODO: possible to restrict to some variables
-        for subset in csi_rel._powerset(set(labels) - {var}):
+        # TODO: possible to restrict to some variables?
+        #for subset in csi_rel._powerset(set(labels) - {var}):
+        for subset in csi_rel._powerset((set(labels) - {var}) & set(poss_cvars[var])):
             # choosing one representative for each subset
             staging_level = len(subset)-1
             #print("staging level: {}".format(staging_level))
@@ -416,9 +422,17 @@ def order_score_tables(data: pd.DataFrame,
 
             order_scores[var][subset_str] = 0
             cards = [cards_dict[l] for l in subset]
-
+            #subset_label_inds = [i for i,j in enumerate(labels) if j in subset]
+            #subset_label_inds = [i for i,j in enumerate(labels) if j in subset]
+            #print("subset: {}, subset_label_inds: {}".format(subset, subset_label_inds))
             # put the variable to the right and use all_stagings
-            for i, staging in enumerate(learn.all_stagings(cards, staging_level, max_cvars)):
+            #for i, staging in enumerate(learn.all_stagings(cards, staging_level, max_cvars)):
+            # Get the indices of the possible context variables
+
+             # INFO: all_stagings doesnt know about any labels! 
+             # possible BUG, mixing labels when using possible cvars.
+
+            for i, staging in enumerate(learn.all_stagings(cards, staging_level, max_cvars)):#, poss_cvars=subset_label_inds)):
 
                 staging_marg_lik = 0
 
@@ -426,7 +440,7 @@ def order_score_tables(data: pd.DataFrame,
                     staging_marg_lik = context_scores["scores"][var]["None"]
 
                 for stage in staging:
-                    stage_context = stage_to_context_key(stage, subset)
+                    stage_context = stage_to_context_key(stage, subset) # OK! even when restricting to some possible cvars
                     staging_marg_lik += context_scores["scores"][var][stage_context]
 
                 if i == 0:  # this is for the log sum trick. It needs a starting scores.
@@ -478,10 +492,12 @@ def score(cstree: ct.CStree, data: pd.DataFrame, alpha_tot=1.0, method="BDeu"):
     return score
 
 
-def score_order(order, order_scores):
+def score_order(order, order_scores, poss_cvars={}):
     log_score = 0  # log score
     for level, var in enumerate(order):
-        poss_parents = order[:level]
+        poss_parents = list(set(order[:level]) & set(poss_cvars[var]))
+        #poss_parents = order[:level] 
+        
         # possible parents as string
         poss_parents_str = list_to_score_key(poss_parents)
         #print("var: {}, poss_parents: {}, poss_parents_str: {}".format(var, poss_parents, poss_parents_str))
