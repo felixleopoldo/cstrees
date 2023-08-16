@@ -390,14 +390,23 @@ def log_n_stagings_tables(labels, cards_dict, max_cvars=2):
 
 def order_score_tables(data: pd.DataFrame,
                        strategy="posterior", max_cvars=2,
-                       poss_cvars={},
+                       poss_cvars=None,
                        alpha_tot=1.0, method="BDeu"):
+
+    
+
+
+    labels = list(data.columns)
+
+    # If poss_cvars is None, then all variables are possible context variables
+    if poss_cvars is None:
+        poss_cvars = {l:list(set(labels) - {l}) for l in labels}
 
     context_scores, context_counts = score_tables(data, strategy=strategy, max_cvars=max_cvars,
                                                   poss_cvars=poss_cvars,
                                                   alpha_tot=alpha_tot, method=method)
 
-    labels = list(data.columns)
+    
     #print("labels: {}".format(labels))
     cards_dict = {var: data.loc[0, var] for var in data.columns}
 
@@ -406,7 +415,9 @@ def order_score_tables(data: pd.DataFrame,
 
     p = data.shape[1]
     # print(p)
-    order_scores = {var: {} for var in labels}
+    order_scores = {}
+    order_scores["poss_cvars"] = poss_cvars
+    order_scores["scores"] = {var: {} for var in labels}
     for var in tqdm(labels, desc="Order score tables"):
         
         #print("VARIABLE: {}".format(var))
@@ -420,7 +431,7 @@ def order_score_tables(data: pd.DataFrame,
 
             subset_str = list_to_score_key(list(subset))
 
-            order_scores[var][subset_str] = 0
+            order_scores["scores"][var][subset_str] = 0
             cards = [cards_dict[l] for l in subset]
             #subset_label_inds = [i for i,j in enumerate(labels) if j in subset]
             #subset_label_inds = [i for i,j in enumerate(labels) if j in subset]
@@ -444,17 +455,17 @@ def order_score_tables(data: pd.DataFrame,
                     staging_marg_lik += context_scores["scores"][var][stage_context]
 
                 if i == 0:  # this is for the log sum trick. It needs a starting scores.
-                    order_scores[var][subset_str] = staging_marg_lik
+                    order_scores["scores"][var][subset_str] = staging_marg_lik
                 else:
-                    order_scores[var][subset_str] = logsumexp(
-                        [order_scores[var][subset_str], staging_marg_lik])
+                    order_scores["scores"][var][subset_str] = logsumexp(
+                        [order_scores["scores"][var][subset_str], staging_marg_lik])
 
             cards_str = list_to_score_key(cards[:staging_level+1])
             log_staging_prior = -log_n_stagings[cards_str]
             log_level_prior = -np.log(p - staging_level-1)
-            log_unnorm_post = order_scores[var][subset_str] + \
+            log_unnorm_post = order_scores["scores"][var][subset_str] + \
                 log_staging_prior + log_level_prior
-            order_scores[var][subset_str] = log_unnorm_post
+            order_scores["scores"][var][subset_str] = log_unnorm_post
 
     return order_scores, context_scores, context_counts
 
@@ -492,16 +503,22 @@ def score(cstree: ct.CStree, data: pd.DataFrame, alpha_tot=1.0, method="BDeu"):
     return score
 
 
-def score_order(order, order_scores, poss_cvars={}):
+def score_order(order, order_scores):
+    #print("order: {}".format(order))
+    #print("order_scores: {}".format(order_scores))
+    #print(order_scores["poss_cvars"])
     log_score = 0  # log score
     for level, var in enumerate(order):
-        poss_parents = list(set(order[:level]) & set(poss_cvars[var]))
-        #poss_parents = order[:level] 
-        
+        #print("var {}".format(var))
+        #print(order_scores["poss_cvars"][var])
+        #poss_parents = list(set(order[:level]) & set(poss_cvars[var]))
+        poss_parents = list(set(order[:level]) & set(order_scores["poss_cvars"][var]))
+        # poss_parents = order[:level] 
+
         # possible parents as string
         poss_parents_str = list_to_score_key(poss_parents)
         #print("var: {}, poss_parents: {}, poss_parents_str: {}".format(var, poss_parents, poss_parents_str))
-        score = order_scores[var][poss_parents_str]
+        score = order_scores["scores"][var][poss_parents_str]
         #print("score: {}".format(score))
         log_score += score
 
