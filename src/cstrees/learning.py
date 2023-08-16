@@ -165,30 +165,35 @@ def _optimal_staging_at_level(order, context_scores, level, max_cvars=2, poss_cv
     var = order[level+1] # +1?
     
     #how do i get the right labels whenrestricted cvars
-    labels = ["a", "b", "c", "d"]
-    poss_cvars = ["a", "c"]
+    #labels = ["a", "b", "c", "d"]
+    #poss_cvars = ["a", "c"]
     
     
     assert (level < len(cards)-1)
-
-    # should restrict to poss_cvars here, using cards I guess.
+    print("level: {}".format(level))
+    # TODO: should restrict to poss_cvars here, using cards I guess.
+    print("poss cvars: {}".format(poss_cvars))
+    poss_cvars_inds = [order.index(v) for v in poss_cvars if order.index(var)<level]
+    print("poss cvars inds: {}".format(poss_cvars_inds))
     #stagings = all_stagings(cards, level, max_cvars)
-    stagings = all_stagings(cards, level, max_cvars) #, poss_cvars=poss_cvars)
+    stagings = all_stagings(cards, level, max_cvars, poss_cvars=poss_cvars_inds)
     max_staging = None
     max_staging_score = -np.inf
     
-    for staging in stagings:
+    for staging in stagings:        
         staging_score = 0
         for stage in staging:
+            print("stage: {}".format(stage))
             if stage.level == -1:
                 staging_score = context_scores["scores"][var]["None"]
                 continue
-
-            stage_context = sc.stage_to_context_key(stage, poss_cvars[var])
-            #stage_context = sc.stage_to_context_key(stage, order) # Possible BUG using order
+            # here we (=I) anyway extract just the context, so the stage format is a bit redundant.
+            #stage_context = sc.stage_to_context_key(stage, poss_cvars)
+            stage_context = sc.stage_to_context_key(stage, order) # Possible BUG using order
             score = context_scores["scores"][var][stage_context]
             staging_score += score
         
+        # Update the max score and the max staging
         if staging_score > max_staging_score:
             max_staging_score = staging_score
             max_staging = staging
@@ -196,7 +201,7 @@ def _optimal_staging_at_level(order, context_scores, level, max_cvars=2, poss_cv
     return max_staging, max_staging_score
 
 
-def _optimal_cstree_given_order(order, context_scores, max_cvars=2, poss_cvars=[]):
+def _optimal_cstree_given_order(order, context_scores, max_cvars=2, poss_cvars={}):
     """Find the optimal CStree for a given order.
 
     Args:
@@ -218,8 +223,10 @@ def _optimal_cstree_given_order(order, context_scores, max_cvars=2, poss_cvars=[
     stages = {}
     stages[-1] = [stl.Stage([], color="black")]
     for level in range(-1, p-1):  # dont stage the last level
+        print("var {}".format(order[level+1]))
+        print("poss cvars: {}".format(poss_cvars[order[level+1]]) )
         max_staging, max_staging_score = _optimal_staging_at_level(
-            order, context_scores, level, max_cvars=max_cvars, poss_cvars=poss_cvars)
+            order, context_scores, level, max_cvars=max_cvars, poss_cvars=poss_cvars[order[level+1]])
         stages[level] = max_staging
         #print("max staging: {}".format([str(s) for s in max_staging]))
 
