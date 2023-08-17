@@ -11,6 +11,7 @@ ipykernel
 mpl-tools
 tqdm
 pp-ez
+causal-learn
 
 pylint
 

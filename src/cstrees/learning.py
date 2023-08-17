@@ -436,7 +436,9 @@ def gibbs_order_sampler(iterations, score_table):
     node_scores = [0]*p
     for i in range(p):
         # possible parents to string
-        subset_str = sc.list_to_score_key(order[:i])
+        subset_str = sc.list_to_score_key(order[:i] )
+        
+        subset_str = sc.list_to_score_key(list(set(order[:i]) & set(score_table["poss_cvars"][order[i]])))
 
         #print("node: {} ".format(order[i]))
         #print("subset: {}".format(subset_str))

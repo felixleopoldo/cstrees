@@ -381,6 +381,7 @@ def log_n_stagings_tables(labels, cards_dict, max_cvars=2):
             staging_lev = len(subset) - 1
             subset_str = list_to_score_key(list(subset))
 
+            # BUG: Has to be adjusted for poss cvars.
             if subset_str not in n_stagings:
                 n_stagings[subset_str] = np.log(learn.n_stagings(list(subset),
                                                                  staging_lev,
