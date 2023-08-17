@@ -321,10 +321,21 @@ def move_up(node_index,
     tmp2 = node_scores[node_index+1]
 
     #print("order {}".format(order))
-    pred1 = sc.list_to_score_key(order[:node_index])
-    pred2 = sc.list_to_score_key(order[:node_index+1])
-    node_scores[node_index] = score_table[order[node_index]][pred1]
-    node_scores[node_index+1] = score_table[order[node_index+1]][pred2]
+    node1 = order[node_index]
+    node2 = order[node_index+1]
+    #active_cvars1 = list(set(order[:node_index]) & set(score_table["poss_cvars"][node1]))
+    active_cvars1 = [v for v in order[:node_index] if v in score_table["poss_cvars"][node1]]
+    
+    #active_cvars2 = list(order[:node_index+1] & set(score_table["poss_cvars"][node2]))
+    active_cvars2 = [v for v in order[:node_index+1] if v in score_table["poss_cvars"][node2]]
+    pred1 = sc.list_to_score_key(active_cvars1)
+    pred2 = sc.list_to_score_key(active_cvars2)
+    
+    #pred1 = sc.list_to_score_key(order[:node_index])
+    #pred2 = sc.list_to_score_key(order[:node_index+1])
+
+    node_scores[node_index] = score_table["scores"][order[node_index]][pred1]
+    node_scores[node_index+1] = score_table["scores"][order[node_index+1]][pred2]
 
     orderscore += node_scores[node_index] + \
         node_scores[node_index+1] - tmp1 - tmp2
@@ -344,11 +355,17 @@ def move_down(node_index,
     # move the node
     order.insert(node_index-1, order.pop(node_index))
 
-    pred1 = sc.list_to_score_key(order[:node_index])
-    pred2 = sc.list_to_score_key(order[:node_index-1])
+    active_cvars1 = [v for v in order[:node_index] if v in score_table["poss_cvars"][order[node_index]]]
+    active_cvars2 = [v for v in order[:node_index-1] if v in score_table["poss_cvars"][order[node_index-1]]]
 
-    node_scores[node_index] = score_table[order[node_index]][pred1]
-    node_scores[node_index-1] = score_table[order[node_index-1]][pred2]
+    # pred1 = sc.list_to_score_key(order[:node_index])
+    # pred2 = sc.list_to_score_key(order[:node_index-1])
+    
+    pred1 = sc.list_to_score_key(active_cvars1)
+    pred2 = sc.list_to_score_key(active_cvars2)
+
+    node_scores[node_index] = score_table["scores"][order[node_index]][pred1]
+    node_scores[node_index-1] = score_table["scores"][order[node_index-1]][pred2]
 
     orderscore += node_scores[node_index] + \
         node_scores[node_index-1] - tmp1 - tmp2
@@ -408,10 +425,10 @@ def gibbs_order_sampler(iterations, score_table):
 
     order_trajectory = []
     #p = data.shape[1]
-    p = len(score_table)
+    p = len(score_table["scores"])
 
     #order = list(data.columns.values)  # list(range(p))
-    order = list(score_table.keys()) #list(data.columns.values)  # list(range(p))
+    order = list(score_table["scores"].keys()) #list(data.columns.values)  # list(range(p))
     random.shuffle(order)
     print("initial order: {}".format(order))
     scores = []
@@ -423,7 +440,7 @@ def gibbs_order_sampler(iterations, score_table):
 
         #print("node: {} ".format(order[i]))
         #print("subset: {}".format(subset_str))
-        node_scores[i] = score_table[order[i]][subset_str]
+        node_scores[i] = score_table["scores"][order[i]][subset_str]
         #print("node score: {}".format(node_scores[i]))
         #rint("check: {}".format(check))
 
@@ -542,6 +559,6 @@ def find_optimal_cstree(data, max_cvars=1, alpha_tot=1, method="BDeu"):
     opt_order, _ = _find_optimal_order(score_table)
 
     opttree = _optimal_cstree_given_order(opt_order, context_scores,
-                                          max_cvars=max_cvars, poss_cvars=[])
+                                          max_cvars=max_cvars)
 
     return opttree
