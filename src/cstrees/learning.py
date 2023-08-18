@@ -212,8 +212,8 @@ def _optimal_cstree_given_order(order, context_scores, max_cvars=2):
     stages = {}
     stages[-1] = [stl.Stage([], color="black")]
     for level in range(-1, p-1):  # dont stage the last level
-        #print("\nstaging level: {}".format(level))
-        #print("var {} (one level above)".format(order[level+1]))
+        print("\nstaging level: {}".format(level))
+        print("var {} (one level above)".format(order[level+1]))
         #print("potential cvars of {}: {}".format(order[level+1], context_scores["poss_cvars"][order[level+1]]) )
         max_staging, max_staging_score = _optimal_staging_at_level(
             order, context_scores, level, max_cvars=max_cvars, poss_cvars=context_scores["poss_cvars"][order[level+1]])

@@ -368,7 +368,7 @@ def stage_to_context_key(stage: st.Stage, labels: list):
     return stage_context
 
 
-def log_n_stagings_tables(labels, cards_dict, max_cvars=2):
+def log_n_stagings_tables(labels, cards_dict, poss_cvars, max_cvars=2):
     n_stagings = {}
 
     # the number of staging for a set of cardinalities [2,3,2] should be
@@ -376,7 +376,7 @@ def log_n_stagings_tables(labels, cards_dict, max_cvars=2):
 
     for var in tqdm(labels, desc="Creating #stagings tables"):
         # all cards except the current one
-        cur_cards = [cards_dict[l] for l in labels if l != var]
+        cur_cards = [cards_dict[l] for l in labels if (l != var) and (l in poss_cvars[var])]
         for subset in csi_rel._powerset(cur_cards):
             staging_lev = len(subset) - 1
             subset_str = list_to_score_key(list(subset))
@@ -412,7 +412,7 @@ def order_score_tables(data: pd.DataFrame,
     cards_dict = {var: data.loc[0, var] for var in data.columns}
 
     log_n_stagings = log_n_stagings_tables(
-        labels, cards_dict, max_cvars=max_cvars)
+        labels, cards_dict, poss_cvars, max_cvars=max_cvars)
 
     p = data.shape[1]
     # print(p)
