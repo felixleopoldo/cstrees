@@ -419,12 +419,13 @@ def order_score_tables(data: pd.DataFrame,
     order_scores["scores"] = {var: {} for var in labels}
     for var in tqdm(labels, desc="Order score tables"):
         
-        print("var: {}".format(var))
+        print("\n\n****** var: {}".format(var))
         # Ths subset are the variables before var in the order
         # TODO: possible to restrict to some variables?
         #for subset in csi_rel._powerset(set(labels) - {var}):
         #for subset in csi_rel._powerset((set(labels) - {var}) & set(poss_cvars[var])):
         for subset in csi_rel._powerset(poss_cvars[var]):
+            
         # TODO: It should sum over all the subsets for each subset. This could be done faster using
         # Hasse diagrams. It can also be done like now, to get all stagings for each subset.
         # It will recompute stuff, but it should work.
@@ -436,7 +437,7 @@ def order_score_tables(data: pd.DataFrame,
             #print("`staging level`: {}".format(staging_level))
             #print("subset: {}".format(subset))
             subset_str = list_to_score_key(list(subset))
-            #print("subset_str: {}".format(subset_str))
+            print("subset_str: {}".format(subset_str))
             # BUG: This breaks when maxl #cvars =1 and possible cvars set size is 2
             order_scores["scores"][var][subset_str] = 0
             cards = [cards_dict[l] for l in subset]
@@ -460,10 +461,11 @@ def order_score_tables(data: pd.DataFrame,
                     staging_marg_lik = context_scores["scores"][var]["None"]
 
                 # score all stages in the staging
+                print("\nstaging : ", i)
                 for stage in staging:
                     #print("stage: {}".format(stage))
                     stage_context = stage_to_context_key(stage, subset) # OK! even when restricting to some possible cvars
-                    
+                    print("stage_context: {}".format(stage_context))
                     
                     staging_marg_lik += context_scores["scores"][var][stage_context]
 
@@ -479,6 +481,7 @@ def order_score_tables(data: pd.DataFrame,
             log_unnorm_post = order_scores["scores"][var][subset_str] + \
                 log_staging_prior + log_level_prior
             order_scores["scores"][var][subset_str] = log_unnorm_post
+            print(order_scores["scores"][var][subset_str])
 
     return order_scores, context_scores, context_counts
 
