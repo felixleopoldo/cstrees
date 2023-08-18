@@ -69,41 +69,41 @@ def all_stagings(cards, level, max_cvars=1, poss_cvars=[]):
     
     assert level < len(cards)
     #assert level < len(cards)-1
-    # if max_cvars == 1: # I guess this is not needed as a special case anymore, Alex?
-    #     if level == -1:  # This is an imaginary level -1, it has no stages.
-    #         yield [stl.Stage([])]
-    #         return
+    if max_cvars == 1: # I guess this is not needed as a special case anymore, Alex?
+        if level == -1:  # This is an imaginary level -1, it has no stages.
+            yield [stl.Stage([])]
+            return
 
-    #     # All possible values for each variable
+        # All possible values for each variable
 
-    #     vals = [list(range(cards[lev])) for lev in range(len(cards))]
-    #     for k in range(level+1):  # all variables up to l can be context variables
-    #         # When we restrict to max_cvars = 1, we have two cases:
-    #         # Either all are in 1 color or all are in 2 different colors.
-    #         stlist = []  # The staging: list of stl.Stages.
-    #         # Loop through the values of the context variables.
-    #         for v in vals[k]:
-    #             left = [set(vals[i]) for i in range(k)]
-    #             right = [set(vals[j]) for j in range(k+1, level+1)]
-    #             # For example: [{0,1}, {0,1}, 0, {0, 1}]
-    #             stagelistrep = left + [v] + right
-    #             st = stl.Stage(stagelistrep)
-    #             stlist += [st]
-    #         yield stlist
+        vals = [list(range(cards[lev])) for lev in range(len(cards))]
+        for k in range(level+1):  # all variables up to l can be context variables
+            # When we restrict to max_cvars = 1, we have two cases:
+            # Either all are in 1 color or all are in 2 different colors.
+            stlist = []  # The staging: list of stl.Stages.
+            # Loop through the values of the context variables.
+            for v in vals[k]:
+                left = [set(vals[i]) for i in range(k)]
+                right = [set(vals[j]) for j in range(k+1, level+1)]
+                # For example: [{0,1}, {0,1}, 0, {0, 1}]
+                stagelistrep = left + [v] + right
+                st = stl.Stage(stagelistrep)
+                stlist += [st]
+            yield stlist
 
-    #     # The staging with no context variables
-    #     stagelistrep = [set(v) for v in vals][:level+1]
+        # The staging with no context variables
+        stagelistrep = [set(v) for v in vals][:level+1]
 
-    #     st = stl.Stage(stagelistrep)
-    #     yield [st]
-    #elif max_cvars == 2:
+        st = stl.Stage(stagelistrep)
+        yield [st]
+    elif max_cvars == 2:
 
-    if max_cvars <= 2:
+#    if max_cvars <= 2:
         from cstrees.double_cvar_stagings import codim_max2_boxes
         if level == -1:  # This is an imaginary level -1, it has no stages.
             yield [stl.Stage([])]
             return
-        
+        # BUG: Should also provide max_cvars!!
         for staging_list in codim_max2_boxes(cards[:level+1], splittable_coords=poss_cvars):
 
             staging = []
@@ -178,7 +178,8 @@ def _optimal_staging_at_level(order, context_scores, level, max_cvars=2, poss_cv
                 staging_score = context_scores["scores"][var]["None"]
                 continue
             # here we (=I) anyway extract just the context, so the stage format is a bit redundant.
-            stage_context = sc.stage_to_context_key(stage, order)
+            stage_context = sc.stage_to_context_key(stage, order) # BUG: something wrong somewhere
+            print(stage_context)
             score = context_scores["scores"][var][stage_context]
             staging_score += score
         
@@ -440,8 +441,9 @@ def gibbs_order_sampler(iterations, score_table):
         
         subset_str = sc.list_to_score_key(list(set(order[:i]) & set(score_table["poss_cvars"][order[i]])))
 
-        #print("node: {} ".format(order[i]))
-        #print("subset: {}".format(subset_str))
+        print("node: {} ".format(order[i]))
+        print("subset: {}".format(subset_str))
+        print(score_table["scores"][order[i]])
         node_scores[i] = score_table["scores"][order[i]][subset_str]
         #print("node score: {}".format(node_scores[i]))
         #rint("check: {}".format(check))

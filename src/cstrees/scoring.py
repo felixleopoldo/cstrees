@@ -395,7 +395,7 @@ def order_score_tables(data: pd.DataFrame,
                        alpha_tot=1.0, method="BDeu"):
 
     
-
+    print(max_cvars)
 
     labels = list(data.columns)
 
@@ -421,17 +421,25 @@ def order_score_tables(data: pd.DataFrame,
     order_scores["scores"] = {var: {} for var in labels}
     for var in tqdm(labels, desc="Order score tables"):
         
-        #print("VARIABLE: {}".format(var))
+        print("VARIABLE: {}".format(var))
         # Ths subset are the variables before var in the order
         # TODO: possible to restrict to some variables?
         #for subset in csi_rel._powerset(set(labels) - {var}):
-        for subset in csi_rel._powerset((set(labels) - {var}) & set(poss_cvars[var])):
+        #for subset in csi_rel._powerset((set(labels) - {var}) & set(poss_cvars[var])):
+        for subset in csi_rel._powerset(poss_cvars[var]):
+        # TODO: It should sum over all the subsets for each subset. This could be done faster using
+        # Hasse diagrams. It can also be done like now, to get all stagings for each subset.
+        # It will recompute stuff, but it should work.
+        
+        #for max_cvar in range(0, min(p, max_cvars)+1):
+        #for subset in itertools.combinations(poss_cvars[var], max_cvar):
             # choosing one representative for each subset
             staging_level = len(subset)-1
             #print("`staging level`: {}".format(staging_level))
-
+            print("subset: {}".format(subset))
             subset_str = list_to_score_key(list(subset))
-
+            print("subset_str: {}".format(subset_str))
+            # BUG: This breaks when maxl #cvars =1 and possible cvars set size is 2
             order_scores["scores"][var][subset_str] = 0
             cards = [cards_dict[l] for l in subset]
             #subset_label_inds = [i for i,j in enumerate(labels) if j in subset]
@@ -441,18 +449,24 @@ def order_score_tables(data: pd.DataFrame,
             #for i, staging in enumerate(learn.all_stagings(cards, staging_level, max_cvars)):
             # Get the indices of the possible context variables
 
-             # INFO: all_stagings doesnt know about any labels! 
-             # possible BUG, mixing labels when using possible cvars.
+            # INFO: all_stagings doesnt know about any labels! 
+            # possible BUG, mixing labels when using possible cvars.
 
-            for i, staging in enumerate(learn.all_stagings(cards, staging_level, max_cvars)):#, poss_cvars=subset_label_inds)):
+            #for i, staging in enumerate(learn.all_stagings(cards, staging_level, max_cvars)):#, poss_cvars=subset_label_inds)):
+            for i, staging in enumerate(learn.all_stagings(cards, staging_level, max_cvars=max_cvars)):#, poss_cvars=subset_label_inds)):
 
                 staging_marg_lik = 0
 
+                # this is for the level -1 
                 if staging == []:  # special case at level -1
                     staging_marg_lik = context_scores["scores"][var]["None"]
 
+                # score all stages in the staging
                 for stage in staging:
+                    print("stage: {}".format(stage))
                     stage_context = stage_to_context_key(stage, subset) # OK! even when restricting to some possible cvars
+                    
+                    
                     staging_marg_lik += context_scores["scores"][var][stage_context]
 
                 if i == 0:  # this is for the log sum trick. It needs a starting scores.
