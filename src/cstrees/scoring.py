@@ -394,9 +394,6 @@ def order_score_tables(data: pd.DataFrame,
                        poss_cvars=None,
                        alpha_tot=1.0, method="BDeu"):
 
-    
-    print(max_cvars)
-
     labels = list(data.columns)
 
     # If poss_cvars is None, then all variables are possible context variables
@@ -417,11 +414,12 @@ def order_score_tables(data: pd.DataFrame,
     p = data.shape[1]
     # print(p)
     order_scores = {}
+    order_scores["max_cvars"] = max_cvars
     order_scores["poss_cvars"] = poss_cvars
     order_scores["scores"] = {var: {} for var in labels}
     for var in tqdm(labels, desc="Order score tables"):
         
-        print("VARIABLE: {}".format(var))
+        print("var: {}".format(var))
         # Ths subset are the variables before var in the order
         # TODO: possible to restrict to some variables?
         #for subset in csi_rel._powerset(set(labels) - {var}):
@@ -436,9 +434,9 @@ def order_score_tables(data: pd.DataFrame,
             # choosing one representative for each subset
             staging_level = len(subset)-1
             #print("`staging level`: {}".format(staging_level))
-            print("subset: {}".format(subset))
+            #print("subset: {}".format(subset))
             subset_str = list_to_score_key(list(subset))
-            print("subset_str: {}".format(subset_str))
+            #print("subset_str: {}".format(subset_str))
             # BUG: This breaks when maxl #cvars =1 and possible cvars set size is 2
             order_scores["scores"][var][subset_str] = 0
             cards = [cards_dict[l] for l in subset]
@@ -463,7 +461,7 @@ def order_score_tables(data: pd.DataFrame,
 
                 # score all stages in the staging
                 for stage in staging:
-                    print("stage: {}".format(stage))
+                    #print("stage: {}".format(stage))
                     stage_context = stage_to_context_key(stage, subset) # OK! even when restricting to some possible cvars
                     
                     
