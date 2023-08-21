@@ -20,8 +20,7 @@ def codim_max2_boxes(
     when making subdivisions; interpreted as indices of possible
     context variables.
     """
-    
-    
+
     box = [set(range(card)) for card in cards]
 
     codim_0_box = [box]
@@ -59,7 +58,22 @@ def codim_max2_boxes(
 def codim_1_subdivs(
     box: list, splittable_dims: Iterable[int], splittable_subboxes: list = []
 ) -> Generator:
-    """Enumerate codimension-1 subdivisions of the given (subdivision of a) box."""
+    """Enumerate codimension-1 subdivisions of the given (subdivision of a) box.
+    
+    Args:
+        box: Box to be subdivided
+        splittable_dims: Coordinates of box considered for splitting when making subdivisions; interpreted as indices of possible context variables.
+        splittable_subboxes: 
+    """
+    dim = len(box)
+    
+    if len(splittable_dims) == 0:
+        splittable_dims = range(dim)
+
+    print("box", box)
+    print("splittable_dims", splittable_dims)
+    print("splittable_subboxes", splittable_subboxes)
+    
     if len(splittable_subboxes) == 0:
         splittable_subboxes = list(range(len(box)))
     for dims_to_split in product(*(splittable_dims for _ in splittable_subboxes)):
