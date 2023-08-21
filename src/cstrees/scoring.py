@@ -436,15 +436,22 @@ def order_score_tables(data: pd.DataFrame,
             #print("subset: {}".format(subset))
             subset_str = list_to_score_key(list(subset))
             print("subset_str: {}".format(subset_str))
-            order_scores["scores"][var][subset_str] = 0
+            
             cards = [cards_dict[l] for l in subset]
+
+            # Te prior is uniform voer all stagings so we have it outside (ok?)
+            cards_str = list_to_score_key(cards[:staging_level+1])
+            log_staging_prior = -log_n_stagings[cards_str]
+            log_level_prior = -np.log(p - staging_level-1) # bug. should check the level.
 
             for i, staging in enumerate(learn.all_stagings(cards, staging_level, max_cvars=max_cvars)):#, poss_cvars=subset_label_inds)):
                 
-                staging_marg_lik = 0
+                #staging_marg_lik = 0
+                staging_unnorm_post = log_level_prior + log_staging_prior
                 # this is for the level -1 
                 if staging == []:  # special case at level -1
-                    staging_marg_lik = context_scores["scores"][var]["None"]
+                    #staging_marg_lik = context_scores["scores"][var]["None"]
+                    staging_unnorm_post += context_scores["scores"][var]["None"]
 
                 # Sum log-marginal likelihood of all stages in the staging
                 
@@ -455,30 +462,34 @@ def order_score_tables(data: pd.DataFrame,
                     stage_context = stage_to_context_key(stage, subset) # OK! even when restricting to some possible cvars
                     print("stage_context: {}".format(stage_context))
                     
-                    staging_marg_lik += context_scores["scores"][var][stage_context]
-                    print("staging_marg_lik: {}".format(staging_marg_lik))
+                    #staging_marg_lik += context_scores["scores"][var][stage_context]
+                    staging_unnorm_post += context_scores["scores"][var][stage_context]
+                    #print("staging_marg_lik: {}".format(staging_marg_lik))
+                    print("staging_unorm_post: {}".format(staging_unnorm_post))
 
-                # \sum 
-                
+
                 # Add (sum) the marginal likelihood of the staging to the other ones.
-                if i == 0:  
+#                if i == 0:  
                     # this is for the log sum trick. It needs a starting scores.
-                    order_scores["scores"][var][subset_str] = staging_marg_lik
-                else:
+                    # Maybe this could be the prior?
+ #                   order_scores["scores"][var][subset_str] = staging_marg_lik
+  #              else:
                     # Sum marginal likelihoods of all stagings
+                #order_scores["scores"][var][subset_str] = logsumexp(
+                #    [order_scores["scores"][var][subset_str], staging_marg_lik])
+                
+                if i == 0:
+                    order_scores["scores"][var][subset_str] = staging_unnorm_post
+                else:
                     order_scores["scores"][var][subset_str] = logsumexp(
-                        [order_scores["scores"][var][subset_str], staging_marg_lik])
+                        [order_scores["scores"][var][subset_str], staging_unnorm_post])
 
-            # Te prior is uniform voer all stagings so we have it outside (ok?)
-            cards_str = list_to_score_key(cards[:staging_level+1])
-            log_staging_prior = -log_n_stagings[cards_str]
-            log_level_prior = -np.log(p - staging_level-1)
 
             # Adding the prior to get the (unnormalized) posterior
-            log_unnorm_post = order_scores["scores"][var][subset_str] + \
-                log_staging_prior + log_level_prior
+            #log_unnorm_post = order_scores["scores"][var][subset_str] + \
+            #    log_staging_prior + log_level_prior
             # Adding to the order score
-            order_scores["scores"][var][subset_str] = log_unnorm_post
+            #order_scores["scores"][var][subset_str] = log_unnorm_post
             print("staging score: ", order_scores["scores"][var][subset_str])
 
     return order_scores, context_scores, context_counts
