@@ -469,7 +469,7 @@ def order_score_tables(data: pd.DataFrame,
                     order_scores["scores"][var][subset_str] = logsumexp(
                         [order_scores["scores"][var][subset_str], staging_marg_lik])
 
-            
+            # Te prior is uniform voer all stagings so we have it outside (ok?)
             cards_str = list_to_score_key(cards[:staging_level+1])
             log_staging_prior = -log_n_stagings[cards_str]
             log_level_prior = -np.log(p - staging_level-1)
