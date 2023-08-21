@@ -427,10 +427,10 @@ def order_score_tables(data: pd.DataFrame,
         #for subset in csi_rel._powerset((set(labels) - {var}) & set(poss_cvars[var])):
         for subset in csi_rel._powerset(poss_cvars[var]):
             
-        # TODO: It should sum over all the subsets for each subset. This could be done faster using
-        # Hasse diagrams. It can also be done like now, to get all stagings for each subset.
-        # It will recompute stuff, but it should work.
-        
+            # TODO: It should sum over all the subsets for each subset. This could be done faster using
+            # Hasse diagrams. It can also be done like now, to get all stagings for each subset.
+            # It will recompute stuff, but it should work.
+            
             staging_level = len(subset)-1
             print("`staging level`: {}".format(staging_level))
             #print("subset: {}".format(subset))
@@ -446,7 +446,9 @@ def order_score_tables(data: pd.DataFrame,
                 if staging == []:  # special case at level -1
                     staging_marg_lik = context_scores["scores"][var]["None"]
 
-                # score all stages in the staging
+                # Sum log-marginal likelihood of all stages in the staging
+                
+                # prod L(T|X)
                 print("\nstaging : ", i)
                 for stage in staging:
                     print("stage: {}".format(stage))
@@ -455,17 +457,27 @@ def order_score_tables(data: pd.DataFrame,
                     
                     staging_marg_lik += context_scores["scores"][var][stage_context]
                     print("staging_marg_lik: {}".format(staging_marg_lik))
-                if i == 0:  # this is for the log sum trick. It needs a starting scores.
+
+                # \sum 
+                
+                # Add (sum) the marginal likelihood of the staging to the other ones.
+                if i == 0:  
+                    # this is for the log sum trick. It needs a starting scores.
                     order_scores["scores"][var][subset_str] = staging_marg_lik
                 else:
+                    # Sum marginal likelihoods of all stagings
                     order_scores["scores"][var][subset_str] = logsumexp(
                         [order_scores["scores"][var][subset_str], staging_marg_lik])
 
+            
             cards_str = list_to_score_key(cards[:staging_level+1])
             log_staging_prior = -log_n_stagings[cards_str]
             log_level_prior = -np.log(p - staging_level-1)
+
+            # Adding the prior to get the (unnormalized) posterior
             log_unnorm_post = order_scores["scores"][var][subset_str] + \
                 log_staging_prior + log_level_prior
+            # Adding to the order score
             order_scores["scores"][var][subset_str] = log_unnorm_post
             print("staging score: ", order_scores["scores"][var][subset_str])
 

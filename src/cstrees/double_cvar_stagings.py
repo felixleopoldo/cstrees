@@ -9,7 +9,7 @@ def num_stagings(lvl: int) -> int:
 
 
 def codim_max2_boxes(
-    cards: Iterable, splittable_coords: Iterable[int] = []
+    cards: Iterable, splittable_coords: Iterable[int] = [], max1cvar=False
 ) -> Generator:
     """Enumerate ways of subdividing a given box; interpreted as stagings at given level of CStree.
 
@@ -40,7 +40,9 @@ def codim_max2_boxes(
     )
     for poss_split_dims, cd1_subdiv in z_cd1_subdivs:
         yield cd1_subdiv
-
+        if max1cvar:
+            continue
+        
         num_cd1_boxes = len(cd1_subdiv)
         for subset_size in range(1, num_cd1_boxes):
             subsets = combinations(range(num_cd1_boxes), subset_size)
@@ -65,15 +67,7 @@ def codim_1_subdivs(
         splittable_dims: Coordinates of box considered for splitting when making subdivisions; interpreted as indices of possible context variables.
         splittable_subboxes: 
     """
-    dim = len(box)
-    
-    if len(splittable_dims) == 0:
-        splittable_dims = range(dim)
 
-    print("box", box)
-    print("splittable_dims", splittable_dims)
-    print("splittable_subboxes", splittable_subboxes)
-    
     if len(splittable_subboxes) == 0:
         splittable_subboxes = list(range(len(box)))
     for dims_to_split in product(*(splittable_dims for _ in splittable_subboxes)):

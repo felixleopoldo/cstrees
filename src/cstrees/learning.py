@@ -68,65 +68,13 @@ def all_stagings(cards, level, max_cvars=1, poss_cvars=[]):
     """
     
     assert level < len(cards)
-    #assert level < len(cards)-1
-    # if max_cvars == 1: # I guess this is not needed as a special case anymore, Alex?
-    #     if level == -1:  # This is an imaginary level -1, it has no stages.
-    #         yield [stl.Stage([])]
-    #         return
 
-    #     # All possible values for each variable
-
-    #     vals = [list(range(cards[lev])) for lev in range(len(cards))]
-    #     for k in range(level+1):  # all variables up to l can be context variables
-    #         # When we restrict to max_cvars = 1, we have two cases:
-    #         # Either all are in 1 color or all are in 2 different colors.
-    #         stlist = []  # The staging: list of stl.Stages.
-    #         # Loop through the values of the context variables.
-    #         for v in vals[k]:
-    #             left = [set(vals[i]) for i in range(k)]
-    #             right = [set(vals[j]) for j in range(k+1, level+1)]
-    #             # For example: [{0,1}, {0,1}, 0, {0, 1}]
-    #             stagelistrep = left + [v] + right
-    #             st = stl.Stage(stagelistrep)
-    #             stlist += [st]
-    #         yield stlist
-
-    #     # The staging with no context variables
-    #     stagelistrep = [set(v) for v in vals][:level+1]
-
-    #     st = stl.Stage(stagelistrep)
-    #     yield [st]
-    # elif max_cvars == 2:
-    if max_cvars == 1:
-        print("max_cvars: {}".format(max_cvars))
-        print("poss_cvars: {}".format(poss_cvars))
-        #raise NotImplementedError("max_cvars <= 1 not implemented yet")
-        from cstrees.double_cvar_stagings import codim_1_subdivs
-        if level == -1:  # This is an imaginary level -1, it has no stages.
-            yield [stl.Stage([])]
-            return
-        # BUG: Should also provide max_cvars!!
-        for staging_list in codim_1_subdivs(box=[set(range(c)) for c in cards[:level+1]], 
-                                            splittable_dims=poss_cvars):
-
-            staging = []
-            for stage_list in staging_list:
-                # Fix repr bug
-                if isinstance(stage_list, set):
-                    stage_list = [stage_list]
-
-                # could set colors here cut that takes time maybe.
-                stage = stl.Stage(stage_list)
-                staging.append(stage)
-            yield staging
-        
-    elif max_cvars == 2:
+    if max_cvars <= 2:
         from cstrees.double_cvar_stagings import codim_max2_boxes
         if level == -1:  # This is an imaginary level -1, it has no stages.
             yield [stl.Stage([])]
             return
-        # BUG: Should also provide max_cvars!!
-        for staging_list in codim_max2_boxes(cards[:level+1], splittable_coords=poss_cvars):
+        for staging_list in codim_max2_boxes(cards[:level+1], splittable_coords=poss_cvars, max1cvar=(max_cvars==1)):
 
             staging = []
             for stage_list in staging_list:
@@ -134,7 +82,7 @@ def all_stagings(cards, level, max_cvars=1, poss_cvars=[]):
                 if isinstance(stage_list, set):
                     stage_list = [stage_list]
 
-                # could set colors here cut that takes time maybe.
+                # Could set colors here but that takes time maybe.
                 stage = stl.Stage(stage_list)
                 staging.append(stage)
             yield staging
@@ -587,7 +535,6 @@ def find_optimal_cstree(data, max_cvars=1, alpha_tot=1, method="BDeu"):
     
     opt_order, _ = _find_optimal_order(score_table)
 
-    opttree = _optimal_cstree_given_order(opt_order, context_scores,
-                                          max_cvars=max_cvars)
+    opttree = _optimal_cstree_given_order(opt_order, context_scores)
 
     return opttree
