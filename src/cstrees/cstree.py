@@ -603,7 +603,7 @@ def sample_cstree(cards: list, max_cvars: int, prob_cvar: int,
 
     stagings = {}
     for level, val in enumerate(cards[:-1]):  # not the last level
-        print("level {}".format(level))
+        #print("level {}".format(level))
         # fix max_context_vars if higher than level
         #print("level {}".format(level))
         stage_space = [st.Stage([set(range(cards[l])) for l in cards[:level+1]])]

@@ -273,6 +273,7 @@ def score_tables(data: pd.DataFrame,
     scores["cards"] = cards_dict
     scores["scores"] = {lab: {} for lab in data.columns}
 
+
     counts = {}
     counts["cards"] = cards_dict
     counts["var_counts"] = {lab: {} for lab in data.columns}
@@ -295,7 +296,7 @@ def score_tables(data: pd.DataFrame,
             for context_variables in combinations([l for l in labels if l in poss_cvars[var]], csize):
                 #print("context variables: {}".format(context_variables))
                 # get the active labels like A,B,C
-                active_labels = [l for l in labels if l in context_variables]
+                active_labels = sorted([l for l in labels if l in context_variables])                
                 tmp = {c: None for c in active_labels}
 
                 #print("active labels: {}".format(active_labels))
@@ -305,11 +306,13 @@ def score_tables(data: pd.DataFrame,
                     test = data[1:].groupby(active_labels)[var].value_counts()
                 # print(test)
 
+                # get the counts
                 testdf = test.to_frame().rename(
                     columns={var: str(var)+" counts"})
                 for index, r in testdf.iterrows():
                     value = None
 
+                    # Sort variables
                     context = ""
                     if len(active_labels) > 0:
                         for cvarind, val in enumerate(index[:-1]):
@@ -332,7 +335,7 @@ def score_tables(data: pd.DataFrame,
             score = score_context(var, count_context, active_labels, cards_dict,
                                   counts["var_counts"], alpha_tot=alpha_tot, method=method)
             scores["scores"][var][count_context] = score
-
+    
     # print("counts:")
     # pp(counts)
     return scores, counts
@@ -405,6 +408,8 @@ def order_score_tables(data: pd.DataFrame,
 
     context_scores["max_cvars"] = max_cvars
     context_scores["poss_cvars"] = poss_cvars
+    
+    #pp(context_scores)
     #print("labels: {}".format(labels))
     cards_dict = {var: data.loc[0, var] for var in data.columns}
 
