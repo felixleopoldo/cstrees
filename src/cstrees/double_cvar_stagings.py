@@ -29,7 +29,9 @@ def codim_max2_boxes(
     degen = False
 
     dim = len(box)
-    if len(splittable_coords) == 0:
+    #if len(splittable_coords) == 0:
+    print("splittable_coords", splittable_coords)
+    if splittable_coords is None:
         splittable_coords = range(dim)
     sub_split_len = len(splittable_coords) - 1
     sub_splittable_coords = reversed(

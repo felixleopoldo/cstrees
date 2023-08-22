@@ -9,7 +9,7 @@ import cstrees.stage as stl
 import cstrees.scoring as sc
 
 
-def all_stagings(cards, level, max_cvars=1, poss_cvars=[]):
+def all_stagings(cards, level, max_cvars=1, poss_cvars=None):
     """ Returns a generator over all stagings of a given level.
 
     Args:
@@ -134,10 +134,14 @@ def _optimal_staging_at_level(order, context_scores, level, max_cvars=2, poss_cv
     cards = [context_scores["cards"][var] for var in order]
     
     var = order[level+1] 
-   
+    print("var: {}".format(var))
     poss_cvars_inds = [i for i,j in enumerate(order) if j in poss_cvars and i<=level]
-    #print("poss cvars inds: {}".format(poss_cvars_inds))
-    stagings = all_stagings(cards, level, max_cvars, poss_cvars=poss_cvars_inds)
+    print("poss cvars inds: {}".format(poss_cvars_inds))
+    # BUG: here it is actually []. But is gives all...
+    if len(poss_cvars_inds) > 0:
+        stagings = all_stagings(cards, level, max_cvars, poss_cvars=poss_cvars_inds)
+    else:
+        stagings = [[stl.Stage([])]]
     max_staging = None
     max_staging_score = -np.inf
     
@@ -147,7 +151,7 @@ def _optimal_staging_at_level(order, context_scores, level, max_cvars=2, poss_cv
             if stage.level == -1:
                 staging_score = context_scores["scores"][var]["None"]
                 continue
-            #print("stage: {}".format(stage))
+            print("stage: {}".format(stage))
             # here we (=I) anyway extract just the context, so the stage format is a bit redundant.
             stage_context = sc.stage_to_context_key(stage, order) # BUG: something wrong somewhere
             #print(stage_context)
