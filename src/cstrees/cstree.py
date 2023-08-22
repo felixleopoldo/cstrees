@@ -310,9 +310,12 @@ class CStree:
                 
                 
                 if (stage != None):  # No singleton stages allowed!
-                    prob = stage.probs[to[-1]]
-                    self.tree[fr][to]["cond_prob"] = prob
-                    self.tree[fr][to]["label"] = round(prob, 2)
+                    if (stage.probs is not None) and (to[-1] in stage.probs):
+                        prob = stage.probs[to[-1]]
+                    if "cond_prob" in self.tree[fr][to]:
+                        
+                        self.tree[fr][to]["cond_prob"] = prob
+                        self.tree[fr][to]["label"] = round(prob, 2)
                     self.tree[fr][to]["color"] = stage.color
                     self.tree.nodes[fr]["color"] = stage.color
                 
