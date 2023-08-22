@@ -108,7 +108,7 @@ def n_stagings(cards, level, max_cvars=1):
 
     """
 
-    stagings = all_stagings(cards, level, max_cvars)
+    stagings = all_stagings(cards, level, max_cvars=max_cvars)
 
     return sum(1 for _ in stagings)
 
@@ -147,10 +147,10 @@ def _optimal_staging_at_level(order, context_scores, level, max_cvars=2, poss_cv
             if stage.level == -1:
                 staging_score = context_scores["scores"][var]["None"]
                 continue
-            print("stage: {}".format(stage))
+            #print("stage: {}".format(stage))
             # here we (=I) anyway extract just the context, so the stage format is a bit redundant.
             stage_context = sc.stage_to_context_key(stage, order) # BUG: something wrong somewhere
-            print(stage_context)
+            #print(stage_context)
             score = context_scores["scores"][var][stage_context]
             staging_score += score
         
@@ -175,12 +175,7 @@ def _optimal_cstree_given_order(order, context_scores):
 
     """
 
-    # BUG?: Maybe these have to be adapted to the order.
-    #cards = data.iloc[0].values
-    #cards = data.loc[0, order]
-    #cards_dict = {var: card for var, card in zip(order, cards)}
     p = len(order)
-    #print("order: {}".format(order))
     stages = {}
     stages[-1] = [stl.Stage([], color="black")]
     for level in range(-1, p-1):  # dont stage the last level
@@ -414,9 +409,9 @@ def gibbs_order_sampler(iterations, score_table):
         
         subset_str = sc.list_to_score_key(list(set(order[:i]) & set(score_table["poss_cvars"][order[i]])))
 
-        print("node: {} ".format(order[i]))
-        print("subset: {}".format(subset_str))
-        print(score_table["scores"][order[i]])
+        #print("node: {} ".format(order[i]))
+        #print("subset: {}".format(subset_str))
+        #print(score_table["scores"][order[i]])
         node_scores[i] = score_table["scores"][order[i]][subset_str]
         #print("node score: {}".format(node_scores[i]))
         #rint("check: {}".format(check))
@@ -450,10 +445,10 @@ def gibbs_order_sampler(iterations, score_table):
 
         neworder = order_trajectory[i-1].copy()
         orderscore = move_node(node_index, new_pos,
-                  neworder,
-                  scores[i-1],
-                  node_scores,
-                  score_table)
+                                neworder,   
+                                scores[i-1],
+                                node_scores,
+                                score_table)
         #print("order: {}".format(neworder))
         #print("score: {}".format(orderscore))
         order_trajectory.append(neworder)

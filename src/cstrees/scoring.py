@@ -381,7 +381,6 @@ def log_n_stagings_tables(labels, cards_dict, poss_cvars, max_cvars=2):
             staging_lev = len(subset) - 1
             subset_str = list_to_score_key(list(subset))
 
-            # BUG: Has to be adjusted for poss cvars.
             if subset_str not in n_stagings:
                 n_stagings[subset_str] = np.log(learn.n_stagings(list(subset),
                                                                  staging_lev,
@@ -420,22 +419,16 @@ def order_score_tables(data: pd.DataFrame,
     order_scores["scores"] = {var: {} for var in labels}
     for var in tqdm(labels, desc="Order score tables"):
         
-        print("\n\n****** var: {}".format(var))
+        #print("\n\n****** var: {}".format(var))
         # Ths subset are the variables before var in the order
-        # TODO: possible to restrict to some variables?
-        #for subset in csi_rel._powerset(set(labels) - {var}):
-        #for subset in csi_rel._powerset((set(labels) - {var}) & set(poss_cvars[var])):
         for subset in csi_rel._powerset(poss_cvars[var]):
-            
-            # TODO: It should sum over all the subsets for each subset. This could be done faster using
-            # Hasse diagrams. It can also be done like now, to get all stagings for each subset.
-            # It will recompute stuff, but it should work.
-            
+            # TODO: It should sum over all the subsets for each subset. 
+            # This could be done faster using Hasse diagrams? 
             staging_level = len(subset)-1
-            print("`staging level`: {}".format(staging_level))
+            #print("staging level: {}".format(staging_level))
             #print("subset: {}".format(subset))
             subset_str = list_to_score_key(list(subset))
-            print("subset_str: {}".format(subset_str))
+            #print("subset_str: {}".format(subset_str))
             
             cards = [cards_dict[l] for l in subset]
 
@@ -445,52 +438,29 @@ def order_score_tables(data: pd.DataFrame,
             log_level_prior = -np.log(p - staging_level-1) # bug. should check the level.
 
             for i, staging in enumerate(learn.all_stagings(cards, staging_level, max_cvars=max_cvars)):#, poss_cvars=subset_label_inds)):
-                
-                #staging_marg_lik = 0
+                #print("\nstaging : ", i)                
                 staging_unnorm_post = log_level_prior + log_staging_prior
                 # this is for the level -1 
-                if staging == []:  # special case at level -1
-                    #staging_marg_lik = context_scores["scores"][var]["None"]
+                if staging == []:  # special case at level -1                    
                     staging_unnorm_post += context_scores["scores"][var]["None"]
 
                 # Sum log-marginal likelihood of all stages in the staging
-                
-                # prod L(T|X)
-                print("\nstaging : ", i)
                 for stage in staging:
-                    print("stage: {}".format(stage))
+                    #print("**stage: {}".format(stage))
                     stage_context = stage_to_context_key(stage, subset) # OK! even when restricting to some possible cvars
-                    print("stage_context: {}".format(stage_context))
-                    
-                    #staging_marg_lik += context_scores["scores"][var][stage_context]
+                    #print("stage_context: {}".format(stage_context))                    
+                    #print("stage_context score: {}".format(context_scores["scores"][var][stage_context]))                    
                     staging_unnorm_post += context_scores["scores"][var][stage_context]
-                    #print("staging_marg_lik: {}".format(staging_marg_lik))
-                    print("staging_unorm_post: {}".format(staging_unnorm_post))
+                #print("staging_unorm_post: {}".format(staging_unnorm_post))
 
 
-                # Add (sum) the marginal likelihood of the staging to the other ones.
-#                if i == 0:  
-                    # this is for the log sum trick. It needs a starting scores.
-                    # Maybe this could be the prior?
- #                   order_scores["scores"][var][subset_str] = staging_marg_lik
-  #              else:
-                    # Sum marginal likelihoods of all stagings
-                #order_scores["scores"][var][subset_str] = logsumexp(
-                #    [order_scores["scores"][var][subset_str], staging_marg_lik])
-                
                 if i == 0:
                     order_scores["scores"][var][subset_str] = staging_unnorm_post
-                else:
+                else:                    
                     order_scores["scores"][var][subset_str] = logsumexp(
                         [order_scores["scores"][var][subset_str], staging_unnorm_post])
-
-
-            # Adding the prior to get the (unnormalized) posterior
-            #log_unnorm_post = order_scores["scores"][var][subset_str] + \
-            #    log_staging_prior + log_level_prior
-            # Adding to the order score
-            #order_scores["scores"][var][subset_str] = log_unnorm_post
-            print("staging score: ", order_scores["scores"][var][subset_str])
+                    
+                #print("staging score: ", order_scores["scores"][var][subset_str])
 
     return order_scores, context_scores, context_counts
 
