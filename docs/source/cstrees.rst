@@ -9,6 +9,7 @@ Notebooks
 
    fig1_demo
    learn_demo
+   learn_demo_gibbs
 ..   cstrees.tests
 
 Submodules

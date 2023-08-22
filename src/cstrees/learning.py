@@ -9,14 +9,14 @@ import cstrees.stage as stl
 import cstrees.scoring as sc
 
 
-def all_stagings(cards, level, max_cvars=1):
+def all_stagings(cards, level, max_cvars=1, poss_cvars=[]):
     """ Returns a generator over all stagings of a given level.
 
     Args:
         l (int): The level of the stage.
         cards (list): List of cardinalities of the variables. Should be at least of length l+1. E.g.: l=2, cards=[2,2,2,2]
         max_cvars (int, optional): The maximum number of context variables . Defaults to 1.
-
+        poss_cvars (list, optional): The possible context variables. Defaults to None.
     Raises:
         NotImplementedError: Exception if max_cvars > 2.
 
@@ -66,40 +66,15 @@ def all_stagings(cards, level, max_cvars=1):
         [1, 1]
 
     """
-
+    
     assert level < len(cards)
-    #assert level < len(cards)-1
-    if max_cvars == 1:
+
+    if max_cvars <= 2:
+        from cstrees.double_cvar_stagings import codim_max2_boxes
         if level == -1:  # This is an imaginary level -1, it has no stages.
             yield [stl.Stage([])]
             return
-
-        # All possible values for each variable
-
-        vals = [list(range(cards[lev])) for lev in range(len(cards))]
-        for k in range(level+1):  # all variables up to l can be context variables
-            # When we restrict to max_cvars = 1, we have two cases:
-            # Either all are in 1 color or all are in 2 different colors.
-            stlist = []  # The staging: list of stl.Stages.
-            # Loop through the values of the context variables.
-            for v in vals[k]:
-                left = [set(vals[i]) for i in range(k)]
-                right = [set(vals[j]) for j in range(k+1, level+1)]
-                # For example: [{0,1}, {0,1}, 0, {0, 1}]
-                stagelistrep = left + [v] + right
-                st = stl.Stage(stagelistrep)
-                stlist += [st]
-            yield stlist
-
-        # The staging with no context variables
-        stagelistrep = [set(v) for v in vals][:level+1]
-
-        st = stl.Stage(stagelistrep)
-        yield [st]
-    elif max_cvars == 2:
-        from cstrees.double_cvar_stagings import max2_cvars_stagings
-
-        for staging_list in max2_cvars_stagings(level+1):
+        for staging_list in codim_max2_boxes(cards[:level+1], splittable_coords=poss_cvars, max1cvar=(max_cvars==1)):
 
             staging = []
             for stage_list in staging_list:
@@ -107,13 +82,13 @@ def all_stagings(cards, level, max_cvars=1):
                 if isinstance(stage_list, set):
                     stage_list = [stage_list]
 
-                # could set colors here cut that takes time maybe.
+                # Could set colors here but that takes time maybe.
                 stage = stl.Stage(stage_list)
                 staging.append(stage)
             yield staging
 
     else:
-        raise NotImplementedError("max_cvars > 1 not implemented yet")
+        raise NotImplementedError("max_cvars > 2 not implemented yet")
 
 
 def n_stagings(cards, level, max_cvars=1):
@@ -133,13 +108,13 @@ def n_stagings(cards, level, max_cvars=1):
 
     """
 
-    stagings = all_stagings(cards, level, max_cvars)
+    stagings = all_stagings(cards, level, max_cvars=max_cvars)
 
     return sum(1 for _ in stagings)
 
 
 
-def _optimal_staging_at_level(order, context_scores, level, max_cvars=2):
+def _optimal_staging_at_level(order, context_scores, level, max_cvars=2, poss_cvars=[]):
     """Find the optimal staging at a given level.
 
     Args:
@@ -157,26 +132,29 @@ def _optimal_staging_at_level(order, context_scores, level, max_cvars=2):
 
     """
     cards = [context_scores["cards"][var] for var in order]
-    var = order[level+1] # +1?
-
-    assert (level < len(cards)-1)
-
-    stagings = all_stagings(cards, level+1, max_cvars) # Just added +1 here and it worked...
+    
+    var = order[level+1] 
+   
+    poss_cvars_inds = [i for i,j in enumerate(order) if j in poss_cvars and i<=level]
+    #print("poss cvars inds: {}".format(poss_cvars_inds))
+    stagings = all_stagings(cards, level, max_cvars, poss_cvars=poss_cvars_inds)
     max_staging = None
     max_staging_score = -np.inf
-    #print("level", level)
-    for staging in stagings:
+    
+    for staging in stagings:        
         staging_score = 0
         for stage in staging:
-            #print(stage)
             if stage.level == -1:
                 staging_score = context_scores["scores"][var]["None"]
                 continue
-
-            stage_context = sc.stage_to_context_key(stage, order)
+            #print("stage: {}".format(stage))
+            # here we (=I) anyway extract just the context, so the stage format is a bit redundant.
+            stage_context = sc.stage_to_context_key(stage, order) # BUG: something wrong somewhere
+            #print(stage_context)
             score = context_scores["scores"][var][stage_context]
             staging_score += score
         
+        # Update the max score and the max staging
         if staging_score > max_staging_score:
             max_staging_score = staging_score
             max_staging = staging
@@ -184,7 +162,7 @@ def _optimal_staging_at_level(order, context_scores, level, max_cvars=2):
     return max_staging, max_staging_score
 
 
-def _optimal_cstree_given_order(order, context_scores, max_cvars=2):
+def _optimal_cstree_given_order(order, context_scores):
     """Find the optimal CStree for a given order.
 
     Args:
@@ -197,17 +175,17 @@ def _optimal_cstree_given_order(order, context_scores, max_cvars=2):
 
     """
 
-    # BUG?: Maybe these have to be adapted to the order.
-    #cards = data.iloc[0].values
-    #cards = data.loc[0, order]
-    #cards_dict = {var: card for var, card in zip(order, cards)}
     p = len(order)
-
     stages = {}
     stages[-1] = [stl.Stage([], color="black")]
     for level in range(-1, p-1):  # dont stage the last level
+        #print("\nstaging level: {}".format(level))
+        #print("var {} (one level above)".format(order[level+1]))
+        #print("potential cvars of {}: {}".format(order[level+1], context_scores["poss_cvars"][order[level+1]]) )
         max_staging, max_staging_score = _optimal_staging_at_level(
-            order, context_scores, level, max_cvars=max_cvars)
+            order, context_scores, level, 
+            max_cvars=context_scores["max_cvars"], 
+            poss_cvars=context_scores["poss_cvars"][order[level+1]])
         stages[level] = max_staging
         #print("max staging: {}".format([str(s) for s in max_staging]))
 
@@ -217,7 +195,7 @@ def _optimal_cstree_given_order(order, context_scores, max_cvars=2):
 
     # Color each stage in the optimal staging. Singletons are black.
     # This should be done somewhere else probably.
-    colors = ['blueviolet', 'orange', 'navy', 'rebeccapurple', 'darkseagreen',
+    colors = ['peru','blueviolet', 'orange', 'navy', 'rebeccapurple', 'darkseagreen',
               'darkslategray', 'lightslategray', 'aquamarine',
               'lightgoldenrodyellow', 'cornsilk', 'azure', 'chocolate',
               'red', 'darkolivegreen']
@@ -225,7 +203,7 @@ def _optimal_cstree_given_order(order, context_scores, max_cvars=2):
     for level, staging in stages.items():
         for i, stage in enumerate(staging):
             #print("level: {}, stage: {}".format(level, stage))
-            if (level>0) and all([isinstance(i, int) for i in stage.list_repr]):
+            if (level==-1) or ((level>0) and all([isinstance(i, int) for i in stage.list_repr])):
                 stage.color = "black"
             else:
                 stage.color = colors[i]
@@ -235,7 +213,7 @@ def _optimal_cstree_given_order(order, context_scores, max_cvars=2):
     return tree
 
 
-def _find_optimal_order(score_table):
+def _find_optimal_order(score_table, poss_cvars=None):
     """ Find the optimal causal order for the data using exhaustive search of
         the optimal order then the CStree having that order.
 
@@ -253,7 +231,7 @@ def _find_optimal_order(score_table):
         >>> print("optimal order: {}, score {}".format(optord, score))
 
     """
-    labels = list(score_table.keys())
+    labels = list(score_table["scores"].keys())
     #p = len(score_table.keys())
     #p = data.shape[1]
     #perms = permutations(list(range(p)))
@@ -312,10 +290,21 @@ def move_up(node_index,
     tmp2 = node_scores[node_index+1]
 
     #print("order {}".format(order))
-    pred1 = sc.list_to_score_key(order[:node_index])
-    pred2 = sc.list_to_score_key(order[:node_index+1])
-    node_scores[node_index] = score_table[order[node_index]][pred1]
-    node_scores[node_index+1] = score_table[order[node_index+1]][pred2]
+    node1 = order[node_index]
+    node2 = order[node_index+1]
+    #active_cvars1 = list(set(order[:node_index]) & set(score_table["poss_cvars"][node1]))
+    active_cvars1 = [v for v in order[:node_index] if v in score_table["poss_cvars"][node1]]
+    
+    #active_cvars2 = list(order[:node_index+1] & set(score_table["poss_cvars"][node2]))
+    active_cvars2 = [v for v in order[:node_index+1] if v in score_table["poss_cvars"][node2]]
+    pred1 = sc.list_to_score_key(active_cvars1)
+    pred2 = sc.list_to_score_key(active_cvars2)
+    
+    #pred1 = sc.list_to_score_key(order[:node_index])
+    #pred2 = sc.list_to_score_key(order[:node_index+1])
+
+    node_scores[node_index] = score_table["scores"][order[node_index]][pred1]
+    node_scores[node_index+1] = score_table["scores"][order[node_index+1]][pred2]
 
     orderscore += node_scores[node_index] + \
         node_scores[node_index+1] - tmp1 - tmp2
@@ -335,11 +324,17 @@ def move_down(node_index,
     # move the node
     order.insert(node_index-1, order.pop(node_index))
 
-    pred1 = sc.list_to_score_key(order[:node_index])
-    pred2 = sc.list_to_score_key(order[:node_index-1])
+    active_cvars1 = [v for v in order[:node_index] if v in score_table["poss_cvars"][order[node_index]]]
+    active_cvars2 = [v for v in order[:node_index-1] if v in score_table["poss_cvars"][order[node_index-1]]]
 
-    node_scores[node_index] = score_table[order[node_index]][pred1]
-    node_scores[node_index-1] = score_table[order[node_index-1]][pred2]
+    # pred1 = sc.list_to_score_key(order[:node_index])
+    # pred2 = sc.list_to_score_key(order[:node_index-1])
+    
+    pred1 = sc.list_to_score_key(active_cvars1)
+    pred2 = sc.list_to_score_key(active_cvars2)
+
+    node_scores[node_index] = score_table["scores"][order[node_index]][pred1]
+    node_scores[node_index-1] = score_table["scores"][order[node_index-1]][pred2]
 
     orderscore += node_scores[node_index] + \
         node_scores[node_index-1] - tmp1 - tmp2
@@ -399,10 +394,10 @@ def gibbs_order_sampler(iterations, score_table):
 
     order_trajectory = []
     #p = data.shape[1]
-    p = len(score_table)
+    p = len(score_table["scores"])
 
     #order = list(data.columns.values)  # list(range(p))
-    order = list(score_table.keys()) #list(data.columns.values)  # list(range(p))
+    order = list(score_table["scores"].keys()) #list(data.columns.values)  # list(range(p))
     random.shuffle(order)
     print("initial order: {}".format(order))
     scores = []
@@ -410,11 +405,14 @@ def gibbs_order_sampler(iterations, score_table):
     node_scores = [0]*p
     for i in range(p):
         # possible parents to string
-        subset_str = sc.list_to_score_key(order[:i])
+        subset_str = sc.list_to_score_key(order[:i] )
+        
+        subset_str = sc.list_to_score_key(list(set(order[:i]) & set(score_table["poss_cvars"][order[i]])))
 
         #print("node: {} ".format(order[i]))
         #print("subset: {}".format(subset_str))
-        node_scores[i] = score_table[order[i]][subset_str]
+        #print(score_table["scores"][order[i]])
+        node_scores[i] = score_table["scores"][order[i]][subset_str]
         #print("node score: {}".format(node_scores[i]))
         #rint("check: {}".format(check))
 
@@ -447,10 +445,10 @@ def gibbs_order_sampler(iterations, score_table):
 
         neworder = order_trajectory[i-1].copy()
         orderscore = move_node(node_index, new_pos,
-                  neworder,
-                  scores[i-1],
-                  node_scores,
-                  score_table)
+                                neworder,   
+                                scores[i-1],
+                                node_scores,
+                                score_table)
         #print("order: {}".format(neworder))
         #print("score: {}".format(orderscore))
         order_trajectory.append(neworder)
@@ -532,7 +530,6 @@ def find_optimal_cstree(data, max_cvars=1, alpha_tot=1, method="BDeu"):
     
     opt_order, _ = _find_optimal_order(score_table)
 
-    opttree = _optimal_cstree_given_order(opt_order, context_scores,
-                                          max_cvars=max_cvars)
+    opttree = _optimal_cstree_given_order(opt_order, context_scores)
 
     return opttree

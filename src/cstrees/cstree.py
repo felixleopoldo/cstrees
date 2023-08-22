@@ -64,7 +64,7 @@ class CStree:
             self.labels = labels
 
         #self.colors = list(set(mcolors.cnames.keys()))
-        self.colors = ['blueviolet', 'orange', 'navy', 'rebeccapurple', 'darkseagreen', 'darkslategray', 'lightslategray', 'aquamarine', 'lightgoldenrodyellow', 'cornsilk', 'azure', 'chocolate', 'red', 'darkolivegreen', 'chartreuse', 'turquoise', 'olive', 'crimson', 'goldenrod', 'orchid', 'firebrick', 'lawngreen', 'deeppink', 'wheat', 'teal', 'mediumseagreen', 'peru', 'salmon', 'palegreen', 'navajowhite', 'yellowgreen', 'mediumaquamarine', 'darkcyan', 'dodgerblue', 'brown', 'powderblue', 'mistyrose', 'violet', 'darkslategrey', 'midnightblue', 'aliceblue', 'dimgrey', 'palegoldenrod', 'black', 'darkgrey', 'olivedrab', 'linen', 'lightblue', 'thistle', 'greenyellow', 'indianred', 'khaki', 'lightslategrey', 'slateblue', 'purple', 'deepskyblue', 'magenta', 'yellow', 'ivory', 'darkorchid', 'mediumpurple', 'snow', 'dimgray', 'palevioletred', 'darkslateblue', 'sandybrown', 'lightgray', 'lemonchiffon', 'gray', 'silver', 'aqua', 'tomato', 'lightyellow', 'seagreen', 'darkmagenta', 'beige', 'cornflowerblue', 'peachpuff', 'ghostwhite', 'cyan', 'lightcoral', 'hotpink', 'lightpink', 'lightskyblue', 'slategrey', 'tan', 'oldlace', 'steelblue', 'springgreen', 'fuchsia', 'lime', 'papayawhip', 'mediumblue', 'mediumspringgreen', 'darkorange', 'lightgreen', 'blue', 'slategray', 'white', 'saddlebrown', 'mediumturquoise', 'paleturquoise', 'darkblue', 'plum', 'lightseagreen', 'lightgrey', 'blanchedalmond', 'lavenderblush', 'darkkhaki', 'gainsboro', 'lightsalmon', 'darkturquoise', 'moccasin', 'darkgoldenrod', 'mediumorchid', 'honeydew', 'mediumslateblue', 'maroon', 'forestgreen', 'darkgray', 'floralwhite', 'darkgreen', 'lightcyan', 'darksalmon', 'pink', 'royalblue', 'sienna', 'green', 'orangered', 'bisque', 'antiquewhite', 'rosybrown', 'whitesmoke', 'darkred', 'burlywood', 'skyblue', 'mediumvioletred', 'mintcream', 'limegreen', 'lightsteelblue', 'grey', 'coral', 'indigo', 'gold', 'cadetblue']
+        self.colors = ['peru','blueviolet', 'orange', 'navy', 'rebeccapurple', 'darkseagreen', 'aquamarine', 'goldenrodyellow', 'cornsilk', 'azure', 'chocolate', 'red', 'darkolivegreen', 'chartreuse', 'turquoise', 'olive', 'crimson', 'goldenrod', 'orchid', 'firebrick', 'lawngreen', 'deeppink', 'wheat', 'teal', 'mediumseagreen',  'salmon', 'palegreen', 'navajowhite', 'yellowgreen', 'mediumaquamarine', 'darkcyan', 'dodgerblue', 'brown', 'powderblue', 'mistyrose', 'violet', 'darkslategrey', 'midnightblue', 'aliceblue', 'dimgrey', 'palegoldenrod', 'black', 'darkgrey', 'olivedrab', 'linen', 'lightblue', 'thistle', 'greenyellow', 'indianred', 'khaki', 'lightslategrey', 'slateblue', 'purple', 'deepskyblue', 'magenta', 'yellow', 'ivory', 'darkorchid', 'mediumpurple', 'snow', 'dimgray', 'palevioletred', 'darkslateblue', 'sandybrown', 'lightgray', 'lemonchiffon', 'gray', 'silver', 'aqua', 'tomato', 'lightyellow', 'seagreen', 'darkmagenta', 'beige', 'cornflowerblue', 'peachpuff', 'ghostwhite', 'cyan', 'lightcoral', 'hotpink', 'lightpink', 'lightskyblue', 'slategrey', 'tan', 'oldlace', 'steelblue', 'springgreen', 'fuchsia', 'lime', 'papayawhip', 'mediumblue', 'mediumspringgreen', 'darkorange', 'lightgreen', 'blue', 'slategray', 'white', 'saddlebrown', 'mediumturquoise', 'paleturquoise', 'darkblue', 'plum', 'lightseagreen', 'lightgrey', 'blanchedalmond', 'lavenderblush', 'darkkhaki', 'gainsboro', 'lightsalmon', 'darkturquoise', 'moccasin', 'darkgoldenrod', 'mediumorchid', 'honeydew', 'mediumslateblue', 'maroon', 'forestgreen', 'darkgray', 'floralwhite', 'darkgreen', 'lightcyan', 'darksalmon', 'pink', 'royalblue', 'sienna', 'green', 'orangered', 'bisque', 'antiquewhite', 'rosybrown', 'whitesmoke', 'darkred', 'burlywood', 'skyblue', 'mediumvioletred', 'mintcream', 'limegreen', 'lightsteelblue', 'grey', 'coral', 'indigo', 'gold', 'cadetblue']
         self.color_no = 0
         self.stages = {i: [] for i in range(self.p)}
 
@@ -552,9 +552,10 @@ class CStree:
 
         agraph = plot(self.tree)
         #agraph.node_attr["shape"] = "circle"
+        
+        ## This is a hack to plot labels. Just an invisible graph.
         for i, lab in enumerate(self.labels):
             agraph.add_node(lab, color="white")
-
 
         agraph.add_node("-", color="white")
         agraph.add_edge("-",
@@ -602,7 +603,7 @@ def sample_cstree(cards: list, max_cvars: int, prob_cvar: int,
 
     stagings = {}
     for level, val in enumerate(cards[:-1]):  # not the last level
-
+        print("level {}".format(level))
         # fix max_context_vars if higher than level
         #print("level {}".format(level))
         stage_space = [st.Stage([set(range(cards[l])) for l in cards[:level+1]])]
@@ -702,7 +703,7 @@ def sample_cstree(cards: list, max_cvars: int, prob_cvar: int,
     return ct
 
 
-def df_to_cstree(df):
+def df_to_cstree(df, read_probs=True):
     """ Convert a dataframe to a CStree. The dataframe should have the following format:
     The labels should be the level labels.
     The first row should be the cards, the second row should be the first stage, the third row the second stage etc.
@@ -744,9 +745,15 @@ def df_to_cstree(df):
         0  1  0  1  -
     """
     collabs= list(df.columns)
-    if "PROB_0" in collabs:        
+    
+    # Gets the number of varaibles. 
+    # If no probs are given, then the number of variables is 
+    # the number of columns.
+    if "PROB_0" in collabs:
+        has_probs = True    
         nvars = collabs.index("PROB_0")
     else:
+        has_probs = False
         nvars = len(collabs)
     
     cards = df.iloc[0,:nvars].values  # [int(x[1]) for x in df.columns]
@@ -757,6 +764,7 @@ def df_to_cstree(df):
     cstree = CStree(cards)
     cstree.labels = list(df.columns[:nvars])
     
+    color_ind = 0
     for row in df.iloc[1:,:nvars].iterrows():
         stage_list = []
         for level, val in enumerate(row[1]):
@@ -765,15 +773,24 @@ def df_to_cstree(df):
             if val == "*":
                 stage_list.append(set(range(cards[level])))
             elif val == "-":
+                # Reached stop mark "-", so create a stage of it.
                 s = st.Stage(stage_list)
-                s.color = cstree.colors[row[0]]
+                
+                if s.size() == 1: # Singleton stage? Or maybe root stage?.
+                    s.color = "black"
+                else:
+                    s.color = cstree.colors[color_ind]
+                    color_ind = (color_ind + 1) % len(cstree.colors)
                 # Now we reed the probabilities, if there are any                
-                s.probs = df.iloc[row[0], nvars:].values
-                #print(s)
+                if has_probs:
+                    s.probs = df.iloc[row[0], nvars:].values
+
                 stagings[level-1].append(s)
+
                 break
             else:
                 stage_list.append(int(val))
+        
 
     cstree.update_stages(stagings)
     
@@ -782,8 +799,8 @@ def df_to_cstree(df):
     #     for stage in stages:
     #         print(stage)
 
-    
-    cstree._set_tree_probs()
+    if has_probs:
+        cstree._set_tree_probs()
 
     return cstree
 

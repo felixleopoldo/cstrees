@@ -265,7 +265,7 @@ def estimate_parameters(cstree: ct.CStree, stage, stage_counts, method="BDeu", a
 
 
 def score_tables(data: pd.DataFrame,
-                 strategy="posterior", max_cvars=2,
+                 strategy="posterior", max_cvars=2, poss_cvars=[],
                  alpha_tot=1.0, method="BDeu"):
 
     cards_dict = {var: data.loc[0, var] for var in data.columns}
@@ -290,7 +290,9 @@ def score_tables(data: pd.DataFrame,
             # remove the current variable from the active labels
             labels = [l for l in data.columns if l != var]
             #print("context size: {}".format(csize))
-            for context_variables in combinations(labels, csize):
+            # Restricting to some possible context variables.
+            #for context_variables in combinations(labels, csize):
+            for context_variables in combinations([l for l in labels if l in poss_cvars[var]], csize):
                 #print("context variables: {}".format(context_variables))
                 # get the active labels like A,B,C
                 active_labels = [l for l in labels if l in context_variables]
@@ -324,6 +326,7 @@ def score_tables(data: pd.DataFrame,
                     counts["var_counts"][var][context]["counts"][value] = r.values[0]
                     counts["var_counts"][var][context]["context_vars"] = active_labels
 
+        # Using the counts to compute the scores
         for count_context in counts["var_counts"][var]:
             active_labels = counts["var_counts"][var][count_context]["context_vars"]
             score = score_context(var, count_context, active_labels, cards_dict,
@@ -365,15 +368,15 @@ def stage_to_context_key(stage: st.Stage, labels: list):
     return stage_context
 
 
-def log_n_stagings_tables(labels, cards_dict, max_cvars=2):
+def log_n_stagings_tables(labels, cards_dict, poss_cvars, max_cvars=2):
     n_stagings = {}
 
     # the number of staging for a set of cardinalities [2,3,2] should be
     # independent of the order, so same for [2,2,3]
 
-    for var in tqdm(labels, desc="#Stagings tables"):
+    for var in tqdm(labels, desc="Creating #stagings tables"):
         # all cards except the current one
-        cur_cards = [cards_dict[l] for l in labels if l != var]
+        cur_cards = [cards_dict[l] for l in labels if (l != var) and (l in poss_cvars[var])]
         for subset in csi_rel._powerset(cur_cards):
             staging_lev = len(subset) - 1
             subset_str = list_to_score_key(list(subset))
@@ -387,58 +390,77 @@ def log_n_stagings_tables(labels, cards_dict, max_cvars=2):
 
 def order_score_tables(data: pd.DataFrame,
                        strategy="posterior", max_cvars=2,
+                       poss_cvars=None,
                        alpha_tot=1.0, method="BDeu"):
 
+    labels = list(data.columns)
+
+    # If poss_cvars is None, then all variables are possible context variables
+    if poss_cvars is None:
+        poss_cvars = {l:list(set(labels) - {l}) for l in labels}
+
     context_scores, context_counts = score_tables(data, strategy=strategy, max_cvars=max_cvars,
+                                                  poss_cvars=poss_cvars,
                                                   alpha_tot=alpha_tot, method=method)
 
-    labels = list(data.columns)
+    context_scores["max_cvars"] = max_cvars
+    context_scores["poss_cvars"] = poss_cvars
     #print("labels: {}".format(labels))
     cards_dict = {var: data.loc[0, var] for var in data.columns}
 
     log_n_stagings = log_n_stagings_tables(
-        labels, cards_dict, max_cvars=max_cvars)
+        labels, cards_dict, poss_cvars, max_cvars=max_cvars)
 
     p = data.shape[1]
     # print(p)
-    order_scores = {var: {} for var in labels}
+    order_scores = {}
+    order_scores["max_cvars"] = max_cvars
+    order_scores["poss_cvars"] = poss_cvars
+    order_scores["scores"] = {var: {} for var in labels}
     for var in tqdm(labels, desc="Order score tables"):
-        #print("VARIABLE: {}".format(var))
+        
+        #print("\n\n****** var: {}".format(var))
         # Ths subset are the variables before var in the order
-        for subset in csi_rel._powerset(set(labels) - {var}):
-            # choosing one representative for each subset
+        for subset in csi_rel._powerset(poss_cvars[var]):
+            # TODO: It should sum over all the subsets for each subset. 
+            # This could be done faster using Hasse diagrams? 
             staging_level = len(subset)-1
             #print("staging level: {}".format(staging_level))
-
+            #print("subset: {}".format(subset))
             subset_str = list_to_score_key(list(subset))
-
-            order_scores[var][subset_str] = 0
+            #print("subset_str: {}".format(subset_str))
+            
             cards = [cards_dict[l] for l in subset]
 
-            # put the variable to the right and use all_stagings
-            for i, staging in enumerate(learn.all_stagings(cards, staging_level, max_cvars)):
-
-                staging_marg_lik = 0
-
-                if staging == []:  # special case at level -1
-                    staging_marg_lik = context_scores["scores"][var]["None"]
-
-                for stage in staging:
-                    stage_context = stage_to_context_key(stage, subset)
-                    staging_marg_lik += context_scores["scores"][var][stage_context]
-
-                if i == 0:  # this is for the log sum trick. It needs a starting scores.
-                    order_scores[var][subset_str] = staging_marg_lik
-                else:
-                    order_scores[var][subset_str] = logsumexp(
-                        [order_scores[var][subset_str], staging_marg_lik])
-
+            # Te prior is uniform voer all stagings so we have it outside (ok?)
             cards_str = list_to_score_key(cards[:staging_level+1])
             log_staging_prior = -log_n_stagings[cards_str]
-            log_level_prior = -np.log(p - staging_level-1)
-            log_unnorm_post = order_scores[var][subset_str] + \
-                log_staging_prior + log_level_prior
-            order_scores[var][subset_str] = log_unnorm_post
+            log_level_prior = -np.log(p - staging_level-1) # bug. should check the level.
+
+            for i, staging in enumerate(learn.all_stagings(cards, staging_level, max_cvars=max_cvars)):#, poss_cvars=subset_label_inds)):
+                #print("\nstaging : ", i)                
+                staging_unnorm_post = log_level_prior + log_staging_prior
+                # this is for the level -1 
+                if staging == []:  # special case at level -1                    
+                    staging_unnorm_post += context_scores["scores"][var]["None"]
+
+                # Sum log-marginal likelihood of all stages in the staging
+                for stage in staging:
+                    #print("**stage: {}".format(stage))
+                    stage_context = stage_to_context_key(stage, subset) # OK! even when restricting to some possible cvars
+                    #print("stage_context: {}".format(stage_context))                    
+                    #print("stage_context score: {}".format(context_scores["scores"][var][stage_context]))                    
+                    staging_unnorm_post += context_scores["scores"][var][stage_context]
+                #print("staging_unorm_post: {}".format(staging_unnorm_post))
+
+
+                if i == 0:
+                    order_scores["scores"][var][subset_str] = staging_unnorm_post
+                else:                    
+                    order_scores["scores"][var][subset_str] = logsumexp(
+                        [order_scores["scores"][var][subset_str], staging_unnorm_post])
+                    
+                #print("staging score: ", order_scores["scores"][var][subset_str])
 
     return order_scores, context_scores, context_counts
 
@@ -477,13 +499,21 @@ def score(cstree: ct.CStree, data: pd.DataFrame, alpha_tot=1.0, method="BDeu"):
 
 
 def score_order(order, order_scores):
+    #print("order: {}".format(order))
+    #print("order_scores: {}".format(order_scores))
+    #print(order_scores["poss_cvars"])
     log_score = 0  # log score
     for level, var in enumerate(order):
-        poss_parents = order[:level]
+        #print("var {}".format(var))
+        #print(order_scores["poss_cvars"][var])
+        #poss_parents = list(set(order[:level]) & set(poss_cvars[var]))
+        poss_parents = list(set(order[:level]) & set(order_scores["poss_cvars"][var]))
+        # poss_parents = order[:level] 
+
         # possible parents as string
         poss_parents_str = list_to_score_key(poss_parents)
         #print("var: {}, poss_parents: {}, poss_parents_str: {}".format(var, poss_parents, poss_parents_str))
-        score = order_scores[var][poss_parents_str]
+        score = order_scores["scores"][var][poss_parents_str]
         #print("score: {}".format(score))
         log_score += score
 
