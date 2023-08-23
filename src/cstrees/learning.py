@@ -219,7 +219,7 @@ def _optimal_cstree_given_order(order, context_scores):
     return tree
 
 
-def _find_optimal_order(score_table, poss_cvars=None):
+def _find_optimal_order(score_tablers):
     """ Find the optimal causal order for the data using exhaustive search of
         the optimal order then the CStree having that order.
 

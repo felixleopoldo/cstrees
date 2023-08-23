@@ -631,6 +631,7 @@ def sample_cstree(cards: list, max_cvars: int, prob_cvar: int,
         singleton_space_size = full_stage_space_size
         # print(proportion_left)
 
+        # Need to adjust the max_cvars for the low levels.
         mc = max_cvars
         if level < mc:
             mc = level + 1  # should allow for "singleton" stages at level 0 as this
@@ -644,8 +645,11 @@ def sample_cstree(cards: list, max_cvars: int, prob_cvar: int,
         #print("level: {}, mc: {}".format(level, mc))
 
         # BUG: for binary.. take max of mc elements in cards.
-        minimal_stage_size = 2**(level+1-mc)
-
+        #minimal_stage_size = 2**(level+1-mc) # non-singleton stage?
+        minimal_stage_size = np.prod(sorted(cards[:level+1])[:-mc], dtype=int) # take the product of all cards, expept for the mc largest ones
+        
+        print("minimal stage size: {}".format(minimal_stage_size))
+        #print("minimal stage size new: {}".format(minimal_stage_size_new))
         #print("full_stage_space_size: {}".format(full_stage_space_size))
         #print("level: {}, mc: {}, minimal_stage_size: {}".format(level, mc, minimal_stage_size))
 
@@ -682,6 +686,9 @@ def sample_cstree(cards: list, max_cvars: int, prob_cvar: int,
         while (1 - (singleton_space_size / full_stage_space_size)) < prop_nonsingleton:
             colored_size_old = full_stage_space_size - singleton_space_size
             # Choose randomly a stage space
+            print((1 - (singleton_space_size / full_stage_space_size)))
+            print("stage space: {}".format(stage_space))
+            
             space_int = np.random.randint(len(stage_space))
             stage_restr = stage_space.pop(space_int)
             #print("stage restr: {}".format(stage_restr))
