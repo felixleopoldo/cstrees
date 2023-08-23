@@ -301,31 +301,21 @@ class CStree:
             to = node
 
             stage = self.get_stage(fr)
+        
+#            if (not self.tree.has_edge(fr, to)) or (self.tree.has_edge(fr, to) and ): #TODO: should also be able to add parameters.
+            #print("Adding edge {} -> {}".format(fr, to))
+            self.tree.add_edge(fr, to)  # check if exists first
             
-            
-            if not self.tree.has_edge(fr, to):
-                #print("Adding edge {} -> {}".format(fr, to))
-                self.tree.add_edge(fr, to)  # check if exists first
-                
-                
-                
-                if (stage != None):  # No singleton stages allowed!
-                    if (stage.probs is not None) and (to[-1] in stage.probs):
-                        prob = stage.probs[to[-1]]
-                    if "cond_prob" in self.tree[fr][to]:
-                        
-                        self.tree[fr][to]["cond_prob"] = prob
-                        self.tree[fr][to]["label"] = round(prob, 2)
-                    self.tree[fr][to]["color"] = stage.color
-                    self.tree.nodes[fr]["color"] = stage.color
-                
-                
-                
-                if fr == ():
-                    self.tree.nodes[fr]["label"] = "ø"
-            else:
-                #print("Edge already exists")                
-                pass
+            if (stage != None):  # No singleton stages allowed!
+                if stage.probs is not None:                       
+                    prob = stage.probs[to[-1]] # The last digit/element in the node is the variable value
+                    self.tree[fr][to]["cond_prob"] = prob
+                    self.tree[fr][to]["label"] = round(prob, 2)
+                self.tree[fr][to]["color"] = stage.color
+                self.tree.nodes[fr]["color"] = stage.color
+
+            if fr == ():
+                self.tree.nodes[fr]["label"] = "ø"
             self.tree.nodes[to]["label"] = to[-1]
             # Add more nodes to visit
             if lev < self.p-1:
@@ -556,7 +546,7 @@ class CStree:
         df.columns = self.labels
         return df
 
-    def plot(self, fill=False):
+    def plot(self, full=False):
         """Plot the CStree. Make sure to set the parameters first.
 
         Args:
@@ -568,9 +558,14 @@ class CStree:
             >>> agraph.draw("cstree.png")
         """
 
-        if fill or (self.tree is None):
+        # If no samples has been drawn, create the full tree.
+        if full:# or (self.tree is None):            
             self._create_tree()
+        else:
+            print("Use plot(full=True) to draw the full tree.")
 
+        if self.tree is None:
+            return
         agraph = plot(self.tree)
         #agraph.node_attr["shape"] = "circle"
         
@@ -720,6 +715,24 @@ def sample_cstree(cards: list, max_cvars: int, prob_cvar: int,
             #print(space_left / full_state_space_size)
 
     stagings[-1] = [st.Stage([], color="black")]
+
+    # Color each stage in the optimal staging. Singletons are black.
+    # This should be done somewhere else probably.
+    colors = ['peru','blueviolet', 'orange', 'navy', 'rebeccapurple', 'darkseagreen',
+              'darkslategray', 'lightslategray', 'aquamarine',
+              'lightgoldenrodyellow', 'cornsilk', 'azure', 'chocolate',
+              'red', 'darkolivegreen']
+
+    for level, staging in stagings.items():
+        for i, stage in enumerate(staging):
+            #print("level: {}, stage: {}".format(level, stage))
+            if (level==-1) or ((level>0) and all([isinstance(i, int) for i in stage.list_repr])):
+                stage.color = "black"
+            else:
+                stage.color = colors[i]
+
+
+
     ct.update_stages(stagings)
 
     return ct

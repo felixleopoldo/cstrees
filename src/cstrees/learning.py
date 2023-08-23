@@ -134,14 +134,15 @@ def _optimal_staging_at_level(order, context_scores, level, max_cvars=2, poss_cv
     cards = [context_scores["cards"][var] for var in order]
     
     var = order[level+1] 
-    print("var: {}".format(var))
+    #print("staging level: {}".format(level))
+    #print("var: {}".format(var))
     poss_cvars_inds = [i for i,j in enumerate(order) if j in poss_cvars and i<=level]
-    print("poss cvars inds: {}".format(poss_cvars_inds))
+    #print("poss cvars inds: {}".format(poss_cvars_inds))
     # BUG: here it is actually []. But is gives all...
     if len(poss_cvars_inds) > 0:
         stagings = all_stagings(cards, level, max_cvars, poss_cvars=poss_cvars_inds)
-    else:
-        stagings = [[stl.Stage([])]]
+    else: # If the posible cvars is empty, then all variables are in the same stage/color.
+        stagings = [[stl.Stage([set(range(cards[l])) for l in cards[:level+1]])]]
     max_staging = None
     max_staging_score = -np.inf
     
@@ -151,7 +152,7 @@ def _optimal_staging_at_level(order, context_scores, level, max_cvars=2, poss_cv
             if stage.level == -1:
                 staging_score = context_scores["scores"][var]["None"]
                 continue
-            print("stage: {}".format(stage))
+            #print("stage: {}".format(stage))
             # here we (=I) anyway extract just the context, so the stage format is a bit redundant.
             stage_context = sc.stage_to_context_key(stage, order) # BUG: something wrong somewhere
             #print(stage_context)
@@ -162,6 +163,7 @@ def _optimal_staging_at_level(order, context_scores, level, max_cvars=2, poss_cv
         if staging_score > max_staging_score:
             max_staging_score = staging_score
             max_staging = staging
+            #print("max staging: {}".format([str(s) for s in max_staging]))
 
     return max_staging, max_staging_score
 
