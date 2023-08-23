@@ -53,8 +53,9 @@ clean:
 
 .PHONY: html
 html:
-	cp ../src/fig1_demo.ipynb source
+	cp ../src/fig1_demo.ipynb source 
 	cp ../src/learn_demo.ipynb source
+	cp ../src/learn_demo_gibbs.ipynb source
 	$(SPHINXBUILD) -b html $(ALLSPHINXOPTS) $(BUILDDIR)/html
 	@echo
 	@echo "Build finished. The HTML pages are in $(BUILDDIR)/html."

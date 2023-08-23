@@ -206,7 +206,7 @@ class CStree:
                 if stage.color is None:
                     stage.color = self.colors[i] # Set color from stage if possible
 
-        self._set_tree_probs()
+        #self._set_tree_probs()
 
     def estimate_stage_parameters(self, data, method="BDeu", alpha_tot=1):
         """ Estimate the parameters of the stages of the CStree under a Dirichlet model.
@@ -236,7 +236,7 @@ class CStree:
                     self, stage, stage_counts, method, alpha_tot)
                 stage.probs = probs
 
-        self._set_tree_probs()
+        #self._set_tree_probs()
 
     def _set_tree_probs(self, alpha=1):
         """ This is dependent on if one has sampled from the tree already.
@@ -262,13 +262,13 @@ class CStree:
                 stage = self.get_stage(node)
                 
                 #print(stage)
-                if (stage != None):  # NO singleton stages allowed!
+                if (stage != None):  # No singleton stages allowed!
                     prob = stage.probs[i]
                     self.tree[node][ch]["cond_prob"] = prob
                     self.tree[node][ch]["label"] = round(prob, 2)
                     self.tree[node][ch]["color"] = stage.color
                     self.tree.nodes[node]["color"] = stage.color
-                else:
+                else: # This should never hppen as all nodes should be part of a stage.
                     self.tree[node][ch]["cond_prob"] = probs[i]
                     self.tree[node][ch]["label"] = round(probs[i], 2)
 
@@ -300,12 +300,22 @@ class CStree:
             fr = node[:lev]
             to = node
 
-            if not self.tree.has_edge(fr, to):
-                self.tree.add_edge(fr, to)  # check if exists first
-                if fr == ():
-                    self.tree.nodes[fr]["label"] = "ø"
-            else:
-                pass
+            stage = self.get_stage(fr)
+        
+#            if (not self.tree.has_edge(fr, to)) or (self.tree.has_edge(fr, to) and ): #TODO: should also be able to add parameters.
+            #print("Adding edge {} -> {}".format(fr, to))
+            self.tree.add_edge(fr, to)  # check if exists first
+            
+            if (stage != None):  # No singleton stages allowed!
+                if stage.probs is not None:                       
+                    prob = stage.probs[to[-1]] # The last digit/element in the node is the variable value
+                    self.tree[fr][to]["cond_prob"] = prob
+                    self.tree[fr][to]["label"] = round(prob, 2)
+                self.tree[fr][to]["color"] = stage.color
+                self.tree.nodes[fr]["color"] = stage.color
+
+            if fr == ():
+                self.tree.nodes[fr]["label"] = "ø"
             self.tree.nodes[to]["label"] = to[-1]
             # Add more nodes to visit
             if lev < self.p-1:
@@ -479,28 +489,22 @@ class CStree:
             node = ()
             x = []
             while len(x) < self.p:
-
+                #print(node)
                 # Create tree dynamically if isnt already crated.
                 if (node not in self.tree) or len(self.tree.out_edges(node)) == 0:
-                    print("should not happen")
+                    #print("Node {} not in tree. Creating on the fly.".format(node))
                     lev = len(node)-1
                     edges = [(node, node + (ind,))
                              for ind in range(self.cards[lev+1])]
 
                     self.tree.add_edges_from(edges)
 
-                    # Sample parameters
-
-                    # We set the parametres at random. But if the node belongs to a
-                    # stage we overwrite.
-                    probs = np.random.dirichlet([1] * self.cards[lev+1])
-
-                    # Check if node is in some stage
+                    # We set the parametres at to whats specifies in the stage.
                     s = self.get_stage(node)
                     color = ""
-                    if s is not None: # not signleton
+                    if s is not None: # not singleton
                         probs = s.probs
-                        if s.color is None:
+                        if s.color is None: # Color if the color isnt set already
                             s.color = self.colors[self.color_no]
                             self.color_no += 1
 
@@ -516,6 +520,13 @@ class CStree:
                         self.tree.nodes[e[1]]["label"] = e[1][-1]
                         self.tree[e[0]][e[1]]["color"] = color
                         self.tree.nodes[e[0]]["color"] = color
+                        
+                        # Coloring the child too                        
+                        if len(e[1]) < self.p:
+                            child_stage = self.get_stage(e[1])
+                            self.tree.nodes[e[1]]["color"] = child_stage.color
+                        
+                        # We should color all children here.
 
                 edges = list(self.tree.out_edges(node))
 
@@ -535,7 +546,7 @@ class CStree:
         df.columns = self.labels
         return df
 
-    def plot(self, fill=False):
+    def plot(self, full=False):
         """Plot the CStree. Make sure to set the parameters first.
 
         Args:
@@ -547,13 +558,19 @@ class CStree:
             >>> agraph.draw("cstree.png")
         """
 
-        if fill or (self.tree is None):
+        # If no samples has been drawn, create the full tree.
+        if full:# or (self.tree is None):            
             self._create_tree()
+        else:
+            print("Use plot(full=True) to draw the full tree.")
 
+        if self.tree is None:
+            return
         agraph = plot(self.tree)
         #agraph.node_attr["shape"] = "circle"
         
-        ## This is a hack to plot labels. Just an invisible graph.
+        ###############################################################
+        ### This is a hack to plot labels. Just an invisible graph. ###
         for i, lab in enumerate(self.labels):
             agraph.add_node(lab, color="white")
 
@@ -603,7 +620,7 @@ def sample_cstree(cards: list, max_cvars: int, prob_cvar: int,
 
     stagings = {}
     for level, val in enumerate(cards[:-1]):  # not the last level
-
+        #print("level {}".format(level))
         # fix max_context_vars if higher than level
         #print("level {}".format(level))
         stage_space = [st.Stage([set(range(cards[l])) for l in cards[:level+1]])]
@@ -698,6 +715,24 @@ def sample_cstree(cards: list, max_cvars: int, prob_cvar: int,
             #print(space_left / full_state_space_size)
 
     stagings[-1] = [st.Stage([], color="black")]
+
+    # Color each stage in the optimal staging. Singletons are black.
+    # This should be done somewhere else probably.
+    colors = ['peru','blueviolet', 'orange', 'navy', 'rebeccapurple', 'darkseagreen',
+              'darkslategray', 'lightslategray', 'aquamarine',
+              'lightgoldenrodyellow', 'cornsilk', 'azure', 'chocolate',
+              'red', 'darkolivegreen']
+
+    for level, staging in stagings.items():
+        for i, stage in enumerate(staging):
+            #print("level: {}, stage: {}".format(level, stage))
+            if (level==-1) or ((level>0) and all([isinstance(i, int) for i in stage.list_repr])):
+                stage.color = "black"
+            else:
+                stage.color = colors[i]
+
+
+
     ct.update_stages(stagings)
 
     return ct
