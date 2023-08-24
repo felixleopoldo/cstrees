@@ -21,10 +21,10 @@ class Stage:
         if all([isinstance(i, int) for i in list_repr]):
             self.color = "black"
         else:
-            self.color = color
-        self.csi = self.to_csi()
+            self.color = color        
         self.probs = None
         self.cards=cards
+        self.csi = self.to_csi()
 
     def __hash__(self) -> int:
         return hash(self.csi.context)
@@ -171,7 +171,7 @@ class Stage:
 
         ci = csi_relation.CI(sepseta, sepsetb, cond_set)
         context = csi_relation.Context(context)
-        return csi_relation.CSI(ci, context)
+        return csi_relation.CSI(ci, context, cards=self.cards)
 
     def intersects(self, stage):
         """ Checks if the paths of two stages intersect.

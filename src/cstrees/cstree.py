@@ -2,16 +2,16 @@ from math import comb
 from random import uniform
 import logging
 import sys
-
+from importlib import reload  # Not needed in Python 2
 import networkx as nx
 import numpy as np
 import pandas as pd
 
-
+reload(logging)
 import cstrees.stage as st
 from cstrees import csi_relation
-#logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
-logging.basicConfig(stream=sys.stderr, level=logging.ERROR)
+logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
+#logging.basicConfig(stream=sys.stderr, level=logging.ERROR)
 
 
 def plot(graph, layout="dot"):
@@ -376,14 +376,20 @@ class CStree:
 
         """
         logging.debug("getting csi rels per level")
-        logging.debug(self.stages)
+        #logging.debug(self.stages)
+        for key, val in self.stages.items():
+            for s in val:
+                logging.debug(s)
+        
         rels = self.csi_relations_per_level()
         logging.debug("rels")
-        logging.debug(rels)
+        
         for key, rel in rels.items():
             for r in rel:
                 logging.debug(r)
-        paired_csis = csi_relation._csis_by_levels_2_by_pairs(rels) # this could still be per level?
+                logging.debug("cards: {}".format(r.cards))
+                
+        paired_csis = csi_relation._csis_by_levels_2_by_pairs(rels, cards=self.cards) # this could still be per level?
         logging.debug("###### paired_csis")
         logging.debug(paired_csis)
 
@@ -417,7 +423,7 @@ class CStree:
             dict: The CSI relations per level. The keys are the levels, and the values are lists of CSI relations.
         """
 
-        return {l: [s.to_csi() for s in stages] for l, stages in self.stages.items()}
+        return {l: [s.to_csi() for s in stages] for l, stages in self.stages.items() if l>=0}
 
     def csi_relations(self, level="all"):
         """ Returns all the context specific indepencende (CSI) relations.

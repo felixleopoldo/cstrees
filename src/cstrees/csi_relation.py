@@ -132,7 +132,7 @@ class CSI:
         for el in zip(a, b):
             pass
 
-        return CSI(c_list)
+        return CSI(c_list, cards=self.cards)
 
     def as_list(self):
         """ List representation. Important: only for pairwise CSIs.
@@ -147,6 +147,11 @@ class CSI:
             >>> csi.as_list()
             [{0}, None, None, {1}, {0, 1}, {0, 1}]
         """
+        
+        print("Pairwise CSI as a list ")
+        assert self.cards is not None
+                
+       
         # Get the level as the max element-1
         # The Nones not at index 0 encode the CI variables.
         def mymax(s):
@@ -162,7 +167,10 @@ class CSI:
         # print(print(self.ci.sep))
         levels = max(mymax(self.ci.a), mymax(self.ci.b), mymax(
             self.ci.sep), mymax(self.context.context)) + 1
-        cards = [2] * levels
+        
+        #cards = [2] * levels
+        cards = self.cards[:levels+1]
+         
         csilist = [None] * levels
         for l in range(levels):
             if (l in self.ci.a) or (l in self.ci.b):
@@ -354,7 +362,7 @@ def pairwise_cis(ci: CI):
     return cis
 
 
-def pairwise_csis(csi: CSI):
+def pairwise_csis(csi: CSI, cards=None):
     """ Using weak union just to get pairwise indep relations from a CSI.
 
     Args:
@@ -374,11 +382,12 @@ def pairwise_csis(csi: CSI):
         X2 ⊥ X3 | X1, X4, X5, X6=0
         X2 ⊥ X4 | X1, X3, X5, X6=0
     """
+    logging.debug("Pairwise CSIs")
     context = csi.context
     ci_pairs = pairwise_cis(csi.ci)
     csis = []
     for ci in ci_pairs:
-        csi = CSI(ci, context=context)
+        csi = CSI(ci, context=context, cards=cards)
         csis.append(csi)
     return csis
 
@@ -689,7 +698,7 @@ def minimal_csis(paired_csis, cards):
     return ret
 
 
-def _csis_by_levels_2_by_pairs(rels):
+def _csis_by_levels_2_by_pairs(rels,cards=None):
 
     paired_csis = [None] * len(rels)
 
@@ -698,7 +707,7 @@ def _csis_by_levels_2_by_pairs(rels):
         csi_pairs = []  # X_i _|_ X_j | something
         for v in val:
             # print(v)
-            csis = pairwise_csis(v) # Using weak unions
+            csis = pairwise_csis(v, cards=cards) # Using weak unions
             csi_pairs = csi_pairs + csis
 
             # Loop though all levels for each of these and try to mix.
