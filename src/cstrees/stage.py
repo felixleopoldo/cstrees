@@ -6,6 +6,15 @@ import numpy as np
 import cstrees.cstree as ct
 from cstrees import csi_relation
 
+import logging
+import sys
+from importlib import reload  # Not needed in Python 2
+
+reload(logging)
+FORMAT = '%(filename)s:%(funcName)s (%(lineno)d):  %(message)s'
+logging.basicConfig(stream=sys.stderr, level=logging.DEBUG, format=FORMAT)
+
+
 class Stage:
     """
        A Stage is a CSI of form 
@@ -171,6 +180,9 @@ class Stage:
 
         ci = csi_relation.CI(sepseta, sepsetb, cond_set)
         context = csi_relation.Context(context)
+        
+        #logging.debug("cards")
+        #logging.debug(self.cards)
         return csi_relation.CSI(ci, context, cards=self.cards)
 
     def intersects(self, stage):

@@ -5,6 +5,13 @@ from itertools import chain, combinations
 import networkx as nx
 import numpy as np
 
+import logging
+import sys
+from importlib import reload  # Not needed in Python 2
+
+reload(logging)
+FORMAT = '%(filename)s:%(funcName)s (%(lineno)d):  %(message)s'
+logging.basicConfig(stream=sys.stderr, level=logging.DEBUG, format=FORMAT)
 
 class Context:
     """ A class for the context of a CSI. It takes a dictionary as input, where
@@ -148,7 +155,7 @@ class CSI:
             [{0}, None, None, {1}, {0, 1}, {0, 1}]
         """
         
-        print("Pairwise CSI as a list ")
+        logging.debug("Pairwise CSI as a list ")
         assert self.cards is not None
                 
        
@@ -458,12 +465,17 @@ def partition_csis(csilist_list, level, cards):
         0: [[{0}, None, {0}, None], [{0}, None, {1}, None]]
         1: [[{1}, None, {0}, None]]
     """
-  
+    logging.debug("Partitioning CSIs")
+    logging.debug("level {}".format(level))
+    logging.debug("cards {}".format(cards))
+    logging.debug(csilist_list)
+
     csis_to_mix = [[] for _ in range(cards[level])]
     for csilist in csilist_list:
         if len(csilist[level]) > 1:  # Only consider those with single value
             continue
-        var_val = list(csilist[level])[0]  # just to get the value from the set
+        var_val = list(csilist[level])[0]  # just to get the single value from the set
+        logging.debug("var_val {}".format(var_val))
         csis_to_mix[var_val].append(csilist)
       
     return csis_to_mix

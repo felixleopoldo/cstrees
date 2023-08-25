@@ -1,16 +1,19 @@
 from math import comb
 from random import uniform
-import logging
-import sys
-from importlib import reload  # Not needed in Python 2
 import networkx as nx
 import numpy as np
 import pandas as pd
 
-reload(logging)
 import cstrees.stage as st
 from cstrees import csi_relation
-logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
+
+import logging
+import sys
+from importlib import reload  # Not needed in Python 2
+
+reload(logging)
+FORMAT = '%(filename)s:%(funcName)s (%(lineno)d):  %(message)s'
+logging.basicConfig(stream=sys.stderr, level=logging.DEBUG, format=FORMAT)
 #logging.basicConfig(stream=sys.stderr, level=logging.ERROR)
 
 
@@ -111,6 +114,11 @@ class CStree:
             >>> })
 
         """
+        for lev, stage_list in stages.items():
+            for stage in stage_list:
+                stage.cards = self.cards#[:lev+1] # Or full cards?
+            
+            
         self.stages.update(stages)
         if -1 not in self.stages:
             self.stages[-1] = [st.Stage([], color="black")]
@@ -375,29 +383,34 @@ class CStree:
             X2=0: Edges [(0, 1), (0, 3)]
 
         """
-        logging.debug("getting csi rels per level")
-        #logging.debug(self.stages)
+        
+        logging.debug("Stages")
+        
         for key, val in self.stages.items():
+            logging.debug("level {}".format(key))
             for s in val:
                 logging.debug(s)
-        
+        logging.debug("Getting csi rels per level")
         rels = self.csi_relations_per_level()
-        logging.debug("rels")
-        
+        logging.debug("CSI relations per level")
         for key, rel in rels.items():
+            
+            logging.debug("level {}: ".format(key))
+            
             for r in rel:
+                logging.debug("the CSI")
                 logging.debug(r)
                 logging.debug("cards: {}".format(r.cards))
                 
         paired_csis = csi_relation._csis_by_levels_2_by_pairs(rels, cards=self.cards) # this could still be per level?
-        logging.debug("###### paired_csis")
+        logging.debug("\n###### Paired_csis")
         logging.debug(paired_csis)
 
         logging.debug("\n ######### minl cslisist")
         # The pairs may change during the process this is why we have by pairs.
         # However, the level part
         # should always remain the same actually, so may this is not be needed.
-        minl_csislists = csi_relation.minimal_csis(paired_csis, self.cards[1:]) # this could be by level still?
+        minl_csislists = csi_relation.minimal_csis(paired_csis, self.cards) # this could be by level still?
         logging.debug(minl_csislists)
 
         logging.debug("\n ############### get minl csis in list format")
