@@ -9,7 +9,11 @@ import cstrees.stage as stl
 import cstrees.scoring as sc
 
 
+<<<<<<< HEAD
 def all_stagings(cards, level, max_cvars=1, poss_cvars=None):
+=======
+def all_stagings(cards, level, max_cvars=1, poss_cvars=[]):
+>>>>>>> dd0a8446e511f816f27b010026af7af350d06b80
     """ Returns a generator over all stagings of a given level.
 
     Args:
@@ -134,6 +138,7 @@ def _optimal_staging_at_level(order, context_scores, level, max_cvars=2, poss_cv
     cards = [context_scores["cards"][var] for var in order]
     
     var = order[level+1] 
+<<<<<<< HEAD
     #print("staging level: {}".format(level))
     #print("var: {}".format(var))
     poss_cvars_inds = [i for i,j in enumerate(order) if j in poss_cvars and i<=level]
@@ -143,6 +148,12 @@ def _optimal_staging_at_level(order, context_scores, level, max_cvars=2, poss_cv
         stagings = all_stagings(cards, level, max_cvars, poss_cvars=poss_cvars_inds)
     else: # If the posible cvars is empty, then all variables are in the same stage/color.
         stagings = [[stl.Stage([set(range(cards[l])) for l in cards[:level+1]])]]
+=======
+   
+    poss_cvars_inds = [i for i,j in enumerate(order) if j in poss_cvars and i<=level]
+    #print("poss cvars inds: {}".format(poss_cvars_inds))
+    stagings = all_stagings(cards, level, max_cvars, poss_cvars=poss_cvars_inds)
+>>>>>>> dd0a8446e511f816f27b010026af7af350d06b80
     max_staging = None
     max_staging_score = -np.inf
     
@@ -219,7 +230,7 @@ def _optimal_cstree_given_order(order, context_scores):
     return tree
 
 
-def _find_optimal_order(score_table):
+def _find_optimal_order(score_table, poss_cvars=None):
     """ Find the optimal causal order for the data using exhaustive search of
         the optimal order then the CStree having that order.
 
