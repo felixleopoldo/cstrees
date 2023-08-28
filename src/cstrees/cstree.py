@@ -13,8 +13,8 @@ from importlib import reload  # Not needed in Python 2
 
 reload(logging)
 FORMAT = '%(filename)s:%(funcName)s (%(lineno)d):  %(message)s'
-logging.basicConfig(stream=sys.stderr, level=logging.DEBUG, format=FORMAT)
-#logging.basicConfig(stream=sys.stderr, level=logging.ERROR)
+#logging.basicConfig(stream=sys.stderr, level=logging.DEBUG, format=FORMAT)
+logging.basicConfig(stream=sys.stderr, level=logging.ERROR)
 
 
 def plot(graph, layout="dot"):

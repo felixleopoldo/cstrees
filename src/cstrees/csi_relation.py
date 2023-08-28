@@ -11,7 +11,8 @@ from importlib import reload  # Not needed in Python 2
 
 reload(logging)
 FORMAT = '%(filename)s:%(funcName)s (%(lineno)d):  %(message)s'
-logging.basicConfig(stream=sys.stderr, level=logging.DEBUG, format=FORMAT)
+#logging.basicConfig(stream=sys.stderr, level=logging.DEBUG, format=FORMAT)
+logging.basicConfig(stream=sys.stderr, level=logging.ERROR, format=FORMAT)
 
 class Context:
     """ A class for the context of a CSI. It takes a dictionary as input, where
@@ -100,7 +101,7 @@ class CI:
             s2 += "X{}, ".format(i)
         s2 = s2[:-2]
         s3 = ""
-        if sum(self.sep) > 0:
+        if len(self.sep) > 0: # BUG: sum instead of len ???
             for i in self.sep:
                 s3 += "X{}, ".format(i)
             s3 = s3[:-2]
@@ -233,10 +234,18 @@ class CSI:
         return hash(str(self))
 
     def __str__(self) -> str:
-        if len(self.context.context) == 0:
-            return "{}".format(self.ci)
-        return "{}, {}".format(self.ci, self.context)
 
+        if len(self.context.context) == 0:
+            # No context
+            return "{}".format(self.ci)
+
+        if len(self.context.context) != 0:
+            if len(self.ci.sep) == 0:
+                # Adding the |
+                return "{} | {}".format(self.ci, self.context)
+            else:
+                # | is already there
+                return "{}, {}".format(self.ci, self.context)
 
 def decomposition(ci: CI):
     """Generate all possible pairwise CI relations that are implied by
