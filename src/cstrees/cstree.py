@@ -414,7 +414,7 @@ class CStree:
         logging.debug(minl_csislists)
 
         logging.debug("\n ############### get minl csis in list format")
-        minl_csis = csi_relation._csi_lists_to_csis_by_level(minl_csislists, self.p) # this would not be needed
+        minl_csis = csi_relation._csi_lists_to_csis_by_level(minl_csislists, self.p, labels=self.labels) # this would not be needed
         logging.debug(minl_csislists)
         for key in minl_csislists:
             for pair, val in key.items():
@@ -461,7 +461,7 @@ class CStree:
 
                 if stage.is_singleton():
                     continue # As these dont encode any independence relations.
-                csi_rel = stage.to_csi()
+                csi_rel = stage.to_csi(labels=self.labels)
 
                 if csi_rel.context not in csi_rels.keys():
                     csi_rels[csi_rel.context] = [csi_rel]

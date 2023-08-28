@@ -166,7 +166,7 @@ class Stage:
 
         return result
 
-    def to_csi(self):
+    def to_csi(self, labels=None):
         sepseta = set()
         cond_set = set()
         context = {}
@@ -178,8 +178,8 @@ class Stage:
             else:
                 context[i] = el
 
-        ci = csi_relation.CI(sepseta, sepsetb, cond_set)
-        context = csi_relation.Context(context)
+        ci = csi_relation.CI(sepseta, sepsetb, cond_set, labels=labels)
+        context = csi_relation.Context(context, labels=labels)
         
         #logging.debug("cards")
         #logging.debug(self.cards)

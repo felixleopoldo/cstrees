@@ -14,6 +14,12 @@ FORMAT = '%(filename)s:%(funcName)s (%(lineno)d):  %(message)s'
 #logging.basicConfig(stream=sys.stderr, level=logging.DEBUG, format=FORMAT)
 logging.basicConfig(stream=sys.stderr, level=logging.ERROR, format=FORMAT)
 
+def mymax(s):
+    if (type(s) is set) and (len(s) > 0):
+        return max(s)
+    else:
+        return 0
+
 class Context:
     """ A class for the context of a CSI. It takes a dictionary as input, where
     e.g. {0:0, 3:1} means that X0=0 and X3=1, where Xl is the variable at level
@@ -28,13 +34,20 @@ class Context:
         X0=0, X3=1
     """
 
-    def __init__(self, context: dict) -> None:
+    def __init__(self, context: dict, labels=None) -> None:
+    
         self.context = context
+        if (labels is None) and (len(self.context) > 0):
+            levels = max(self.context) + 1
+            self.labels = list(range(levels))
+        else:
+            self.labels = labels
 
     def __str__(self) -> str:
+        
         context_str = ""
         for key, val in self.context.items():
-            context_str += "X{}={}, ".format(key, val)
+            context_str += "{}={}, ".format(self.labels[key], val)
         if context_str != "":
             context_str = context_str[:-2]
         if context_str == "":
@@ -81,10 +94,18 @@ class CI:
 
     """
 
-    def __init__(self, a, b, sep) -> None:
+    def __init__(self, a, b, sep, labels=None) -> None:
         self.a = a
         self.b = b
         self.sep = sep
+        
+        # Just set the labels to [0,1,2,3,..]
+        if labels is None:
+            levels = max(mymax(self.a), mymax(self.b), mymax(
+            self.sep)) + 1        
+            self.labels = range(levels)
+        else:
+            self.labels = labels
 
     def __eq__(self, o: object) -> bool:
         return ((((self.a == o.a) & (self.b == o.b)) |
@@ -94,16 +115,16 @@ class CI:
     def __str__(self) -> str:
         s1 = ""
         for i in self.a:
-            s1 += "X{}, ".format(i)
+            s1 += "{}, ".format(self.labels[i])
         s1 = s1[:-2]
         s2 = ""
         for i in self.b:
-            s2 += "X{}, ".format(i)
+            s2 += "{}, ".format(self.labels[i])
         s2 = s2[:-2]
         s3 = ""
         if len(self.sep) > 0: # BUG: sum instead of len ???
             for i in self.sep:
-                s3 += "X{}, ".format(i)
+                s3 += "{}, ".format(self.labels[i])
             s3 = s3[:-2]
             return "{} ⊥ {} | {}".format(s1, s2, s3)
         return "{} ⊥ {}".format(s1, s2)
@@ -162,12 +183,7 @@ class CSI:
        
         # Get the level as the max element-1
         # The Nones not at index 0 encode the CI variables.
-        def mymax(s):
-
-            if (type(s) is set) and (len(s) > 0):
-                return max(s)
-            else:
-                return 0
+       
 
         if not ((len(self.ci.a) == 1) and (len(self.ci.b) == 1)):
             print("This only works for pairwise csis (Xi _|_ Xj | ...).")
@@ -490,7 +506,7 @@ def partition_csis(csilist_list, level, cards):
     return csis_to_mix
 
 
-def _csilist_to_csi(csilist):
+def _csilist_to_csi(csilist, labels=None): #This could probably take labels as well
     """ The independent variables are represented by None. 
     Only for pairwise CSIs.
 
@@ -513,11 +529,10 @@ def _csilist_to_csi(csilist):
 
             sep.add(i)  # this should be == range(cards[i]))
 
-    context = Context(context)
+    context = Context(context, labels=labels)
 
-    ci = CI({indpair[0]}, {indpair[1]}, sep)
+    ci = CI({indpair[0]}, {indpair[1]}, sep, labels=labels)
     csi = CSI(ci, context)
-    # print(csi)
     return csi
 
 
@@ -766,7 +781,7 @@ def _rels_by_level_2_by_context(rels_at_level):
     return rels
 
 
-def _csi_lists_to_csis_by_level(csi_lists, p):
+def _csi_lists_to_csis_by_level(csi_lists, p, labels):
     stages = {l: [] for l in range(p)}
     for l, csilist in enumerate(csi_lists):
 
@@ -774,7 +789,7 @@ def _csi_lists_to_csis_by_level(csi_lists, p):
         # Convert formats
         for pair, csil in csilist.items():
             for csi in csil:
-                csiobj = _csilist_to_csi(csi)
+                csiobj = _csilist_to_csi(csi, labels=labels) # TODO: add labels?
                 tmp.append(csiobj)
         stages[l] = tmp
     return stages
