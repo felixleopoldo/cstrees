@@ -37,12 +37,12 @@ class TestingToMinimalCSIs(unittest.TestCase):
         # Testing against the string representation of the CSIs.
         # Maybe not the best, but quite good anyway since it
         # is easy to read and understand.
-        correct_csis = {"X0 ⊥ X1"}
+        correct_csis = {"a ⊥ b"}
         self.assertEqual(csi_strings, correct_csis)
         
     def test_figure1(self):
-        tree = ct.CStree([2, 2, 2, 2])
-
+        
+        tree = ct.CStree([2, 2, 2, 2], labels= ["X"+str(i) for i in range(1,5)])
         tree.update_stages({
             0: [st.Stage([0]), st.Stage([1])],
             1: [st.Stage([{0, 1}, 0], color="green"), st.Stage([0, 1]), st.Stage([1, 1])],
@@ -59,9 +59,9 @@ class TestingToMinimalCSIs(unittest.TestCase):
             for csi in csis:
                 csi_strings.add(str(csi))                
                 
-        correct_csis ={"X0 ⊥ X2 | X1=0",
-                        "X1 ⊥ X3 | X0, X2=0",
-                        "X1 ⊥ X3 | X2, X0=0"} 
+        correct_csis ={"X1 ⊥ X3 | X2=0",
+                        "X2 ⊥ X4 | X1, X3=0",
+                        "X2 ⊥ X4 | X3, X1=0"} 
         self.assertEqual(csi_strings, correct_csis)
         
 if __name__ == '__main__':
