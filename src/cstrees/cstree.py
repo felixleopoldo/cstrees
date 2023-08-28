@@ -588,7 +588,8 @@ class CStree:
         agraph = plot(self.tree)
         #agraph.node_attr["shape"] = "circle"
         
-        ## This is a hack to plot labels. Just an invisible graph.
+        ###############################################################
+        ### This is a hack to plot labels. Just an invisible graph. ###
         for i, lab in enumerate(self.labels):
             agraph.add_node(lab, color="white")
 
@@ -638,7 +639,7 @@ def sample_cstree(cards: list, max_cvars: int, prob_cvar: int,
 
     stagings = {}
     for level, val in enumerate(cards[:-1]):  # not the last level
-        print("level {}".format(level))
+        #print("\nlevel {}".format(level))
         # fix max_context_vars if higher than level
         #print("level {}".format(level))
         #tmpstage =  st.Stage([set(range(l)) for l in cards[:level+1]])
@@ -842,7 +843,7 @@ def df_to_cstree(df, read_probs=True):
             if val == "*":
                 stage_list.append(set(range(cards[level])))
             elif val == "-":
-                # Reached stop mark "-", so create a stage of it.
+                # Reached stop mark "-", so create a stage of stage_list.
                 s = st.Stage(stage_list)
                 
                 if s.size() == 1: # Singleton stage? Or maybe root stage?.

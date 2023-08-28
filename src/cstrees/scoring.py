@@ -408,11 +408,8 @@ def order_score_tables(data: pd.DataFrame,
 
     context_scores["max_cvars"] = max_cvars
     context_scores["poss_cvars"] = poss_cvars
-<<<<<<< HEAD
     
     #pp(context_scores)
-=======
->>>>>>> dd0a8446e511f816f27b010026af7af350d06b80
     #print("labels: {}".format(labels))
     cards_dict = {var: data.loc[0, var] for var in data.columns}
 
