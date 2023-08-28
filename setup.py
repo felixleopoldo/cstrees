@@ -23,12 +23,12 @@ with open(path, 'w') as F:
 
 setup(
     # Basic info
-    name='cstrees',
+    name='CStrees',
     version=version,
     author='',
     author_email='',
     url='',
-    description='A short description for your project.',
+    description='A Python library for CStrees.',
     long_description=codecs.open('README.rst', 'rb', 'utf8').read(),
 
     # Classifiers (see https://pypi.python.org/pypi?%3Aaction=list_classifiers)

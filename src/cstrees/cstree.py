@@ -1,16 +1,19 @@
 from math import comb
 from random import uniform
-import logging
-import sys
-
 import networkx as nx
 import numpy as np
 import pandas as pd
 
-
 import cstrees.stage as st
 from cstrees import csi_relation
-#logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
+
+import logging
+import sys
+from importlib import reload  # Not needed in Python 2
+
+reload(logging)
+FORMAT = '%(filename)s:%(funcName)s (%(lineno)d):  %(message)s'
+#logging.basicConfig(stream=sys.stderr, level=logging.DEBUG, format=FORMAT)
 logging.basicConfig(stream=sys.stderr, level=logging.ERROR)
 
 
@@ -111,6 +114,11 @@ class CStree:
             >>> })
 
         """
+        for lev, stage_list in stages.items():
+            for stage in stage_list:
+                stage.cards = self.cards#[:lev+1] # Or full cards?
+            
+            
         self.stages.update(stages)
         if -1 not in self.stages:
             self.stages[-1] = [st.Stage([], color="black")]
@@ -375,27 +383,38 @@ class CStree:
             X2=0: Edges [(0, 1), (0, 3)]
 
         """
-        logging.debug("getting csi rels per level")
-        logging.debug(self.stages)
+        
+        logging.debug("Stages")
+        
+        for key, val in self.stages.items():
+            logging.debug("level {}".format(key))
+            for s in val:
+                logging.debug(s)
+        logging.debug("Getting csi rels per level")
         rels = self.csi_relations_per_level()
-        logging.debug("rels")
-        logging.debug(rels)
+        logging.debug("CSI relations per level")
         for key, rel in rels.items():
+            
+            logging.debug("level {}: ".format(key))
+            
             for r in rel:
+                logging.debug("the CSI")
                 logging.debug(r)
-        paired_csis = csi_relation._csis_by_levels_2_by_pairs(rels) # this could still be per level?
-        logging.debug("###### paired_csis")
+                logging.debug("cards: {}".format(r.cards))
+                
+        paired_csis = csi_relation._csis_by_levels_2_by_pairs(rels, cards=self.cards) # this could still be per level?
+        logging.debug("\n###### Paired_csis")
         logging.debug(paired_csis)
 
         logging.debug("\n ######### minl cslisist")
         # The pairs may change during the process this is why we have by pairs.
         # However, the level part
         # should always remain the same actually, so may this is not be needed.
-        minl_csislists = csi_relation.minimal_csis(paired_csis, self.cards[1:]) # this could be by level still?
+        minl_csislists = csi_relation.minimal_csis(paired_csis, self.cards) # this could be by level still?
         logging.debug(minl_csislists)
 
         logging.debug("\n ############### get minl csis in list format")
-        minl_csis = csi_relation._csi_lists_to_csis_by_level(minl_csislists, self.p) # this would not be needed
+        minl_csis = csi_relation._csi_lists_to_csis_by_level(minl_csislists, self.p, labels=self.labels) # this would not be needed
         logging.debug(minl_csislists)
         for key in minl_csislists:
             for pair, val in key.items():
@@ -417,7 +436,7 @@ class CStree:
             dict: The CSI relations per level. The keys are the levels, and the values are lists of CSI relations.
         """
 
-        return {l: [s.to_csi() for s in stages] for l, stages in self.stages.items()}
+        return {l: [s.to_csi() for s in stages] for l, stages in self.stages.items() if l>=0}
 
     def csi_relations(self, level="all"):
         """ Returns all the context specific indepencende (CSI) relations.
@@ -442,7 +461,7 @@ class CStree:
 
                 if stage.is_singleton():
                     continue # As these dont encode any independence relations.
-                csi_rel = stage.to_csi()
+                csi_rel = stage.to_csi(labels=self.labels)
 
                 if csi_rel.context not in csi_rels.keys():
                     csi_rels[csi_rel.context] = [csi_rel]
@@ -620,10 +639,15 @@ def sample_cstree(cards: list, max_cvars: int, prob_cvar: int,
 
     stagings = {}
     for level, val in enumerate(cards[:-1]):  # not the last level
-        #print("level {}".format(level))
+        #print("\nlevel {}".format(level))
         # fix max_context_vars if higher than level
         #print("level {}".format(level))
-        stage_space = [st.Stage([set(range(cards[l])) for l in cards[:level+1]])]
+        #tmpstage =  st.Stage([set(range(l)) for l in cards[:level+1]])
+        tmpstage =  st.Stage([set(range(cards[l])) for l in range(level+1)], cards=cards)
+        #print("full stage space: {}".format(tmpstage))
+        #print("full stage cards: {}".format(tmpstage.cards))
+        
+        stage_space = [tmpstage]
 
         full_stage_space_size = stage_space[0].size()
 
@@ -631,6 +655,7 @@ def sample_cstree(cards: list, max_cvars: int, prob_cvar: int,
         singleton_space_size = full_stage_space_size
         # print(proportion_left)
 
+        # Need to adjust the max_cvars for the low levels.
         mc = max_cvars
         if level < mc:
             mc = level + 1  # should allow for "singleton" stages at level 0 as this
@@ -644,8 +669,11 @@ def sample_cstree(cards: list, max_cvars: int, prob_cvar: int,
         #print("level: {}, mc: {}".format(level, mc))
 
         # BUG: for binary.. take max of mc elements in cards.
-        minimal_stage_size = 2**(level+1-mc)
-
+        #minimal_stage_size = 2**(level+1-mc) # non-singleton stage?
+        minimal_stage_size = np.prod(sorted(cards[:level+1])[:-mc], dtype=int) # take the product of all cards, expept for the mc largest ones
+        
+        #print("minimal stage size: {}".format(minimal_stage_size))
+        #print("minimal stage size new: {}".format(minimal_stage_size_new))
         #print("full_stage_space_size: {}".format(full_stage_space_size))
         #print("level: {}, mc: {}, minimal_stage_size: {}".format(level, mc, minimal_stage_size))
 
@@ -682,6 +710,10 @@ def sample_cstree(cards: list, max_cvars: int, prob_cvar: int,
         while (1 - (singleton_space_size / full_stage_space_size)) < prop_nonsingleton:
             colored_size_old = full_stage_space_size - singleton_space_size
             # Choose randomly a stage space
+            #print("used space: ",(1 - (singleton_space_size / full_stage_space_size)))
+           
+            
+            
             space_int = np.random.randint(len(stage_space))
             stage_restr = stage_space.pop(space_int)
             #print("stage restr: {}".format(stage_restr))
@@ -713,6 +745,9 @@ def sample_cstree(cards: list, max_cvars: int, prob_cvar: int,
                 stagings[level].append(new_stage)
             #print("proportion left")
             #print(space_left / full_state_space_size)
+            #print("space left")
+            #for sp1 in stage_space:
+            #    print(sp1)
 
     stagings[-1] = [st.Stage([], color="black")]
 
@@ -808,7 +843,7 @@ def df_to_cstree(df, read_probs=True):
             if val == "*":
                 stage_list.append(set(range(cards[level])))
             elif val == "-":
-                # Reached stop mark "-", so create a stage of it.
+                # Reached stop mark "-", so create a stage of stage_list.
                 s = st.Stage(stage_list)
                 
                 if s.size() == 1: # Singleton stage? Or maybe root stage?.
