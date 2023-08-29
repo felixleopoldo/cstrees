@@ -90,8 +90,6 @@ class CI:
         >>> ci = csi_relation.CI({1}, {2}, {4, 5})
         >>> print(ci)
         X1 ⊥ X2 | X4, X5
-
-
     """
 
     def __init__(self, a, b, sep, labels=None) -> None:
@@ -340,8 +338,6 @@ def weak_union(ci: CI):
         X1, X2 ⊥ X3 | X4, X5
         X2 ⊥ X3, X4 | X1, X5
         X1 ⊥ X3, X4 | X2, X5
-        
-        
     """
     cis = []
     for d in _powerset(ci.b):
@@ -550,18 +546,16 @@ def _csilist_subset(a, b):
 
 
 def minimal_csis(paired_csis, cards):
-    """ 
-        Loop through all levels l
+    """ Loop through all levels l
         1. For each stage in the level do weak union to get the pairs
-           Xi _|_ Xj | something, and group.
+            Xi _|_ Xj | something, and group.
         2. For each such pair go through all levels and try to find mixable
-           CSI by partition on value.
+            CSI by partition on value.
         3. If mixable, mix and put the result in a set woth newly created.
 
         When we loop through al levels again by where the old CSI are not mixed
         with each other that is, each tuple needs at least one CSI from the new
         CSIs.
-
 
     Args:
         paired_csis (dict): Dict of csis grouped by pairwise indep rels as Xi _|_ Xj.
