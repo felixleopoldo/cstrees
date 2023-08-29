@@ -13,7 +13,7 @@ tqdm
 pp-ez
 causal-learn
 
-sphinx==6.3
+sphinx==6
 nbsphinx
 sphinx_rtd_theme
 sphinx_copybutton
