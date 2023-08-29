@@ -21,13 +21,17 @@ __author__ = ''
 with open(path, 'w') as F:
     F.write(meta)
 
+
+with open(os.path.join(os.path.dirname(__file__), 'requirements.txt')) as f:
+    requirements = f.readlines()
+
 setup(
     # Basic info
-    name='CStrees',
+    name='cstrees',
     version=version,
-    author='',
-    author_email='',
-    url='',
+    author='Felix Rios',
+    author_email='felix.leopoldo.rios@gmail.com',
+    url='github.com/felixleopoldo/cstrees',
     description='A Python library for CStrees.',
     long_description=codecs.open('README.rst', 'rb', 'utf8').read(),
 
@@ -35,7 +39,7 @@ setup(
     classifiers=[
         'Development Status :: 3 - Alpha',
         'Intended Audience :: Developers',
-        'License :: OSI Approved :: GNU General Public License (GPL)',
+        'License :: OSI Approved :: Apache 2.0 License',
         'Operating System :: OS Independent',
         'Programming Language :: Python',
         'Programming Language :: Python :: 3',
@@ -49,6 +53,7 @@ setup(
     package_dir={'': 'src'},
     packages=find_packages('src'),
     install_requires=[
+        requirements
     ],
     extras_require={
         'dev': [
