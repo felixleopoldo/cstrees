@@ -362,8 +362,8 @@ def weak_union(ci: CI):
 
 def pairwise_cis(ci: CI):
     """ Using weak union just to get pairwise indep relations from a CI.
-
-        X_a _|_ X_b | X_d
+    X_a _|_ X_b | X_d
+        
     Args:
         ci (CI): CI relation
         
