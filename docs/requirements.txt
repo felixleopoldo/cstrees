@@ -1,11 +1,21 @@
-sphinx
+numpy
+networkx
+pytest
+manuel
+pydot
+matplotlib
+pygraphviz
+pandas
+ipython
+ipykernel
+mpl-tools
+tqdm
+pp-ez
+causal-learn
+
 nbsphinx
 sphinx_rtd_theme
 sphinx_copybutton
 ipython
 
-networkx
-numpy
-scipy 
-pytest 
 
