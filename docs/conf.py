@@ -24,7 +24,7 @@ sys.path.append(os.path.abspath('../src'))
 
 
 
-#sys.path.append(os.path.abspath('..'))
+sys.path.append(os.path.abspath('../src/cstrees'))
 # -- General configuration ------------------------------------------------
 
 # If your documentation needs a minimal Sphinx version, state it here.
@@ -59,7 +59,7 @@ master_doc = 'index'
 # General information about the project.
 project = 'cstrees'
 project_title = project.title()
-author = 'Liam and his three wise men.'
+author = 'Felix Rios'
 copyright = '2023, %s' % author
 
 
