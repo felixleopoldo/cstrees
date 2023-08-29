@@ -3,3 +3,9 @@ nbsphinx
 sphinx_rtd_theme
 sphinx_copybutton
 ipython
+
+networkx
+numpy
+scipy 
+pytest 
+
