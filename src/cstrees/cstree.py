@@ -231,7 +231,6 @@ class CStree:
         Example:
             >>> t = ct.sample_cstree([2,2,2,2], max_cvars=1, prob_cvar=0.5, prop_nonsingleton=1)
             >>> t.estimate_stage_parameters(x, alpha_tot=1.0, method="BDeu")
-
         """
         import cstrees.scoring as sc
 
