@@ -14,8 +14,3 @@ pp-ez
 causal-learn
 
 pylint
-
-sphinx
-nbsphinx
-sphinx_rtd_theme
-sphinx_copybutton

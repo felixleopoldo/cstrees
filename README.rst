@@ -9,7 +9,4 @@
     :target: https://coveralls.io/github/*github_repository*?branch=master
 
 
-You are seeing this description because the package owner is lazy and did not
-provide a detailed description for its project ;-)
-
-Since you are here, please help with the CStrees's documentation!
+This is a Python package for working with CStrees.
