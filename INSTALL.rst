@@ -2,6 +2,9 @@
 Installation instructions
 =========================
 
+Installation
+-------------
+
 CStrees can be installed using pip::
 
     $ python -m pip install CStrees

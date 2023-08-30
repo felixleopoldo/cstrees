@@ -96,7 +96,6 @@ class Stage:
         else:
             cols = range(len(column_labels))
 
-        #for i in range(len(column_labels) - max_card):
         for i in cols:
             if i < len(self.list_repr):
                 if type(self.list_repr[i]) == set:
@@ -128,16 +127,13 @@ class Stage:
         Returns:
             list: A list of CSI relations representing the new space.
         """
-        #print("Subtracting {} from {}".format(stage, self))
-        #print("cards1: {}".format(stage.cards))
-        #print("cards2: {}".format(self.cards))
-        assert stage.cards is not None
+        assert stage.cards is not None # Shouldnt use assert here
         assert self.cards is not None
               
         a = self
         b = stage
         p = self.level
-        #cards = [2] * (p+1) # BUG!!!
+
         cards = self.cards
         # Keep all context vars from a. (this is already ok if b was sampled on a).
         # For each created csi, keep 1 of the context vars from b,
@@ -181,8 +177,6 @@ class Stage:
         ci = csi_relation.CI(sepseta, sepsetb, cond_set, labels=labels)
         context = csi_relation.Context(context, labels=labels)
         
-        #logging.debug("cards")
-        #logging.debug(self.cards)
         return csi_relation.CSI(ci, context, cards=self.cards)
 
     def intersects(self, stage):
@@ -211,10 +205,8 @@ class Stage:
         return list(itertools.product(*tmp))
 
     def __str__(self) -> str:
-        # return str(self.to_csi()) + "; probs: " + str(self.probs)
         if self.probs is not None:
             return str(self.list_repr) + "; probs: " + str(self.probs)+ "; color: " + str(self.color)
-        #return str(self.list_repr) + "; probs: " + str(self.probs)
         return str(self.list_repr)
 
 
@@ -235,7 +227,6 @@ def sample_stage_restr_by_stage(stage: Stage, max_cvars: int, cvar_prob: float, 
 
     space = stage.list_repr
     levelplus1 = len(space) # this is not the full p?    
-    #print("levelplus1: {}".format(levelplus1))
 
     assert (max_cvars <= levelplus1)  # < Since at least one cannot be a cvar.
     # This may not be true if wa are at very low levels where the level in sthe constraint.
