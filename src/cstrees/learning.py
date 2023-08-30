@@ -134,10 +134,9 @@ def _optimal_staging_at_level(order, context_scores, level, max_cvars=2, poss_cv
     cards = [context_scores["cards"][var] for var in order]
     
     var = order[level+1] 
-    #print("staging level: {}".format(level))
-    #print("var: {}".format(var))
+
     poss_cvars_inds = [i for i,j in enumerate(order) if j in poss_cvars and i<=level]
-    #print("poss cvars inds: {}".format(poss_cvars_inds))
+
     # BUG: here it is actually []. But is gives all...
     if len(poss_cvars_inds) > 0:
         stagings = all_stagings(cards, level, max_cvars, poss_cvars=poss_cvars_inds)
@@ -152,10 +151,9 @@ def _optimal_staging_at_level(order, context_scores, level, max_cvars=2, poss_cv
             if stage.level == -1:
                 staging_score = context_scores["scores"][var]["None"]
                 continue
-            #print("stage: {}".format(stage))
+
             # here we (=I) anyway extract just the context, so the stage format is a bit redundant.
-            stage_context = sc.stage_to_context_key(stage, order) # BUG: something wrong somewhere
-            #print(stage_context)
+            stage_context = sc.stage_to_context_key(stage, order) 
             score = context_scores["scores"][var][stage_context]
             staging_score += score
         
@@ -163,7 +161,6 @@ def _optimal_staging_at_level(order, context_scores, level, max_cvars=2, poss_cv
         if staging_score > max_staging_score:
             max_staging_score = staging_score
             max_staging = staging
-            #print("max staging: {}".format([str(s) for s in max_staging]))
 
     return max_staging, max_staging_score
 
@@ -185,15 +182,11 @@ def _optimal_cstree_given_order(order, context_scores):
     stages = {}
     stages[-1] = [stl.Stage([], color="black")]
     for level in range(-1, p-1):  # dont stage the last level
-        #print("\nstaging level: {}".format(level))
-        #print("var {} (one level above)".format(order[level+1]))
-        #print("potential cvars of {}: {}".format(order[level+1], context_scores["poss_cvars"][order[level+1]]) )
         max_staging, max_staging_score = _optimal_staging_at_level(
             order, context_scores, level, 
             max_cvars=context_scores["max_cvars"], 
             poss_cvars=context_scores["poss_cvars"][order[level+1]])
         stages[level] = max_staging
-        #print("max staging: {}".format([str(s) for s in max_staging]))
 
     # Create CStree
     tree = ct.CStree([context_scores["cards"][var] for var in order])
@@ -208,12 +201,10 @@ def _optimal_cstree_given_order(order, context_scores):
 
     for level, staging in stages.items():
         for i, stage in enumerate(staging):
-            #print("level: {}, stage: {}".format(level, stage))
             if (level==-1) or ((level>0) and all([isinstance(i, int) for i in stage.list_repr])):
                 stage.color = "black"
             else:
                 stage.color = colors[i]
-            #print("stage color: {}".format(stage.color))
     tree.update_stages(stages)
 
     return tree
@@ -238,11 +229,7 @@ def _find_optimal_order(score_table):
 
     """
     labels = list(score_table["scores"].keys())
-    #p = len(score_table.keys())
-    #p = data.shape[1]
-    #perms = permutations(list(range(p)))
     perms = permutations(labels)
-    #labels = data.columns.values
     optimal_orders = None
     max_score = -np.inf
 
@@ -251,14 +238,8 @@ def _find_optimal_order(score_table):
         # dont stage the last variable. What do i mean by this? /Felix
         order = list(perm)
         # maybe it should be the indices instead...
-        #order = [labels[i] for i in order]
-
-        #print("scoring order: {}".format(order))
         score = sc.score_order(order, score_table)
-        #print("order: {}, score: {}".format(order, score))
 
-        # if score == max_score:
-        #    optimal_orders.append(order)
         if score > max_score:
             max_score = score
             optimal_orders = order
@@ -295,19 +276,13 @@ def move_up(node_index,
     tmp1 = node_scores[node_index]
     tmp2 = node_scores[node_index+1]
 
-    #print("order {}".format(order))
     node1 = order[node_index]
     node2 = order[node_index+1]
-    #active_cvars1 = list(set(order[:node_index]) & set(score_table["poss_cvars"][node1]))
     active_cvars1 = [v for v in order[:node_index] if v in score_table["poss_cvars"][node1]]
-    
-    #active_cvars2 = list(order[:node_index+1] & set(score_table["poss_cvars"][node2]))
     active_cvars2 = [v for v in order[:node_index+1] if v in score_table["poss_cvars"][node2]]
+    
     pred1 = sc.list_to_score_key(active_cvars1)
     pred2 = sc.list_to_score_key(active_cvars2)
-    
-    #pred1 = sc.list_to_score_key(order[:node_index])
-    #pred2 = sc.list_to_score_key(order[:node_index+1])
 
     node_scores[node_index] = score_table["scores"][order[node_index]][pred1]
     node_scores[node_index+1] = score_table["scores"][order[node_index+1]][pred2]
@@ -332,9 +307,6 @@ def move_down(node_index,
 
     active_cvars1 = [v for v in order[:node_index] if v in score_table["poss_cvars"][order[node_index]]]
     active_cvars2 = [v for v in order[:node_index-1] if v in score_table["poss_cvars"][order[node_index-1]]]
-
-    # pred1 = sc.list_to_score_key(order[:node_index])
-    # pred2 = sc.list_to_score_key(order[:node_index-1])
     
     pred1 = sc.list_to_score_key(active_cvars1)
     pred2 = sc.list_to_score_key(active_cvars2)
@@ -394,18 +366,12 @@ def gibbs_order_sampler(iterations, score_table):
     """ Gibbs order sampler.
     """
     # Score table for all noded in all positions in the order
-    # score_table = sc.order_score_tables(data, max_cvars=max_cvars,
-    #                                         alpha_tot=alpha_tot,
-    #                                         method=method)
 
     order_trajectory = []
-    #p = data.shape[1]
     p = len(score_table["scores"])
 
-    #order = list(data.columns.values)  # list(range(p))
     order = list(score_table["scores"].keys()) #list(data.columns.values)  # list(range(p))
     random.shuffle(order)
-    print("initial order: {}".format(order))
     scores = []
 
     node_scores = [0]*p
@@ -414,27 +380,17 @@ def gibbs_order_sampler(iterations, score_table):
         subset_str = sc.list_to_score_key(order[:i] )
         
         subset_str = sc.list_to_score_key(list(set(order[:i]) & set(score_table["poss_cvars"][order[i]])))
-
-        #print("node: {} ".format(order[i]))
-        #print("subset: {}".format(subset_str))
-        #print(score_table["scores"][order[i]])
         node_scores[i] = score_table["scores"][order[i]][subset_str]
-        #print("node score: {}".format(node_scores[i]))
-        #rint("check: {}".format(check))
 
     score = np.sum(node_scores)
-    print("initial score: {}".format(score))
 
     scores.append(score)
     order_trajectory.append(order)
 
     for i in tqdm(range(1, iterations+1), desc="Gibbs order sampler"):
-        #print("\niteration: {}".format(i))
         # pick a random node
         node_index = np.random.randint(0, p)
         node = order_trajectory[i-1][node_index]
-        #print("order: {}".format(order_trajectory[i-1]))
-        #print("moving node {}".format(node))
         # calculate the neighborhood scores
         prop_probs = get_relocation_neighborhood(order_trajectory[i-1],
                                                  node_index,
@@ -442,12 +398,8 @@ def gibbs_order_sampler(iterations, score_table):
                                                  node_scores,
                                                  score_table)
 
-        #print("proposal probs: {}".format(prop_probs))
-        #print("sum: {}".format(np.sum(prop_probs)))
-
         # Select at random from the proposal distribution
         new_pos = np.random.choice(list(range(len(prop_probs))), p=prop_probs)
-        #print("to new pos: {}".format(new_pos))
 
         neworder = order_trajectory[i-1].copy()
         orderscore = move_node(node_index, new_pos,
@@ -455,8 +407,7 @@ def gibbs_order_sampler(iterations, score_table):
                                 scores[i-1],
                                 node_scores,
                                 score_table)
-        #print("order: {}".format(neworder))
-        #print("score: {}".format(orderscore))
+
         order_trajectory.append(neworder)
         scores.append(orderscore)  # O(p)
 
@@ -470,40 +421,27 @@ def get_relocation_neighborhood(order, node_index, orderscore, node_scores,
 
     neig_log_scores = [None] * len(order)
     neig_log_scores[node_index] = orderscore
-    # print(order)
+
     for i in range(node_index, len(order)-1):
-        #print("moving {} to the right".format(order[i]))
 
         orderscore = move_up(i, order, orderscore, node_scores, score_table)
-
         neig_log_scores[i+1] = orderscore
-        # print(order)
 
     # Move all the way back. But dont relocate the nodes that have already been
     # relocated.
     for i in range(len(order)-1, 0, -1):
-        #print("moving {} to the left".format(order[i]))
         orderscore = move_down(i, order, orderscore, node_scores, score_table)
-
         neig_log_scores[i-1] = orderscore
-        # print(order)
 
     # move back to where we started
     for i in range(0, node_index):
-        #print("moving {} to the right".format(order[i]))
         orderscore = move_up(i, order, orderscore, node_scores, score_table)
-
         neig_log_scores[i+1] = orderscore
-        # print(order)
 
-    #print("neig scores: {}".format(neig_log_scores))
     log_tot_neigh_scores = sc.logsumexp(neig_log_scores)
-    #print("log tot neigh scores: {}".format(log_tot_neigh_scores))
     log_probs = neig_log_scores - log_tot_neigh_scores
-    #print("log probs: {}".format(log_probs))
 
     prop_probs = np.exp(log_probs)
-    #print("proposal probs: {}".format(prop_probs))
     return prop_probs
 
 

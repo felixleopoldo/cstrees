@@ -204,40 +204,6 @@ class CSI:
 
         return csilist
 
-    # def to_cstree_paths(self, cards: list):
-    #     """Generate the set(s) of paths defining the CSI relations.
-    #     note that it can be defined by several stages (set of paths).
-
-    #     Args:
-    #         cards (list): _description_
-
-    #     Returns:
-    #         _type_: _description_
-    #     """
-
-    #     level = len(self.ci.a) + len(self.context.context) + 1
-    #     vals = []*level
-    #     for i in self.ci.a:
-    #         vals[i] = range(cards[i])
-    #     for i in self.ci.b:
-    #         vals[i] = range(cards[i])
-    #     for i, j in self.context.context.items():
-    #         vals[i] = j
-
-    #     return
-
-    # def __add__(self, o):
-    #     """Adding two objects by adding their set of paths and create a new
-    #         CSI_relation.
-
-    #     Args:
-    #         o (CSI_relation): A CSI relation.
-
-    #     Returns:
-    #         CSI_relation: A new CSI relation, created by joining the paths in both.
-    #     """
-    #     return CSI_relation(self.to_cstree_paths() + o.to_cstree_paths())
-
     def __hash__(self) -> int:
         """TODO: Check that the order is correct, so tht not 1 CSI can
         be represented in 2 ways.
