@@ -5,7 +5,7 @@ Notebooks
 -----------
 
 .. toctree::
-   :maxdepth: 4
+   :maxdepth: 2
 
    fig1_demo
    learn_demo
