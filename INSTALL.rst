@@ -5,9 +5,14 @@ Installation instructions
 Installation
 -------------
 
-CStrees can be installed using pip::
+Before installing cstrees, you need to make sure graphviz is installed on your machine.
+This can be done using conda::
 
-    $ python -m pip install CStrees
+    $ conda install graphviz
+
+cstrees can be installed using pip::
+
+    $ pip install cstrees
 
 This command will fetch the archive and its dependencies from the internet and
 install them. 
