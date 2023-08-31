@@ -477,3 +477,10 @@ def find_optimal_cstree(data, max_cvars=1, alpha_tot=1, method="BDeu"):
     opttree = _optimal_cstree_given_order(opt_order, context_scores)
 
     return opttree
+
+
+def causallearn_graph_posscvars(graph, labels):
+    poss_cvars = {l:[] for l in labels}
+    for (i, j) in graph.find_adj():
+        poss_cvars[labels[i]].append(labels[j])
+    return poss_cvars

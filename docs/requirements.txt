@@ -13,10 +13,10 @@ tqdm
 pp-ez
 causal-learn
 
-sphinx==6
+sphinx==6.2
 nbsphinx
 sphinx_rtd_theme
 sphinx_copybutton
 ipython
-
-
+sphinxcontrib.bibtex
+bibtexparser

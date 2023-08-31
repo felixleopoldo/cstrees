@@ -21,9 +21,6 @@ import os
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 
 sys.path.append(os.path.abspath('../src'))
-
-
-
 sys.path.append(os.path.abspath('../src/cstrees'))
 # -- General configuration ------------------------------------------------
 
@@ -40,7 +37,10 @@ extensions = [
     'sphinx.ext.viewcode',
     'sphinx_copybutton',
     'sphinx.ext.napoleon',  # Supports google-style docstrings.
+    'sphinxcontrib.bibtex'
 ]
+
+bibtex_bibfiles = ["_static/bibtex.bib"]
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -57,9 +57,9 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = 'cstreelib'
+project = 'cstrees'
 project_title = project.title()
-author = 'Felix Rios'
+author = ''
 copyright = '2023, %s' % author
 
 
