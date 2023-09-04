@@ -29,8 +29,8 @@ def codim_max2_boxes(
     degen = False
 
     dim = len(box)
-    #if len(splittable_coords) == 0:
-    #print("splittable_coords", splittable_coords)
+    # if len(splittable_coords) == 0:
+    # print("splittable_coords", splittable_coords)
     if splittable_coords is None:
         splittable_coords = range(dim)
     sub_split_len = len(splittable_coords) - 1
@@ -44,7 +44,7 @@ def codim_max2_boxes(
         yield cd1_subdiv
         if max1cvar:
             continue
-        
+
         num_cd1_boxes = len(cd1_subdiv)
         for subset_size in range(1, num_cd1_boxes):
             subsets = combinations(range(num_cd1_boxes), subset_size)
@@ -60,19 +60,19 @@ def codim_max2_boxes(
 
 
 def codim_1_subdivs(
-    box: list, splittable_dims: Iterable[int], splittable_subboxes: list = []
+    box: list, splittable_coords: Iterable[int], splittable_subboxes: list = []
 ) -> Generator:
     """Enumerate codimension-1 subdivisions of the given (subdivision of a) box.
-    
+
     Args:
         box: Box to be subdivided
         splittable_dims: Coordinates of box considered for splitting when making subdivisions; interpreted as indices of possible context variables.
-        splittable_subboxes: 
+        splittable_subboxes:
     """
 
     if len(splittable_subboxes) == 0:
         splittable_subboxes = list(range(len(box)))
-    for dims_to_split in product(*(splittable_dims for _ in splittable_subboxes)):
+    for dims_to_split in product(*(splittable_coords for _ in splittable_subboxes)):
         cd1_subdiv = []
         for subbox_idx, subbox in enumerate(box):
             if subbox_idx in splittable_subboxes:
