@@ -683,6 +683,23 @@ class CStree:
         agraph.layout("dot")
         return agraph
 
+    def predict(self, partial_observation):
+        """
+        Predict most likely missing values of partial observation.
+
+        Args:
+            partial_observation (dict): {feature: value} pairs
+
+        Notes:
+            Given a CStree over RVs :math:`X_{[n]}` along with a
+        partial observation :math:`x_\mathbf{p}` for
+        :math:`\mathbf{p}\subseteq [n]`, compute :math:`\mathrm{arg\,
+        max}_{x \in X_{[n]\setminus\mathbf{p}}}
+        P(X_{[n]\setminus\mathbf{p}} = x \mid X_\mathbf{p} =
+        x_\mathbf{p})`.
+        """
+        return prediction
+
 
 def sample_cstree(
     cards: list, max_cvars: int, prob_cvar: int, prop_nonsingleton: float
