@@ -2,6 +2,7 @@ from math import comb
 from random import uniform
 import logging
 import sys
+from itertools import product, islice
 
 import networkx as nx
 import numpy as np
@@ -683,12 +684,12 @@ class CStree:
         agraph.layout("dot")
         return agraph
 
-    def predict(self, partial_observation):
+    def predict(self, partial_observation, return_prob=False):
         """
         Predict most likely missing values of partial observation.
 
         Args:
-            partial_observation (dict): {feature: value} pairs
+            partial_observation (dict): {feature_idx: value} pairs
 
         Notes:
             Given a CStree over RVs :math:`X_{[n]}` along with a
@@ -698,7 +699,22 @@ class CStree:
         P(X_{[n]\setminus\mathbf{p}} = x \mid X_\mathbf{p} =
         x_\mathbf{p})`.
         """
-        return prediction
+        num_outcomes = None
+        factorized_outcomes = (
+            range(card)
+            if idx not in partial_observation
+            else (partial_observation[idx],)
+            for idx, card in enumerate(self.cards)
+        )
+        outcomes = product(*factorized_outcomes)
+        prediction = max(outcomes, key=self._prob_of_outcome)
+        if return_prob:
+            return prediction, self.prob_of_outcome(prediction)
+        else:
+            return prediction
+
+    def _prob_of_outcome(self, outcome):
+        return prob_of_outcome
 
 
 def sample_cstree(
