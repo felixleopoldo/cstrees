@@ -1,5 +1,12 @@
 from math import comb
+import operator
+from itertools import product, pairwise
+from functools import reduce
 from random import uniform
+import logging
+import sys
+from importlib import reload  # Not needed in Python 2
+
 import networkx as nx
 import numpy as np
 import pandas as pd
@@ -7,10 +14,7 @@ import pandas as pd
 import cstrees.stage as st
 from cstrees import csi_relation
 
-import logging
-import sys
-from importlib import reload  # Not needed in Python 2
-
+# logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
 reload(logging)
 FORMAT = '%(filename)s:%(funcName)s (%(lineno)d):  %(message)s'
 #logging.basicConfig(stream=sys.stderr, level=logging.DEBUG, format=FORMAT)
@@ -31,8 +35,8 @@ def plot(graph, layout="dot"):
 
 
 class CStree:
-    """ A CStree class. The levels are enumerated from 0,...,p-1.
-    You may provide labels for the lavels, corresponding to the
+    """A CStree class. The levels are enumerated from 0,...,p-1.
+    You may provide labels for the levels, corresponding to the
     random variable they represent.
 
     Args:
@@ -94,7 +98,7 @@ class CStree:
         return prop
 
     def update_stages(self, stages: dict):
-        """ Update the stages of the CStree.
+        """Update the stages of the CStree.
 
         Args:
             stages (dict): A dictionary of stages. The keys are the levels, and the values are lists of stages.
@@ -123,9 +127,8 @@ class CStree:
         if -1 not in self.stages:
             self.stages[-1] = [st.Stage([], color="black")]
 
-
     def get_stage(self, node: tuple):
-        """ Get the stage of a node in the cstree.
+        """Get the stage of a node in the cstree.
 
         Args:
             node (tuple): A node in the CStree.
@@ -135,8 +138,8 @@ class CStree:
             >>> print(stage)
             [{0, 1}, 0]; probs: [0.57628561 0.42371439]; color: green
         """
-        assert(self.stages is not None)
-        lev = len(node)-1
+        assert self.stages is not None
+        lev = len(node) - 1
 
         stage = None
         if lev in self.stages:
@@ -149,7 +152,7 @@ class CStree:
         if stage is None:
             print("No stage found for {}".format(node))
 
-        assert(stage is not None)
+        assert stage is not None
         return stage
 
     def to_df(self, write_probs=False):
@@ -197,7 +200,7 @@ class CStree:
         return df
 
     def sample_stage_parameters(self, alpha=1):
-        """ Set the parameters of the stages of the CStree to be random samples
+        """Set the parameters of the stages of the CStree to be random samples
         from a Dirichlet distribution with hyper parameter alpha.
 
         Args:
@@ -209,15 +212,15 @@ class CStree:
         """
         for lev, stages in self.stages.items():
             for i, stage in enumerate(stages):
-                probs = np.random.dirichlet([alpha] * self.cards[lev+1])
+                probs = np.random.dirichlet([alpha] * self.cards[lev + 1])
                 stage.probs = probs
                 if stage.color is None:
-                    stage.color = self.colors[i] # Set color from stage if possible
+                    stage.color = self.colors[i]  # Set color from stage if possible
 
         #self._set_tree_probs()
 
     def estimate_stage_parameters(self, data, method="BDeu", alpha_tot=1):
-        """ Estimate the parameters of the stages of the CStree under a Dirichlet model.
+        """Estimate the parameters of the stages of the CStree under a Dirichlet model.
 
         Args:
             data (pd.DataFrame): A pandas dataframe with the data.
@@ -231,25 +234,27 @@ class CStree:
 
         """
         import cstrees.scoring as sc
+
         # Set stage probabilities
 
         for lev, stages in self.stages.items():
-            if lev == self.p-1:
+            if lev == self.p - 1:
                 continue
 
-            stage_counts = sc.counts_at_level(self, lev+1, data)
+            stage_counts = sc.counts_at_level(self, lev + 1, data)
 
             for stage in stages:
                 probs = sc.estimate_parameters(
-                    self, stage, stage_counts, method, alpha_tot)
+                    self, stage, stage_counts, method, alpha_tot
+                )
                 stage.probs = probs
 
         #self._set_tree_probs()
 
     def _set_tree_probs(self, alpha=1):
-        """ This is dependent on if one has sampled from the tree already.
-            I.e., if a probablity is already set for an edge, it
-            should not be overwritten.
+        """This is dependent on if one has sampled from the tree already.
+        I.e., if a probablity is already set for an edge, it
+        should not be overwritten.
         """
         # First create the tree.
         # This has to do with that, if we allow for singleton stages, we need to
@@ -280,9 +285,8 @@ class CStree:
                     self.tree[node][ch]["cond_prob"] = probs[i]
                     self.tree[node][ch]["label"] = round(probs[i], 2)
 
-
     def _get_stage_no(self, node):
-        """ Get the stage number of a node in a level of the cstree.
+        """Get the stage number of a node in a level of the cstree.
         This is used when coloring the nodes.
 
         Args:
@@ -304,7 +308,7 @@ class CStree:
         while len(tovisit) != 0:
             # Visit/create node in the tree
             node = tovisit.pop()
-            lev = len(node)-1  # added -1
+            lev = len(node) - 1  # added -1
             fr = node[:lev]
             to = node
 
@@ -326,13 +330,13 @@ class CStree:
                 self.tree.nodes[fr]["label"] = "ø"
             self.tree.nodes[to]["label"] = to[-1]
             # Add more nodes to visit
-            if lev < self.p-1:
+            if lev < self.p - 1:
                 for i in range(self.cards[lev + 1]):
                     tovisit.append(to + (i,))
 
     # Here is the only place we need labels/orders.
     def to_minimal_context_graphs(self):
-        """ This returns a sequence of minimal context NetworkX graphs dsadas
+        """This returns a sequence of minimal context NetworkX graphs dsadas
         (minimal I-maps).
 
         Example:
@@ -347,7 +351,8 @@ class CStree:
         """
         minl_csis_by_context = self.to_minimal_context_csis()
         cdags = csi_relation.csi_relations_to_dags(
-            minl_csis_by_context, self.p, labels=self.labels)
+            minl_csis_by_context, self.p, labels=self.labels
+        )
 
         return cdags
 
@@ -369,9 +374,8 @@ class CStree:
 
         return agraphs
 
-
     def to_minimal_context_csis(self):
-        """ This returns a sequence of minimal context graphs (minimal I-maps).
+        """This returns a sequence of minimal context graphs (minimal I-maps).
 
         Example:
             >>> # tree is the Figure 1 CStree
@@ -439,7 +443,7 @@ class CStree:
         return {l: [s.to_csi() for s in stages] for l, stages in self.stages.items() if l>=0}
 
     def csi_relations(self, level="all"):
-        """ Returns all the context specific indepencende (CSI) relations.
+        """Returns all the context specific indepencende (CSI) relations.
         These should normally be thinned out using absorption, and then we would extract
         the minmal contexts based on that.
 
@@ -456,9 +460,7 @@ class CStree:
         csi_rels = {}
 
         for key, stage_list in self.stages.items():
-
             for stage in stage_list:
-
                 if stage.is_singleton():
                     continue # As these dont encode any independence relations.
                 csi_rel = stage.to_csi(labels=self.labels)
@@ -497,8 +499,10 @@ class CStree:
         """
 
         if self.tree is None:
-            print("Creating tree on the fly while sampling to save space "
-                  "when allowing for singleton stages.")
+            print(
+                "Creating tree on the fly while sampling to save space "
+                "when allowing for singleton stages."
+            )
             self.tree = nx.DiGraph()
         xs = []
 
@@ -549,8 +553,7 @@ class CStree:
 
                 edges = list(self.tree.out_edges(node))
 
-                probabilities = [self.tree[e[0]][e[1]]["cond_prob"]
-                                 for e in edges]
+                probabilities = [self.tree[e[0]][e[1]]["cond_prob"] for e in edges]
 
                 # ind is the index or the outcome of the set_d variable
                 vals = len(edges)
@@ -594,21 +597,59 @@ class CStree:
             agraph.add_node(lab, color="white")
 
         agraph.add_node("-", color="white")
-        agraph.add_edge("-",
-                        self.labels[0],
-                        color="white")
+        agraph.add_edge("-", self.labels[0], color="white")
 
         for i, lab in enumerate(self.labels[:-1]):
-            agraph.add_edge(self.labels[i],
-                            self.labels[i+1],
-                            color="white")
+            agraph.add_edge(self.labels[i], self.labels[i + 1], color="white")
 
         agraph.layout("dot")
         return agraph
 
+    def predict(self, partial_observation, return_prob=False):
+        """
+        Predict most likely missing values of partial observation.
 
-def sample_cstree(cards: list, max_cvars: int, prob_cvar: int,
-                  prop_nonsingleton: float) -> CStree:
+        Args:
+            partial_observation (dict): {feature_idx: value} pairs
+
+        Notes:
+            Given a CStree over RVs :math:`X_{[n]}` along with a
+        partial observation :math:`x_\mathbf{p}` for
+        :math:`\mathbf{p}\subseteq [n]`, compute :math:`\mathrm{arg\,
+        max}_{x \in X_{[n]\setminus\mathbf{p}}}
+        P(X_{[n]\setminus\mathbf{p}} = x \mid X_\mathbf{p} =
+        x_\mathbf{p})`.
+        """
+        factorized_outcomes = (
+            range(card)
+            if idx not in partial_observation
+            else (partial_observation[idx],)
+            for idx, card in enumerate(self.cards)
+        )
+        outcomes = product(*factorized_outcomes)
+
+        def _prob_of_outcome(outcome):
+            nodes = (outcome[:idx] for idx in range(self.p + 1))
+            edges = pairwise(nodes)
+            probs = map(lambda edge: self.tree[edge[0]][edge[1]]["cond_prob"], edges)
+            return reduce(operator.mul, probs)
+
+        if return_prob:
+            prob_dict = {outcome: _prob_of_outcome(outcome) for outcome in outcomes}
+            total_prob = sum(prob_dict.values())
+            cond_prob_dict = {
+                outcome: prob_dict[outcome] / total_prob for outcome in prob_dict
+            }
+            prediction = max(cond_prob_dict, key=cond_prob_dict.get)
+            return prediction, cond_prob_dict[prediction]
+        else:
+            prediction = max(outcomes, key=_prob_of_outcome)
+            return prediction
+
+
+def sample_cstree(
+    cards: list, max_cvars: int, prob_cvar: int, prop_nonsingleton: float
+) -> CStree:
     """
        Sample a random CStree with given cardinalities.
 
@@ -666,7 +707,7 @@ def sample_cstree(cards: list, max_cvars: int, prob_cvar: int,
         # all the stages expicitly, even when saving to file, without risking
         # to blow up the space.
 
-        #print("level: {}, mc: {}".format(level, mc))
+        # print("level: {}, mc: {}".format(level, mc))
 
         # BUG: for binary.. take max of mc elements in cards.
         #minimal_stage_size = 2**(level+1-mc) # non-singleton stage?
@@ -677,7 +718,7 @@ def sample_cstree(cards: list, max_cvars: int, prob_cvar: int,
         #print("full_stage_space_size: {}".format(full_stage_space_size))
         #print("level: {}, mc: {}, minimal_stage_size: {}".format(level, mc, minimal_stage_size))
 
-        #minimal_stage_prop = minimal_stage_size / full_stage_space_size The
+        # minimal_stage_prop = minimal_stage_size / full_stage_space_size The
         # special case when the granularity is to coarse. Randomly add anyway?
         # Setting the upper boudn likje this may generalize. However, the stage
         # should not always be accepted.. prop_nonsingleton =
@@ -685,27 +726,28 @@ def sample_cstree(cards: list, max_cvars: int, prob_cvar: int,
 
         # Allowing only non-singleton stages, this should never happen.
         if prop_nonsingleton < minimal_stage_size / full_stage_space_size:
-            logging.info("The size (proportion {}) of a minimal is larger than {}.".format(
-                minimal_stage_size / full_stage_space_size, prop_nonsingleton))
-            b = np.random.multinomial(
-                1, [prob_cvar, 1-prob_cvar], size=1)[0][0]
+            logging.info(
+                "The size (proportion {}) of a minimal is larger than {}.".format(
+                    minimal_stage_size / full_stage_space_size, prop_nonsingleton
+                )
+            )
+            b = np.random.multinomial(1, [prob_cvar, 1 - prob_cvar], size=1)[0][0]
             stagings[level] = []
 
             if b == 0:
                 print(b)
                 # it should be the whole space to begin with
                 stage_restr = stage_space.pop(0)
-                new_stage = st.sample_stage_restr_by_stage(
-                    stage_restr, mc, 1.0, cards)
+                new_stage = st.sample_stage_restr_by_stage(stage_restr, mc, 1.0, cards)
                 stagings[level].append(new_stage)
             continue  # cant add anything anyway so just go to the next level.
 
         # print(mc)
-        #max_n_stages = comb(level+1, mc) * (cards[level]**mc)
+        # max_n_stages = comb(level+1, mc) * (cards[level]**mc)
         # logging.debug("Max # stages with {} context variables: {}".format(mc, max_n_stages))
         stagings[level] = []
-        #m = math.ceil(max_n_stages * frac_stages_per_level)
-        #logging.debug("Trying to add max of {} stages".format(m))
+        # m = math.ceil(max_n_stages * frac_stages_per_level)
+        # logging.debug("Trying to add max of {} stages".format(m))
 
         while (1 - (singleton_space_size / full_stage_space_size)) < prop_nonsingleton:
             colored_size_old = full_stage_space_size - singleton_space_size
@@ -716,13 +758,16 @@ def sample_cstree(cards: list, max_cvars: int, prob_cvar: int,
             
             space_int = np.random.randint(len(stage_space))
             stage_restr = stage_space.pop(space_int)
-            #print("stage restr: {}".format(stage_restr))
-            #print(mc, prob_cvar)
+            # print("stage restr: {}".format(stage_restr))
+            # print(mc, prob_cvar)
             new_stage = st.sample_stage_restr_by_stage(
-                stage_restr, mc, prob_cvar, cards)
-            #print("proposed new stage: {}".format(new_stage))
+                stage_restr, mc, prob_cvar, cards
+            )
+            # print("proposed new stage: {}".format(new_stage))
 
-            new_space = stage_restr - new_stage  # this is a list of substages after removal
+            new_space = (
+                stage_restr - new_stage
+            )  # this is a list of substages after removal
             stage_space += new_space  # adds a list of stages
             # subtract the size of the sampled stage
             singleton_space_size -= new_stage.size()
@@ -734,8 +779,10 @@ def sample_cstree(cards: list, max_cvars: int, prob_cvar: int,
                 # Check if it would be possible to add the smallest stage.
                 # Restore the old space and maybe try again
 
-                if (minimal_stage_size + colored_size_old)/full_stage_space_size <= prop_nonsingleton:
-                    stage_space = stage_space[:-len(new_space)]
+                if (
+                    minimal_stage_size + colored_size_old
+                ) / full_stage_space_size <= prop_nonsingleton:
+                    stage_space = stage_space[: -len(new_space)]
                     stage_space += [stage_restr]
                     singleton_space_size += new_stage.size()
                 else:
@@ -771,7 +818,6 @@ def sample_cstree(cards: list, max_cvars: int, prob_cvar: int,
     ct.update_stages(stagings)
 
     return ct
-
 
 def df_to_cstree(df, read_probs=True):
     """ Convert a dataframe to a CStree. The dataframe should have the following format:
@@ -856,7 +902,7 @@ def df_to_cstree(df, read_probs=True):
                     s.probs = df.iloc[row[0], nvars:].values
 
                 stagings[level-1].append(s)
-
+                
                 break
             else:
                 stage_list.append(int(val))
@@ -873,4 +919,3 @@ def df_to_cstree(df, read_probs=True):
         cstree._set_tree_probs()
 
     return cstree
-
