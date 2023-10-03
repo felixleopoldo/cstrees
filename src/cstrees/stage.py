@@ -6,6 +6,15 @@ import numpy as np
 import cstrees.cstree as ct
 from cstrees import csi_relation
 
+import logging
+import sys
+from importlib import reload  # Not needed in Python 2
+
+reload(logging)
+FORMAT = '%(filename)s:%(funcName)s (%(lineno)d):  %(message)s'
+logging.basicConfig(stream=sys.stderr, level=logging.DEBUG, format=FORMAT)
+
+
 class Stage:
     """
        A Stage is a CSI of form 
@@ -14,16 +23,17 @@ class Stage:
 
     """
 
-    def __init__(self, list_repr, color=None) -> None:
+    def __init__(self, list_repr, color=None, cards=None) -> None:
         self.level = len(list_repr)-1
         self.list_repr = list_repr
         # Check if singleton, if so set color black
         if all([isinstance(i, int) for i in list_repr]):
             self.color = "black"
         else:
-            self.color = color
-        self.csi = self.to_csi()
+            self.color = color        
         self.probs = None
+        self.cards=cards
+        self.csi = self.to_csi()
 
     def __hash__(self) -> int:
         return hash(self.csi.context)
@@ -69,7 +79,7 @@ class Stage:
         """
         return self.size() == 1
 
-    def to_df(self, column_labels):
+    def to_df(self, column_labels, max_card=None, write_probs=False):
         """Write sthe stage to dataframe. columns is..?
 
         Args:
@@ -81,8 +91,13 @@ class Stage:
         import pandas as pd
 
         d = {}
+        if write_probs:
+            cols = range(len(column_labels) - max_card)
+        else:
+            cols = range(len(column_labels))
 
-        for i in range(len(column_labels)):
+        #for i in range(len(column_labels) - max_card):
+        for i in cols:
             if i < len(self.list_repr):
                 if type(self.list_repr[i]) == set:
                     d[column_labels[i]] = ["*"]
@@ -90,9 +105,13 @@ class Stage:
                     d[column_labels[i]] = [self.list_repr[i]]
             else:
                 d[column_labels[i]] = ["-"]
-
-        df = pd.DataFrame(d, columns=column_labels)
-
+        
+        if (self.probs is not None) and write_probs:            
+            df = pd.DataFrame(d, columns=column_labels[:-max_card])
+            df_prop = pd.DataFrame({"PROB_"+str(i):[prob] for i, prob in enumerate(self.probs)})
+            df = pd.concat([df, df_prop], axis=1)
+        else:
+            df = pd.DataFrame(d, columns=column_labels)
         return df
 
     def set_random_params(self, cards):
@@ -109,10 +128,17 @@ class Stage:
         Returns:
             list: A list of CSI relations representing the new space.
         """
+        #print("Subtracting {} from {}".format(stage, self))
+        #print("cards1: {}".format(stage.cards))
+        #print("cards2: {}".format(self.cards))
+        assert stage.cards is not None
+        assert self.cards is not None
+              
         a = self
         b = stage
         p = self.level
-        cards = [2] * (p+1)
+        #cards = [2] * (p+1) # BUG!!!
+        cards = self.cards
         # Keep all context vars from a. (this is already ok if b was sampled on a).
         # For each created csi, keep 1 of the context vars from b,
         # vary the rest outside the context vars of b (or opposite??) (exept from those that were restricetd by a).
@@ -136,11 +162,11 @@ class Stage:
                     # Create the new space
                     # This takes care of the fixed ones.
                     l = b_list[:level] + [v] + a_list[level+1:]
-                    result.append(Stage(l))
+                    result.append(Stage(l, cards=cards))
 
         return result
 
-    def to_csi(self):
+    def to_csi(self, labels=None):
         sepseta = set()
         cond_set = set()
         context = {}
@@ -152,9 +178,12 @@ class Stage:
             else:
                 context[i] = el
 
-        ci = csi_relation.CI(sepseta, sepsetb, cond_set)
-        context = csi_relation.Context(context)
-        return csi_relation.CSI(ci, context)
+        ci = csi_relation.CI(sepseta, sepsetb, cond_set, labels=labels)
+        context = csi_relation.Context(context, labels=labels)
+        
+        #logging.debug("cards")
+        #logging.debug(self.cards)
+        return csi_relation.CSI(ci, context, cards=self.cards)
 
     def intersects(self, stage):
         """ Checks if the paths of two stages intersect.
@@ -241,7 +270,7 @@ def sample_stage_restr_by_stage(stage: Stage, max_cvars: int, cvar_prob: float, 
             else: # no more context vars allowed.                
                 csilist[ind] = set(range(cards[ind]))
 
-    return Stage(csilist)
+    return Stage(csilist, cards=stage.cards)
   
 def sample_random_stage(cards: list, level: int, max_contextvars: int, prob: float) -> Stage:
     """Sample a random non-singleton stage.

@@ -5,6 +5,20 @@ from itertools import chain, combinations
 import networkx as nx
 import numpy as np
 
+import logging
+import sys
+from importlib import reload  # Not needed in Python 2
+
+reload(logging)
+FORMAT = '%(filename)s:%(funcName)s (%(lineno)d):  %(message)s'
+#logging.basicConfig(stream=sys.stderr, level=logging.DEBUG, format=FORMAT)
+logging.basicConfig(stream=sys.stderr, level=logging.ERROR, format=FORMAT)
+
+def mymax(s):
+    if (type(s) is set) and (len(s) > 0):
+        return max(s)
+    else:
+        return 0
 
 class Context:
     """ A class for the context of a CSI. It takes a dictionary as input, where
@@ -20,13 +34,20 @@ class Context:
         X0=0, X3=1
     """
 
-    def __init__(self, context: dict) -> None:
+    def __init__(self, context: dict, labels=None) -> None:
+    
         self.context = context
+        if (labels is None) and (len(self.context) > 0):
+            levels = max(self.context) + 1
+            self.labels = list(range(levels))
+        else:
+            self.labels = labels
 
     def __str__(self) -> str:
+        
         context_str = ""
         for key, val in self.context.items():
-            context_str += "X{}={}, ".format(key, val)
+            context_str += "{}={}, ".format(self.labels[key], val)
         if context_str != "":
             context_str = context_str[:-2]
         if context_str == "":
@@ -73,10 +94,18 @@ class CI:
 
     """
 
-    def __init__(self, a, b, sep) -> None:
+    def __init__(self, a, b, sep, labels=None) -> None:
         self.a = a
         self.b = b
         self.sep = sep
+        
+        # Just set the labels to [0,1,2,3,..]
+        if labels is None:
+            levels = max(mymax(self.a), mymax(self.b), mymax(
+            self.sep)) + 1        
+            self.labels = range(levels)
+        else:
+            self.labels = labels
 
     def __eq__(self, o: object) -> bool:
         return ((((self.a == o.a) & (self.b == o.b)) |
@@ -86,16 +115,16 @@ class CI:
     def __str__(self) -> str:
         s1 = ""
         for i in self.a:
-            s1 += "X{}, ".format(i)
+            s1 += "{}, ".format(self.labels[i])
         s1 = s1[:-2]
         s2 = ""
         for i in self.b:
-            s2 += "X{}, ".format(i)
+            s2 += "{}, ".format(self.labels[i])
         s2 = s2[:-2]
         s3 = ""
-        if sum(self.sep) > 0:
+        if len(self.sep) > 0: # BUG: sum instead of len ???
             for i in self.sep:
-                s3 += "X{}, ".format(i)
+                s3 += "{}, ".format(self.labels[i])
             s3 = s3[:-2]
             return "{} ⊥ {} | {}".format(s1, s2, s3)
         return "{} ⊥ {}".format(s1, s2)
@@ -132,7 +161,7 @@ class CSI:
         for el in zip(a, b):
             pass
 
-        return CSI(c_list)
+        return CSI(c_list, cards=self.cards)
 
     def as_list(self):
         """ List representation. Important: only for pairwise CSIs.
@@ -147,14 +176,14 @@ class CSI:
             >>> csi.as_list()
             [{0}, None, None, {1}, {0, 1}, {0, 1}]
         """
+        
+        logging.debug("Pairwise CSI as a list ")
+        assert self.cards is not None
+                
+       
         # Get the level as the max element-1
         # The Nones not at index 0 encode the CI variables.
-        def mymax(s):
-
-            if (type(s) is set) and (len(s) > 0):
-                return max(s)
-            else:
-                return 0
+       
 
         if not ((len(self.ci.a) == 1) and (len(self.ci.b) == 1)):
             print("This only works for pairwise csis (Xi _|_ Xj | ...).")
@@ -162,7 +191,10 @@ class CSI:
         # print(print(self.ci.sep))
         levels = max(mymax(self.ci.a), mymax(self.ci.b), mymax(
             self.ci.sep), mymax(self.context.context)) + 1
-        cards = [2] * levels
+        
+        #cards = [2] * levels
+        cards = self.cards[:levels+1]
+         
         csilist = [None] * levels
         for l in range(levels):
             if (l in self.ci.a) or (l in self.ci.b):
@@ -218,10 +250,18 @@ class CSI:
         return hash(str(self))
 
     def __str__(self) -> str:
-        if len(self.context.context) == 0:
-            return "{}".format(self.ci)
-        return "{}, {}".format(self.ci, self.context)
 
+        if len(self.context.context) == 0:
+            # No context
+            return "{}".format(self.ci)
+
+        if len(self.context.context) != 0:
+            if len(self.ci.sep) == 0:
+                # Adding the |
+                return "{} | {}".format(self.ci, self.context)
+            else:
+                # | is already there
+                return "{}, {}".format(self.ci, self.context)
 
 def decomposition(ci: CI):
     """Generate all possible pairwise CI relations that are implied by
@@ -354,7 +394,7 @@ def pairwise_cis(ci: CI):
     return cis
 
 
-def pairwise_csis(csi: CSI):
+def pairwise_csis(csi: CSI, cards=None):
     """ Using weak union just to get pairwise indep relations from a CSI.
 
     Args:
@@ -374,11 +414,12 @@ def pairwise_csis(csi: CSI):
         X2 ⊥ X3 | X1, X4, X5, X6=0
         X2 ⊥ X4 | X1, X3, X5, X6=0
     """
+    logging.debug("Pairwise CSIs")
     context = csi.context
     ci_pairs = pairwise_cis(csi.ci)
     csis = []
     for ci in ci_pairs:
-        csi = CSI(ci, context=context)
+        csi = CSI(ci, context=context, cards=cards)
         csis.append(csi)
     return csis
 
@@ -449,18 +490,23 @@ def partition_csis(csilist_list, level, cards):
         0: [[{0}, None, {0}, None], [{0}, None, {1}, None]]
         1: [[{1}, None, {0}, None]]
     """
-  
+    logging.debug("Partitioning CSIs")
+    logging.debug("level {}".format(level))
+    logging.debug("cards {}".format(cards))
+    logging.debug(csilist_list)
+
     csis_to_mix = [[] for _ in range(cards[level])]
     for csilist in csilist_list:
         if len(csilist[level]) > 1:  # Only consider those with single value
             continue
-        var_val = list(csilist[level])[0]  # just to get the value from the set
+        var_val = list(csilist[level])[0]  # just to get the single value from the set
+        logging.debug("var_val {}".format(var_val))
         csis_to_mix[var_val].append(csilist)
       
     return csis_to_mix
 
 
-def _csilist_to_csi(csilist):
+def _csilist_to_csi(csilist, labels=None): #This could probably take labels as well
     """ The independent variables are represented by None. 
     Only for pairwise CSIs.
 
@@ -483,11 +529,10 @@ def _csilist_to_csi(csilist):
 
             sep.add(i)  # this should be == range(cards[i]))
 
-    context = Context(context)
+    context = Context(context, labels=labels)
 
-    ci = CI({indpair[0]}, {indpair[1]}, sep)
+    ci = CI({indpair[0]}, {indpair[1]}, sep, labels=labels)
     csi = CSI(ci, context)
-    # print(csi)
     return csi
 
 
@@ -689,7 +734,7 @@ def minimal_csis(paired_csis, cards):
     return ret
 
 
-def _csis_by_levels_2_by_pairs(rels):
+def _csis_by_levels_2_by_pairs(rels,cards=None):
 
     paired_csis = [None] * len(rels)
 
@@ -698,7 +743,7 @@ def _csis_by_levels_2_by_pairs(rels):
         csi_pairs = []  # X_i _|_ X_j | something
         for v in val:
             # print(v)
-            csis = pairwise_csis(v) # Using weak unions
+            csis = pairwise_csis(v, cards=cards) # Using weak unions
             csi_pairs = csi_pairs + csis
 
             # Loop though all levels for each of these and try to mix.
@@ -736,7 +781,7 @@ def _rels_by_level_2_by_context(rels_at_level):
     return rels
 
 
-def _csi_lists_to_csis_by_level(csi_lists, p):
+def _csi_lists_to_csis_by_level(csi_lists, p, labels):
     stages = {l: [] for l in range(p)}
     for l, csilist in enumerate(csi_lists):
 
@@ -744,7 +789,7 @@ def _csi_lists_to_csis_by_level(csi_lists, p):
         # Convert formats
         for pair, csil in csilist.items():
             for csi in csil:
-                csiobj = _csilist_to_csi(csi)
+                csiobj = _csilist_to_csi(csi, labels=labels) # TODO: add labels?
                 tmp.append(csiobj)
         stages[l] = tmp
     return stages

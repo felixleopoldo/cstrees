@@ -16,7 +16,7 @@ author is too busy coding and did not provide a proper FAQ section ;-)
 Concepts
 ========
 
-Why do we want an automatic boilerplate?
+What is a CStree?
 ----------------------------------------
 
 Because time is precious and we don't want to waste it in repetitive tasks. Copy
