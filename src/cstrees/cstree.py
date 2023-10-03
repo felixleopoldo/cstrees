@@ -1,8 +1,10 @@
 from math import comb
+import operator
 from random import uniform
 import logging
 import sys
-from itertools import product, islice
+from itertools import product, accumulate, pairwise
+from functools import reduce
 
 import networkx as nx
 import numpy as np
@@ -699,7 +701,6 @@ class CStree:
         P(X_{[n]\setminus\mathbf{p}} = x \mid X_\mathbf{p} =
         x_\mathbf{p})`.
         """
-        num_outcomes = None
         factorized_outcomes = (
             range(card)
             if idx not in partial_observation
@@ -707,14 +708,22 @@ class CStree:
             for idx, card in enumerate(self.cards)
         )
         outcomes = product(*factorized_outcomes)
-        prediction = max(outcomes, key=self._prob_of_outcome)
+
+        node_outcome_offset = map(lambda n: n + 1, accumulate(self.cards, operator.mul))
+        node_outcome_offset = chain((1,), node_outcome_offset)
+
+        def _prob_of_outcome(outcome):
+            nodes = map(add, node_outcome_offset, outcome)
+            nodes = chain((0,), nodes)
+            edges = pairwise(nodes)
+            probs = map(lambda edge: self.tree[edge[0]][edge[1]]["cond_prob"], edges)
+            return reduce(operator.mul, probs)
+
+        prediction = max(outcomes, key=_prob_of_outcome)
         if return_prob:
             return prediction, self.prob_of_outcome(prediction)
         else:
             return prediction
-
-    def _prob_of_outcome(self, outcome):
-        return prob_of_outcome
 
 
 def sample_cstree(
