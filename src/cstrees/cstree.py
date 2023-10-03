@@ -3,7 +3,7 @@ import operator
 from random import uniform
 import logging
 import sys
-from itertools import product, accumulate, pairwise
+from itertools import product, pairwise
 from functools import reduce
 
 import networkx as nx
@@ -709,20 +709,22 @@ class CStree:
         )
         outcomes = product(*factorized_outcomes)
 
-        node_outcome_offset = map(lambda n: n + 1, accumulate(self.cards, operator.mul))
-        node_outcome_offset = chain((1,), node_outcome_offset)
-
         def _prob_of_outcome(outcome):
-            nodes = map(add, node_outcome_offset, outcome)
-            nodes = chain((0,), nodes)
+            nodes = (outcome[:idx] for idx in range(self.p + 1))
             edges = pairwise(nodes)
             probs = map(lambda edge: self.tree[edge[0]][edge[1]]["cond_prob"], edges)
             return reduce(operator.mul, probs)
 
-        prediction = max(outcomes, key=_prob_of_outcome)
         if return_prob:
-            return prediction, self.prob_of_outcome(prediction)
+            prob_dict = {outcome: _prob_of_outcome(outcome) for outcome in outcomes}
+            total_prob = sum(prob_dict.values())
+            cond_prob_dict = {
+                outcome: prob_dict[outcome] / total_prob for outcome in prob_dict
+            }
+            prediction = max(cond_prob_dict, key=cond_prob_dict.get)
+            return prediction, cond_prob_dict[prediction]
         else:
+            prediction = max(outcomes, key=_prob_of_outcome)
             return prediction
 
 
