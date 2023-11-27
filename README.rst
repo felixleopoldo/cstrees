@@ -12,7 +12,7 @@
 
 
 
-This is a Python package for CStree models :footcite:p:`duarte2021representation`, a family of graphical causal models that encode context-specific information for discrete data.
+This is a Python package for CStree models :footcite:p:`duarte2021representation`, a family of graphical causal models that encode context-specific dependence for multivariate multinomial distributions.
 
 .. As not all staged tree models admit this property, CStrees are a subclass that provides a transparent, intuitive and compact representation of context-specific causal information.
 
