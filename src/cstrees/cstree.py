@@ -14,7 +14,7 @@ import pandas as pd
 import cstrees.stage as st
 from cstrees import csi_relation
 
-# logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
+
 reload(logging)
 FORMAT = "%(filename)s:%(funcName)s (%(lineno)d):  %(message)s"
 # logging.basicConfig(stream=sys.stderr, level=logging.DEBUG, format=FORMAT)
@@ -42,12 +42,10 @@ def plot(graph, layout="dot"):
 
 
 class CStree:
-    """A CStree class. The levels are enumerated from 0,...,p-1.
-    You may provide labels for the levels, corresponding to the
-    random variable they represent.
+    """A class representing a CStree.
 
     Args:
-        cards (list): A list of integers representing the cardinality of each level.
+        cards (list): A list of integers representing the cardinality of each level (indexed from 0).
         labels (list, optional): A list of strings representing the labels of each level. Defaults to [0,1,...,p-1].
 
     Example:
@@ -236,7 +234,7 @@ class CStree:
             float: A number between 0 and 1.
 
         Example:
-            # assuming all variables are binary
+            >>> # Assuming all variables are binary
             >>> s = Stage([0, {0, 1}, 1])
             >>> cstree.stage_proportion(s)
             0.25
@@ -269,19 +267,43 @@ class CStree:
             >>> })
 
         """
-        for lev, stage_list in stages.items():
-            for stage in stage_list:
-                stage.cards = self.cards  # [:lev+1] # Or full cards?
+        stages_to_add = {key: [] for key in stages.keys()}
 
-        self.stages.update(stages)
+        # If there are dicts, we convert them to Stages.
+        # Stages are updated to contain a cardinality list, inherited from the CStree.
+        for lev, list_of_stage_repr in stages.items():
+            # it can be either a Stage of a dict that should be converted to a stage.
+
+            for stage_repr in list_of_stage_repr:
+                if isinstance(stage_repr, dict):
+                    # If its a dict, we convert it to a stage.
+                    stage_list_repr = []
+                    for l in range(lev + 1):
+                        if l in stage_repr["context"]:
+                            stage_list_repr.append(stage_repr["context"][l])
+                        else:
+                            stage_list_repr.append(set(range(self.cards[l])))
+                    # Create a stage from the stage_list_repr
+                    s = st.Stage(stage_list_repr)
+                    if "color" in stage_repr:
+                        s.color = stage_repr["color"]
+
+                    s.cards = self.cards
+                    stages_to_add[lev].append(s)
+                else:
+                    # Just add the stage and set the cards
+                    stage_repr.cards = self.cards
+                    stages_to_add[lev].append(stage_repr)
+
+        self.stages.update(stages_to_add)
         if -1 not in self.stages:
             self.stages[-1] = [st.Stage([], color="black")]
 
     def get_stage(self, node: tuple):
-        """Get the stage of a node in the cstree.
+        """Get the stage of a node in the CStree.
 
         Args:
-            node (tuple): A node in the CStree.
+            node (tuple or list): A node in the CStree. It could be e.g. (0, 1, 0, 1).
         Example:
             >>> # tree is the fig. 1 CStree
             >>> stage = tree.get_stage([0, 0])
@@ -308,7 +330,7 @@ class CStree:
         """Converts the CStree to a pandas dataframe.
 
         Returns:
-            df (pd.DataFrame): A pandas dataframe with the stages of the CStree.
+            df (pd.DataFrame): A Pandas dataframe with the stages of the CStree.
 
         Example:
             >>> tree.to_df()
@@ -597,10 +619,10 @@ class CStree:
             >>> for cont, rels in rels.items():
             >>>     for rel in rels:
             >>>         print(rel)
-            X0 ⊥ X2, X1=0
-            X1 ⊥ X3, X0=0, X2=0
-            X1 ⊥ X3, X0=0, X2=1
-            X1 ⊥ X3, X0=1, X2=0
+            0 ⊥ 2 | 1=0
+            1 ⊥ 3 | 0=0, 2=0
+            1 ⊥ 3 | 0=0, 2=1
+            1 ⊥ 3 | 0=1, 2=0
         """
         csi_rels = {}
 
@@ -713,7 +735,7 @@ class CStree:
         return df
 
     def plot(self, full=False):
-        """Plot the CStree. Make sure to set the parameters first.
+        """Plot the CStree.
 
         Args:
             fill (bool): If True, the tree is filled with parameters.

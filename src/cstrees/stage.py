@@ -1,5 +1,5 @@
 import itertools
-import random 
+import random
 
 import numpy as np
 
@@ -23,16 +23,18 @@ class Stage:
 
     """
 
-    def __init__(self, list_repr, color=None, cards=None) -> None:
-        self.level = len(list_repr)-1
-        self.list_repr = list_repr
+    def __init__(self, stage_repr, color=None, cards=None) -> None:
+
+        self.level = len(stage_repr)-1
+        self.list_repr = stage_repr
+
         # Check if singleton, if so set color black
-        if all([isinstance(i, int) for i in list_repr]):
+        if all([isinstance(i, int) for i in self.list_repr]):
             self.color = "black"
         else:
-            self.color = color        
+            self.color = color
         self.probs = None
-        self.cards=cards
+        self.cards = cards
         self.csi = self.to_csi()
 
     def __hash__(self) -> int:
@@ -72,7 +74,7 @@ class Stage:
             if type(e) is set:
                 s *= len(e)
         return s
-    
+
     def is_singleton(self):
         """
         Checks if the stage is a singleton.
@@ -104,10 +106,11 @@ class Stage:
                     d[column_labels[i]] = [self.list_repr[i]]
             else:
                 d[column_labels[i]] = ["-"]
-        
-        if (self.probs is not None) and write_probs:            
+
+        if (self.probs is not None) and write_probs:
             df = pd.DataFrame(d, columns=column_labels[:-max_card])
-            df_prop = pd.DataFrame({"PROB_"+str(i):[prob] for i, prob in enumerate(self.probs)})
+            df_prop = pd.DataFrame(
+                {"PROB_"+str(i): [prob] for i, prob in enumerate(self.probs)})
             df = pd.concat([df, df_prop], axis=1)
         else:
             df = pd.DataFrame(d, columns=column_labels)
@@ -116,7 +119,6 @@ class Stage:
     def set_random_params(self, cards):
         self.probs = np.random.dirichlet(
             [1] * cards[self.level])  # Need to fix this
-
 
     def __sub__(self, stage):
         """ b is typically a sample from the space self.
@@ -127,9 +129,9 @@ class Stage:
         Returns:
             list: A list of CSI relations representing the new space.
         """
-        assert stage.cards is not None # Shouldnt use assert here
+        assert stage.cards is not None  # Shouldnt use assert here
         assert self.cards is not None
-              
+
         a = self
         b = stage
         p = self.level
@@ -176,7 +178,7 @@ class Stage:
 
         ci = csi_relation.CI(sepseta, sepsetb, cond_set, labels=labels)
         context = csi_relation.Context(context, labels=labels)
-        
+
         return csi_relation.CSI(ci, context, cards=self.cards)
 
     def intersects(self, stage):
@@ -206,7 +208,7 @@ class Stage:
 
     def __str__(self) -> str:
         if self.probs is not None:
-            return str(self.list_repr) + "; probs: " + str(self.probs)+ "; color: " + str(self.color)
+            return str(self.list_repr) + "; probs: " + str(self.probs) + "; color: " + str(self.color)
         return str(self.list_repr)
 
 
@@ -226,7 +228,7 @@ def sample_stage_restr_by_stage(stage: Stage, max_cvars: int, cvar_prob: float, 
     """
 
     space = stage.list_repr
-    levelplus1 = len(space) # this is not the full p?    
+    levelplus1 = len(space)  # this is not the full p?
 
     assert (max_cvars <= levelplus1)  # < Since at least one cannot be a cvar.
     # This may not be true if wa are at very low levels where the level in sthe constraint.
@@ -236,17 +238,17 @@ def sample_stage_restr_by_stage(stage: Stage, max_cvars: int, cvar_prob: float, 
     cont_var_counter = 0
     # random order here, to not favor low levels.
     randorder = list(range(levelplus1))
-    random.shuffle(randorder)  
+    random.shuffle(randorder)
 
     # TODO: at level 0, it should be possible to have two singleton stages.
     for i in range(levelplus1):
         ind = randorder[i]
-        s = space[ind] # a context value (int) or the full set of values.
+        s = space[ind]  # a context value (int) or the full set of values.
 
         if type(s) is int:  # This is a restriction of the space.
             csilist[ind] = s
             cont_var_counter += 1
-        else:            
+        else:
             if cont_var_counter < max_cvars-fixed_cvars:  # Make sure not too many context vars
                 # (i.e. a cond var), pick either one or all.
 
@@ -255,14 +257,16 @@ def sample_stage_restr_by_stage(stage: Stage, max_cvars: int, cvar_prob: float, 
                 if b == 0:  # TODO: this should be able to happen anyway?
                     csilist[ind] = set(range(cards[ind]))
                 else:
-                    v = np.random.randint(cards[ind]) # choose a random context value
+                    # choose a random context value
+                    v = np.random.randint(cards[ind])
                     cont_var_counter += 1
                     csilist[ind] = v
-            else: # no more context vars allowed.                
+            else:  # no more context vars allowed.
                 csilist[ind] = set(range(cards[ind]))
 
     return Stage(csilist, cards=stage.cards)
-  
+
+
 def sample_random_stage(cards: list, level: int, max_contextvars: int, prob: float) -> Stage:
     """Sample a random non-singleton stage.
 
@@ -279,7 +283,8 @@ def sample_random_stage(cards: list, level: int, max_contextvars: int, prob: flo
 
     # If the number is smaller than the level, then level is max.
     ncont = max_contextvars
-    if max_contextvars > level-1:  # Since not all can be context variables. (i.e. singleton stage)
+    # Since not all can be context variables. (i.e. singleton stage)
+    if max_contextvars > level-1:
         ncont = level - 1
 
     possible_context_vars = np.random.choice(
