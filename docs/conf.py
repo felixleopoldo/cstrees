@@ -59,7 +59,7 @@ master_doc = 'index'
 # General information about the project.
 project = 'cstrees'
 project_title = project.title()
-author = ''
+author = 'Felix Rios, Alex Markham, and Liam Solus'
 copyright = '2023, %s' % author
 
 

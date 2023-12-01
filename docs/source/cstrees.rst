@@ -8,6 +8,6 @@ Reference
 
    cstrees.cstree
    cstrees.learning
-   cstrees.csi_relation
+   cstrees.dependence
    cstrees.scoring
 
