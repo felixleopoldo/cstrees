@@ -14,27 +14,30 @@ FORMAT = '%(filename)s:%(funcName)s (%(lineno)d):  %(message)s'
 #logging.basicConfig(stream=sys.stderr, level=logging.DEBUG, format=FORMAT)
 logging.basicConfig(stream=sys.stderr, level=logging.ERROR, format=FORMAT)
 
-def mymax(s):
+def _mymax(s):
     if (type(s) is set) and (len(s) > 0):
         return max(s)
     else:
         return 0
 
 class Context:
-    """ A class for the context of a CSI. It takes a dictionary as input, where
-    e.g. {0:0, 3:1} means that X0=0 and X3=1, where Xl is the variable at level
-    l.
+    """ A class for the context of a CSI.
 
     Args:
         context (dict): A dictionary of the context.
+        labels (list, optional): A list of labels for the keys in the dict. Defaults to None.
     Examples:
 
-        >>> c = Context({0:0, 3:1})
-        >>> print(c)
-        X0=0, X3=1
+    >>> import cstrees.dependence as cr
+    >>> c = cr.Context({0:0, 3:1})
+    >>> print(c)
+    >>> c = cr.Context({0:0, 3:1}, labels=["X"+str(i) for i in range(1, 5)])
+    >>> print(c)
+    0=0, 3=1
+    X1=0, X4=1
     """
 
-    def __init__(self, context: dict, labels=None) -> None:
+    def __init__(self, context: dict, labels: list | None = None) -> None:
     
         self.context = context
         if (labels is None) and (len(self.context) > 0):
@@ -87,19 +90,20 @@ class CI:
         sep (set): The set of variables that separate a and b.
 
     Examples:
-        >>> ci = csi_relation.CI({1}, {2}, {4, 5})
+        >>> import cstrees.dependence as cr
+        >>> ci = cr.CI({1}, {2}, {4, 5}, labels=["X"+str(i) for i in range(0, 6)])
         >>> print(ci)
         X1 ⊥ X2 | X4, X5
     """
 
-    def __init__(self, a, b, sep, labels=None) -> None:
+    def __init__(self, a:set, b:set, sep:set, labels: list[str] | None = None) -> None:
         self.a = a
         self.b = b
         self.sep = sep
         
         # Just set the labels to [0,1,2,3,..]
         if labels is None:
-            levels = max(mymax(self.a), mymax(self.b), mymax(
+            levels = max(_mymax(self.a), _mymax(self.b), _mymax(
             self.sep)) + 1        
             self.labels = range(levels)
         else:
@@ -129,21 +133,21 @@ class CI:
 
 
 class CSI:
-    """This is a context specific relation. Itshould be implemented
-       as a context and a CI relation.
-
+    """This is a context specific relation.
+    
     Args:
         ci (CI): The CI relation.
         context (Context): The context.
         cards (list): The list of cardinalities of the variables.
 
     Examples:
-        >>> from cstrees import csi_relation
-        >>> c = csi_relation.Context({0:0, 3:1})
-        >>> ci = csi_relation.CI({1}, {2}, {4, 5})
-        >>> csi = csi_relation.CSI(ci, c)
+        >>> from cstrees.dependence import Context, CI, CSI
+        >>> labels = ["X"+str(i) for i in range(0, 7)]
+        >>> c = Context({6:0, 3:1}, labels=labels)
+        >>> ci = CI({1}, {2}, {4, 5}, labels=labels)
+        >>> csi = CSI(ci, c)
         >>> print(csi)
-        X1 ⊥ X2 | X4, X5, X0=0, X3=1
+        X1 ⊥ X2 | X4, X5, X6=0, X3=1
     """
 
     def __init__(self, ci: CI, context: Context, cards=None) -> None:
@@ -167,10 +171,11 @@ class CSI:
         Returns:
             list: list representation of the CSI.
         Examples:
-            >>> from cstrees import csi_relation
-            >>> c = csi_relation.Context({0:0, 3:1})
-            >>> ci = csi_relation.CI({1}, {2}, {4, 5}) # CI between a pair of variables
-            >>> csi = csi_relation.CSI(ci, c)
+
+            >>> from cstrees.dependence import Context, CI, CSI
+            >>> c = Context({0:0, 3:1})
+            >>> ci = CI({1}, {2}, {4, 5}) 
+            >>> csi = CSI(ci, c, cards=[2]*6) 
             >>> csi.as_list()
             [{0}, None, None, {1}, {0, 1}, {0, 1}]
         """
@@ -182,15 +187,12 @@ class CSI:
         # Get the level as the max element-1
         # The Nones not at index 0 encode the CI variables.
        
-
         if not ((len(self.ci.a) == 1) and (len(self.ci.b) == 1)):
             print("This only works for pairwise csis (Xi _|_ Xj | ...).")
             return None
         # print(print(self.ci.sep))
-        levels = max(mymax(self.ci.a), mymax(self.ci.b), mymax(
-            self.ci.sep), mymax(self.context.context)) + 1
-        
-        #cards = [2] * levels
+        levels = max(_mymax(self.ci.a), _mymax(self.ci.b), _mymax(
+            self.ci.sep), _mymax(set(self.context.context.keys()))) + 1
         cards = self.cards[:levels+1]
          
         csilist = [None] * levels
@@ -238,17 +240,17 @@ def decomposition(ci: CI):
         list: List of pairwise CI relations.
         
     Examples:
-        >>> from cstrees import csi_relation
-        >>> ci = csi_relation.CI({1,2}, {3,4},{5})
+        >>> from cstrees.dependence import CI, decomposition
+        >>> ci = CI({1,2}, {3,4},{5})
         >>> print(ci)
-        >>> dec = csi_relation.decomposition(ci)
+        >>> dec = decomposition(ci)
         >>> for d in dec:
         >>>     print(d)
-        X1, X2 ⊥ X3, X4 | X5
-        X1 ⊥ X3 | X5
-        X1 ⊥ X4 | X5
-        X2 ⊥ X3 | X5
-        X2 ⊥ X4 | X5
+        1, 2 ⊥ 3, 4 | 5
+        1 ⊥ 3 | 5
+        1 ⊥ 4 | 5
+        2 ⊥ 3 | 5
+        2 ⊥ 4 | 5
     """
 
     cilist = []
@@ -289,11 +291,11 @@ def weak_union(ci: CI):
         list: List of pairwise CI relations.
     
     Examples:
-        >>> from cstrees import csi_relation
-        >>> ci = csi_relation.CI({1,2}, {3,4},{5})
+        >>> from cstrees import dependence
+        >>> ci = dependence.CI({1,2}, {3,4},{5})
         >>> print("Original CI:")
         >>> print(ci)        
-        >>> dec = csi_relation.weak_union(ci)
+        >>> dec = dependence.weak_union(ci)
         >>> print("Pairwise CI relations:")
         >>> for d in dec:
         >>>     print(d)
@@ -327,25 +329,26 @@ def weak_union(ci: CI):
 
 
 def pairwise_cis(ci: CI):
-    """ Using weak union just to get pairwise indep relations from a CI.
-    X_a _|_ X_b | X_d
+    """ Using weak union just to get pairwise independence relations from a CI.
         
     Args:
         ci (CI): CI relation
         
     Examples:
-        >>> from cstrees import csi_relation
-        >>> ci = csi_relation.CI({1,2}, {3,4},{5})        
+        >>> from cstrees.dependence import CI, pairwise_cis
+        >>> 
+        >>> ci = CI({1,2}, {3,4},{0})
+        >>> pw = pairwise_cis(ci)
         >>> print("Original CI: ", ci)
         >>> print("Pairwise CIs:")
         >>> for x in pw:
         >>>    print(x)
-        Original CI:  X1, X2 ⊥ X3, X4 | X5
+        Original CI:  1, 2 ⊥ 3, 4 | 0
         Pairwise CIs:
-        X1 ⊥ X3 | X2, X4, X5
-        X1 ⊥ X4 | X2, X3, X5
-        X2 ⊥ X3 | X1, X4, X5
-        X2 ⊥ X4 | X1, X3, X5
+        1 ⊥ 3 | 0, 2, 4
+        1 ⊥ 4 | 0, 2, 3
+        2 ⊥ 3 | 0, 1, 4
+        2 ⊥ 4 | 0, 1, 3
     """
     cis = []
     A = ci.a
@@ -363,18 +366,22 @@ def pairwise_csis(csi: CSI, cards=None):
         csi (CSI): CSI relation
                 
     Examples:
-        >>> from cstrees import csi_relation
-        >>> c = csi_relation.Context({6:0})
-        >>> csi = csi_relation.CSI(ci, c)
+        >>> from cstrees.dependence import CI, pairwise_cis, Context, CSI, pairwise_csis
+        >>> 
+        >>> ci = CI({1,2}, {3,4},{0})
+        >>> c = Context({5:0})
+        >>> csi = CSI(ci, c)
         >>> print("Original CSI: ", csi)
-        >>> pw = csi_relation.pairwise_csis(csi)
+        >>> pw = pairwise_csis(csi)
         >>> print("Pairwise CSIs:")
         >>> for x in pw:
         >>>    print(x)
-        X1 ⊥ X3 | X2, X4, X5, X6=0
-        X1 ⊥ X4 | X2, X3, X5, X6=0
-        X2 ⊥ X3 | X1, X4, X5, X6=0
-        X2 ⊥ X4 | X1, X3, X5, X6=0
+        Original CSI:  1, 2 ⊥ 3, 4 | 0, 5=0
+        Pairwise CSIs:
+        1 ⊥ 3 | 0, 2, 4, 5=0
+        1 ⊥ 4 | 0, 2, 3, 5=0
+        2 ⊥ 3 | 0, 1, 4, 5=0
+        2 ⊥ 4 | 0, 1, 3, 5=0  
     """
     logging.debug("Pairwise CSIs")
     context = csi.context
@@ -400,15 +407,16 @@ def mix(csilist_tuple, level, cards):
         list: A mixed CSI list.
 
     Example:
-        >>> a = [0, None, None, {0,1}, 1]
-        >>> b = [1, None, None, 0, 1]
-        >>> c = do_mix((a,b), 0, [2,2,2,2,2])
+        >>> from cstrees.dependence import mix
+        >>> a = [0, None, None, {0,1}, {1}]
+        >>> b = [1, None, None, {0}, {1}]
+        >>> c = mix((a,b), 0, [2,2,2,2,2])
         >>> c
-        [{0, 1}, None, None, 0,, 1]
+        [{0, 1}, None, None, {0}, {1}]
     """
 
     p = len(csilist_tuple[0])
-    mix = [None] * p
+    mix_result = [None] * p
 
     # Going through all the levels and mix at all levels.
     # The result should be stored somewhere.
@@ -418,13 +426,13 @@ def mix(csilist_tuple, level, cards):
         if a[0] is None:
             continue
         if i == level:  # if at the current level, the values are joined.
-            mix[i] = set(range(cards[level]))
+            mix_result[i] = set(range(cards[level]))
         else:  # do the intersection
-            mix[i] = set.intersection(*a)
-            if len(mix[i]) == 0:
+            mix_result[i] = set.intersection(*a)
+            if len(mix_result[i]) == 0:
                 return None  # The CSIs are disjoint, so return None.
 
-    return mix
+    return mix_result
 
 
 def partition_csis(csilist_list, level, cards):
@@ -441,16 +449,37 @@ def partition_csis(csilist_list, level, cards):
         list: list of disjoint lists of pairwise CSI lists that can possibly be mixed.
     
     Example:
-        >>> pairwise_csis
-        [{0}, None, {0}, None]
-        [{0}, None, {1}, None]
-        [{1}, None, {0}, None]
-        >>> # partition based on values at level 0
-        >>> partitioned_csis = partition_csis(pairwise_csis, 0, [2,2,2,2])
+        >>> from cstrees.dependence import CI, pairwise_cis, Context, CSI, pairwise_csis, partition_csis
+        >>> cards = [2]*5
+        >>> csi1 = CSI(CI({1}, {3},{4}), Context({0:0, 2:0}), cards=cards)
+        >>> csi2 = CSI(CI({1}, {3},{4}), Context({0:0, 2:1}), cards=cards)
+        >>> csi3 = CSI(CI({1}, {3},{4}), Context({0:1, 2:0}), cards=cards)
+        >>> 
+        >>> print("CSIs:")
+        >>> for x in [csi1, csi2, csi3]:
+        >>>   print(x)
+        >>> 
+        >>> print("CSIs list representations:")
+        >>> for x in [csi1, csi2, csi3]:
+        >>>   print(x.as_list())
+        >>> 
+        >>> pairwise_csis = [csi1.as_list() , csi2.as_list(), csi3.as_list()]
+        >>> partitioned_csis = partition_csis(pairwise_csis, 0, cards)
+        >>> 
+        >>> print("CSI partitioned bases on values at level 0:")
         >>> for i, csis in enumerate(partitioned_csis):
-        >>>     print("{}: {}".format(i, csis))
-        0: [[{0}, None, {0}, None], [{0}, None, {1}, None]]
-        1: [[{1}, None, {0}, None]]
+        >>>   print("{}: {}".format(i, csis))
+        CSIs:
+        1 ⊥ 3 | 4, 0=0, 2=0
+        1 ⊥ 3 | 4, 0=0, 2=1
+        1 ⊥ 3 | 4, 0=1, 2=0
+        CSIs list representations:
+        [{0}, None, {0}, None, {0, 1}]
+        [{0}, None, {1}, None, {0, 1}]
+        [{1}, None, {0}, None, {0, 1}]
+        CSI partitioned bases on values at level 0:
+        0: [[{0}, None, {0}, None, {0, 1}], [{0}, None, {1}, None, {0, 1}]]
+        1: [[{1}, None, {0}, None, {0, 1}]]
     """
     logging.debug("Partitioning CSIs")
     logging.debug("level {}".format(level))
@@ -512,44 +541,55 @@ def _csilist_subset(a, b):
 
 
 def minimal_csis(paired_csis, cards):
-    """ Loop through all levels l
-        1. For each stage in the level do weak union to get the pairs
-            Xi _|_ Xj | something, and group.
-        2. For each such pair go through all levels and try to find mixable
-            CSI by partition on value.
-        3. If mixable, mix and put the result in a set woth newly created.
-
-        When we loop through al levels again by where the old CSI are not mixed
-        with each other that is, each tuple needs at least one CSI from the new
-        CSIs.
+    """ Find the minimal CSIs from the pairwise CSIs.
 
     Args:
         paired_csis (dict): Dict of csis grouped by pairwise indep rels as Xi _|_ Xj.
+        cards (list): Cardinalities of the levels.
         
     Example:
+        >>> # Figure 1. from (Duarte & Solus 2022)
+        >>> import cstrees.cstree as ct
+        >>> import cstrees.stage as st
+        >>> tree = ct.CStree([2, 2, 2, 2], labels=["X"+str(i) for i in range(1, 5)])
+        >>> tree.update_stages({
+        >>>     0: [{"context": {0: 0}},
+        >>>         {"context": {0: 1}}],
+        >>>     1: [{"context": {1: 0}, "color": "green"},
+        >>>         {"context": {0: 0, 1: 1}},
+        >>>         {"context": {0: 1, 1: 1}}],
+        >>>     2: [{"context": {0: 0, 2: 0}, "color": "blue"},
+        >>>         {"context": {0: 0, 2: 1}, "color": "orange"},
+        >>>         {"context": {0: 1, 2: 0}, "color": "red"},
+        >>>         {"context": {0: 1, 1: 1, 2: 1}},
+        >>>         {"context": {0: 1, 1: 0, 2: 1}}]})
         >>> rels = tree.csi_relations()
-        >>> for cont, rels in rels.items():
-        >>>     for rel in rels:
-        >>>        print(rel)
-        X0 ⊥ X2, X1=0
-        X1 ⊥ X3, X0=0, X2=0
-        X1 ⊥ X3, X0=0, X2=1
-        X1 ⊥ X3, X0=1, X2=0
         >>> minl_csis = tree.to_minimal_context_csis()
         >>> for cont, csis in minl_csis.items():
         >>>    for csi in csis:
         >>>        print(csi)
-        X0 ⊥ X2, X1=0
-        X1 ⊥ X3, X2=0
-        X1 ⊥ X3 | X2, X0=0
+        X1 ⊥ X3 | X2=0
+        X2 ⊥ X4 | X1, X3=0
+        X2 ⊥ X4 | X3, X1=0
 
     Returns:
-        _type_: _description_
+        dict: dict of minimal CSIs grouped by contexts.
     """
 
     p = len(cards)
 
     ret = [{} for _ in range(p)]
+    #  Loop through all levels l
+    #     1. For each stage in the level do weak union to get the pairs
+    #         Xi _|_ Xj | something, and group.
+    #     2. For each such pair go through all levels and try to find mixable
+    #         CSI by partition on value.
+    #     3. If mixable, mix and put the result in a set woth newly created.
+
+    #     When we loop through al levels again by where the old CSI are not mixed
+    #     with each other that is, each tuple needs at least one CSI from the new
+    #     CSIs.
+    
     for level in range(p):
         # initiate newbies in the first run to be
         logging.debug("\n#### Level {}".format(level))
@@ -765,6 +805,39 @@ def csi_relations_to_dags(csi_relations, p, labels=None):
     
     Returns:
         dict: A dictionary with contexts as keys and dags as values.
+    
+    Examples:
+        >>> # Figure 1. from (Duarte & Solus 2022)
+        >>> import cstrees.cstree as ct
+        >>> import cstrees.stage as st
+        >>> from cstrees import dependence
+        >>> tree = ct.CStree([2, 2, 2, 2], labels=["X"+str(i) for i in range(1, 5)])
+        >>> tree.update_stages({
+        >>>     0: [{"context": {0: 0}},
+        >>>         {"context": {0: 1}}],
+        >>>     1: [{"context": {1: 0}, "color": "green"},
+        >>>         {"context": {0: 0, 1: 1}},
+        >>>         {"context": {0: 1, 1: 1}}],
+        >>>     2: [{"context": {0: 0, 2: 0}, "color": "blue"},
+        >>>         {"context": {0: 0, 2: 1}, "color": "orange"},
+        >>>         {"context": {0: 1, 2: 0}, "color": "red"},
+        >>>         {"context": {0: 1, 1: 1, 2: 1}},
+        >>>         {"context": {0: 1, 1: 0, 2: 1}}]})
+        >>> minl_csis = tree.to_minimal_context_csis()
+        >>> cdags = dependence.csi_relations_to_dags(minl_csis, tree.p, labels=tree.labels)
+        >>> for key, dag in cdags.items():
+        >>>    print("{}:".format(key))
+        >>>    print("Nodes: {}".format(dag.nodes()))
+        >>>    print("Edges: {}".format(dag.edges()))
+        X2=0:
+        Nodes: ['X1', 'X3', 'X4']
+        Edges: [('X1', 'X4'), ('X3', 'X4')]
+        X3=0:
+        Nodes: ['X1', 'X2', 'X4']
+        Edges: [('X1', 'X2'), ('X1', 'X4')]
+        X1=0:
+        Nodes: ['X2', 'X3', 'X4']
+        Edges: [('X2', 'X3'), ('X3', 'X4')]
     
     """
 

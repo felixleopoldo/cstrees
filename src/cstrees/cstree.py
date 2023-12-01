@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 
 import cstrees.stage as st
-from cstrees import csi_relation
+from cstrees import dependence
 
 import logging
 import sys
@@ -14,20 +14,38 @@ from importlib import reload
 reload(logging)
 FORMAT = '%(filename)s:%(funcName)s (%(lineno)d):  %(message)s'
 #logging.basicConfig(stream=sys.stderr, level=logging.DEBUG, format=FORMAT)
-logging.basicConfig(stream=sys.stderr, level=logging.ERROR)
+logging.basicConfig(stream=sys.stderr, level=logging.CRITICAL, format=FORMAT)
+#logging.basicConfig(stream=sys.stderr, level=logging.ERROR)
+#logging.basicConfig(stream=sys.stderr, level=logging.CRITICAL)
 
 def write_minimal_context_graphs_to_files(context_dags, prefix="mygraphs"):
+    """Write minimal context graphs to files. This is useful since it also writes the context of each graph in the figures.
+    The contexts are also part of the filenames.
+    
+    Args:
+        context_dags (dict): A dictionary of context graphs. The keys are the contexts, and the values are the graphs.
+        prefix (str, optional): The prefix of the files. Defaults to "mygraphs".
+        
+    Example:
+        >>> # tree is the Figure 1 CStree
+        >>> gs = tree.to_minimal_context_graphs()
+        >>> ct.write_minimal_context_graphs_to_files(gs, prefix="mygraphs")
+    """
+    
     for key, val in context_dags.items():
         agraph = nx.nx_agraph.to_agraph(val)
         agraph.layout("dot")
         agraph.draw(prefix+str(key) + ".png", args='-Glabel="'+str(key)+'"   ')
 
 def plot(graph, layout="dot"):
-    """Plots a graph using graphviz.
+    """Plots a graph using graphviz. Essentially it return a pygraphviz graph from a NetworkX graph.
 
     Args:
         graph (nx.Graph): The graph to plot.
         layout (str, optional): The layout to use. Defaults to "dot".
+    
+    Returns:
+        pygraphviz.agraph.AGraph: A pygraphviz graph.
 
     """
     agraph = nx.nx_agraph.to_agraph(graph)
@@ -36,26 +54,30 @@ def plot(graph, layout="dot"):
 
 
 class CStree:
-    """ A class representing a CStree. 
+    """ A class representing a CStree. It is initialized by a list of cardinalities of the variables at each level and a list of labels. The labels are optional and defaults (None) to [0,1,...,p-1].
 
     Args:
         cards (list): A list of integers representing the cardinality of each level (indexed from 0).
-        labels (list, optional): A list of strings representing the labels of each level. Defaults to [0,1,...,p-1].
+        labels (list, optional): A list of strings or integers representing the labels of each level. Defaults to [0,1,...,p-1].
+    References:
+        E. Duarte and L. Solus. Representation of context-specific causal models with observational and interventional data, 2021.
 
     Example:
         >>> # Figure 1. from (Duarte & Solus 2022)
         >>> import cstrees.cstree as ct
         >>> import cstrees.stage as st
-        >>> tree = ct.CStree([2, 2, 2, 2])
+        >>> tree = ct.CStree([2, 2, 2, 2], labels=["X"+str(i) for i in range(1, 5)])
         >>> tree.update_stages({
-        >>>     0: [st.Stage([0]), st.Stage([1])],
-        >>>     1: [st.Stage([{0, 1}, 0], color="green"), st.Stage([0, 1]), st.Stage([1, 1])],
-        >>>     2: [st.Stage([0, {0, 1}, 0], color="blue"),
-        >>>         st.Stage([0, {0, 1}, 1], color="orange"),
-        >>>         st.Stage([1, {0, 1}, 0], color="red"),
-        >>>         st.Stage([1, 1, 1]),
-        >>>         st.Stage([1, 0, 1])]
-        >>> })
+        >>>     0: [{"context": {0: 0}},
+        >>>         {"context": {0: 1}}],
+        >>>     1: [{"context": {1: 0}, "color": "green"},
+        >>>         {"context": {0: 0, 1: 1}},
+        >>>         {"context": {0: 1, 1: 1}}],
+        >>>     2: [{"context": {0: 0, 2: 0}, "color": "blue"},
+        >>>         {"context": {0: 0, 2: 1}, "color": "orange"},
+        >>>         {"context": {0: 1, 2: 0}, "color": "red"},
+        >>>         {"context": {0: 1, 1: 1, 2: 1}},
+        >>>         {"context": {0: 1, 1: 0, 2: 1}}]})
         >>> tree.sample_stage_parameters()
     """
 
@@ -85,8 +107,8 @@ class CStree:
             
         Example:
             >>> # Assuming all variables are binary
-            >>> s = Stage([0, {0, 1}, 1])
-            >>> cstree.stage_proportion(s)
+            >>> s = st.Stage([0, {0, 1}, 1])
+            >>> stree.stage_proportion(s)
             0.25        
         """
         prop = 1
@@ -100,24 +122,24 @@ class CStree:
         """ Update the stages of the CStree.
 
         Args:
-            stages (dict): A dictionary of stages. The keys are the levels, and the values are lists of stages.
+            stages (dict): A dictionary of stage dicts. The keys are the levels, and the values are lists of dicts representing stages. The dicts representing stages should have the following keys: "context" and "color". The "context" should have a dict as value, where the keys are the levels and the values are the values of the variables at that level. The "color" key is optional but should have a string as value, representing the color of the stage.
 
         Example:
-            >>> import cstrees.cstree as ct
-            >>> import cstrees.stage as st
-            >>> tree = ct.CStree([2, 2, 2, 2]])
             >>> tree.update_stages({
-            >>>     0: [st.Stage([0]), st.Stage([1])],
-            >>>     1: [st.Stage([{0, 1}, 0], color="green"), st.Stage([0, 1]), st.Stage([1, 1])],
-            >>>     2: [st.Stage([0, {0, 1}, 0], color="blue"),
-            >>>         st.Stage([0, {0, 1}, 1], color="orange"),
-            >>>         st.Stage([1, {0, 1}, 0], color="red"),
-            >>>         st.Stage([1, 1, 1]),
-            >>>         st.Stage([1, 0, 1])]
-            >>> })
-
+            >>>     0: [{"context": {0: 0}},
+            >>>         {"context": {0: 1}}],
+            >>>     1: [{"context": {1: 0}, "color": "green"},
+            >>>         {"context": {0: 0, 1: 1}},
+            >>>         {"context": {0: 1, 1: 1}}],
+            >>>     2: [{"context": {0: 0, 2: 0}, "color": "blue"},
+            >>>         {"context": {0: 0, 2: 1}, "color": "orange"},
+            >>>         {"context": {0: 1, 2: 0}, "color": "red"},
+            >>>         {"context": {0: 1, 1: 1, 2: 1}},
+            >>>         {"context": {0: 1, 1: 0, 2: 1}}]
+            >>>     })
         """
         
+        # This should be filled with Stage objects.
         stages_to_add = {key: [] for key in stages.keys()}
         
         # If there are dicts, we convert them to Stages. 
@@ -152,7 +174,7 @@ class CStree:
 
 
     def get_stage(self, node: tuple):
-        """ Get the stage of a node in the CStree.
+        """ Get the stage of a node in the CStree. 
 
         Args:
             node (tuple or list): A node in the CStree. It could be e.g. (0, 1, 0, 1).
@@ -160,7 +182,7 @@ class CStree:
             >>> # tree is the fig. 1 CStree
             >>> stage = tree.get_stage([0, 0])
             >>> print(stage)
-            [{0, 1}, 0]; probs: [0.57628561 0.42371439]; color: green
+            [{0, 1}, 0]; probs: [0.37905534 0.62094466]; color: green
         """
         assert(self.stages is not None)
         lev = len(node)-1
@@ -181,24 +203,29 @@ class CStree:
 
     def to_df(self, write_probs=False):
         """ Converts the CStree to a Pandas dataframe.
+        The labels of the dataframe are the labels of the levels/variables in the CStree.
+        The first row contains the cardinalities of the variables.
+        The other rows contain the stages of the CStree. E.g. row number 3 contains the level 1 stage with context X2=0, etc.
 
+        Args:
+            write_probs (bool): If True, the probabilities of the stages are written to the dataframe. Defaults to False.
         Returns:
             df (pd.DataFrame): A Pandas dataframe with the stages of the CStree.
-
         Example:
             >>> tree.to_df()
-            0  1  2  3
-            2  2  2  2
-            0  -  -  -
-            1  -  -  -
-            *  0  -  -
-            0  1  -  -
-            1  1  -  -
-            0  *  0  -
-            0  *  1  -
-            1  *  0  -
-            1  1  1  -
-            1  0  1  -
+                X1	X2	X3	X4
+            0	2	2	2	2
+            1	0	-	-	-
+            2	1	-	-	-
+            3	*	0	-	-
+            4	0	1	-	-
+            5	1	1	-	-
+            6	0	*	0	-
+            7	0	*	1	-
+            8	1	*	0	-
+            9	1	1	1	-
+            10	1	0	1	-
+            11	-	-	-	-
         """
 
         # cardinalities header
@@ -238,7 +265,8 @@ class CStree:
                     stage.color = self.colors[i] # Set color from stage if possible
 
     def estimate_stage_parameters(self, data, method="BDeu", alpha_tot=1):
-        """ Estimate the parameters of the stages of the CStree under a Dirichlet model.
+        """ Estimate the parameters of the stages of the CStree under a Dirichlet model. 
+        Note that this is not using precaclulated scores, just for legacy reasons. It should though.
 
         Args:
             data (pd.DataFrame): A pandas dataframe with the data.
@@ -248,7 +276,10 @@ class CStree:
 
         Example:
             >>> t = ct.sample_cstree([2,2,2,2], max_cvars=1, prob_cvar=0.5, prop_nonsingleton=1)
-            >>> t.estimate_stage_parameters(x, alpha_tot=1.0, method="BDeu")
+            >>> t.sample_stage_parameters()
+            >>> df = t.sample(500)
+            >>> t.estimate_stage_parameters(df, alpha_tot=1.0, method="BDeu")
+
         """
         import cstrees.scoring as sc
         # Set stage probabilities
@@ -257,10 +288,10 @@ class CStree:
             if lev == self.p-1:
                 continue
 
-            stage_counts = sc.counts_at_level(self, lev+1, data)
+            stage_counts = sc._counts_at_level(self, lev+1, data)
 
             for stage in stages:
-                probs = sc.estimate_parameters(
+                probs = sc._estimate_parameters(
                     self, stage, stage_counts, method, alpha_tot)
                 stage.probs = probs
 
@@ -345,21 +376,24 @@ class CStree:
 
     # Here is the only place we need labels/orders.
     def to_minimal_context_graphs(self):
-        """ This returns a sequence of minimal context NetworkX graphs dsadas
+        """ This returns a sequence of minimal context NetworkX DAGs
         (minimal I-maps).
+        
+        Returns: 
+            dict: The keys are the contexts, and the values are the DAGs.
 
         Example:
             >>> # tree is the Figure 1 CStree
             >>> gs = tree.to_minimal_context_graphs()
             >>> for key, graph in gs.items():
             >>>     print("{}: Edges {}".format(key, graph.edges()))
-            X0=0: Edges [(1, 2), (2, 3)]
-            X1=0: Edges [(0, 3), (2, 3)]
-            X2=0: Edges [(0, 1), (0, 3)]
+            X2=0: Edges [('X1', 'X4'), ('X3', 'X4')]
+            X3=0: Edges [('X1', 'X2'), ('X1', 'X4')]
+            X1=0: Edges [('X2', 'X3'), ('X3', 'X4')]
 
         """
         minl_csis_by_context = self.to_minimal_context_csis()
-        cdags = csi_relation.csi_relations_to_dags(
+        cdags = dependence.csi_relations_to_dags(
             minl_csis_by_context, self.p, labels=self.labels)
 
         return cdags
@@ -415,7 +449,7 @@ class CStree:
                 logging.debug(r)
                 logging.debug("cards: {}".format(r.cards))
                 
-        paired_csis = csi_relation._csis_by_levels_2_by_pairs(rels, cards=self.cards) # this could still be per level?
+        paired_csis = dependence._csis_by_levels_2_by_pairs(rels, cards=self.cards) # this could still be per level?
         logging.debug("\n###### Paired_csis")
         logging.debug(paired_csis)
 
@@ -423,18 +457,18 @@ class CStree:
         # The pairs may change during the process this is why we have by pairs.
         # However, the level part
         # should always remain the same actually, so may this is not be needed.
-        minl_csislists = csi_relation.minimal_csis(paired_csis, self.cards) # this could be by level still?
+        minl_csislists = dependence.minimal_csis(paired_csis, self.cards) # this could be by level still?
         logging.debug(minl_csislists)
 
         logging.debug("\n ############### get minl csis in list format")
-        minl_csis = csi_relation._csi_lists_to_csis_by_level(minl_csislists, self.p, labels=self.labels) # this would not be needed
+        minl_csis = dependence._csi_lists_to_csis_by_level(minl_csislists, self.p, labels=self.labels) # this would not be needed
         logging.debug(minl_csislists)
         for key in minl_csislists:
             for pair, val in key.items():
                 logging.debug("{}: {}".format(pair, val))
 
         logging.debug("#### minimal csis")
-        minl_csis_by_context = csi_relation._rels_by_level_2_by_context(minl_csis)
+        minl_csis_by_context = dependence._rels_by_level_2_by_context(minl_csis)
         logging.debug(minl_csis_by_context)
         for pair, val in minl_csis_by_context.items():
             for csi in val:
@@ -461,10 +495,10 @@ class CStree:
             >>> for cont, rels in rels.items():
             >>>     for rel in rels:
             >>>         print(rel)            
-            0 ⊥ 2 | 1=0
-            1 ⊥ 3 | 0=0, 2=0
-            1 ⊥ 3 | 0=0, 2=1
-            1 ⊥ 3 | 0=1, 2=0
+            X1 ⊥ X3 | X2=0
+            X2 ⊥ X4 | X1=0, X3=0
+            X2 ⊥ X4 | X1=0, X3=1
+            X2 ⊥ X4 | X1=1, X3=0
         """
         csi_rels = {}
 
@@ -509,9 +543,10 @@ class CStree:
             5  0  0  0  1
         """
 
+        # TODO: Check that the stage parameters are set.
         if self.tree is None:
-            print("Creating tree on the fly while sampling to save space "
-                  "when allowing for singleton stages.")
+            #print("Creating tree on the fly while sampling to save space "
+            #      "when allowing for singleton stages.")
             self.tree = nx.DiGraph()
         xs = []
 
@@ -581,6 +616,8 @@ class CStree:
 
         Args:
             fill (bool): If True, the tree is filled with parameters.
+        Returns:
+            pygraphviz.agraph.AGraph: A pygraphviz graph.
 
         Examples:
             >>> tree.sample_stage_parameters()
@@ -619,7 +656,7 @@ class CStree:
 
 
 def sample_cstree(cards: list, max_cvars: int, prob_cvar: int,
-                  prop_nonsingleton: float) -> CStree:
+                  prop_nonsingleton: float, labels=None) -> CStree:
     """
        Sample a random CStree with given cardinalities.
 
@@ -646,7 +683,10 @@ def sample_cstree(cards: list, max_cvars: int, prob_cvar: int,
         6	*	*	1	-
     """
     p = len(cards)
-    ct = CStree(cards)
+
+    if labels is None:
+        labels = list(range(p))
+    ct = CStree(cards, labels=labels)
 
     stagings = {}
     for level, val in enumerate(cards[:-1]):  # not the last level
@@ -749,7 +789,7 @@ def sample_cstree(cards: list, max_cvars: int, prob_cvar: int,
 def df_to_cstree(df, read_probs=True):
     """ Convert a dataframe to a CStree. The dataframe should have the following format:
     The labels should be the level labels.
-    The first row should be the cards, the second row should be the first stage, the third row the second stage etc.
+    The first row should be the cardinalities, the second row should be the first stage, the third row the second stage etc. (see :meth:`cstrees.cstree.CStree.to_df()`).
 
     Args:
         df (pd.DataFrame): The dataframe to convert.
@@ -757,35 +797,36 @@ def df_to_cstree(df, read_probs=True):
         >>> df = tree.to_df()
         >>> print(df)
         >>> t2 = ct.df_to_cstree(df)
-        >>> df2 = t2.()
+        >>> df2 = t2.to_df()
         >>> print("The same tree:")
         >>> print(df)
-           0  1  2  3
-        0  2  2  2  2
-        0  0  -  -  -
-        0  1  -  -  -
-        0  *  0  -  -
-        0  0  1  -  -
-        0  1  1  -  -
-        0  0  *  0  -
-        0  0  *  1  -
-        0  1  *  0  -
-        0  1  1  1  -
-        0  1  0  1  -
-        1  2  3  4
+            X1 X2 X3 X4
+        0   2  2  2  2
+        1   0  -  -  -
+        2   1  -  -  -
+        3   *  0  -  -
+        4   0  1  -  -
+        5   1  1  -  -
+        6   0  *  0  -
+        7   0  *  1  -
+        8   1  *  0  -
+        9   1  1  1  -
+        10  1  0  1  -
+        11  -  -  -  -
         The same tree:
-           0  1  2  3
-        0  2  2  2  2
-        0  0  -  -  -
-        0  1  -  -  -
-        0  *  0  -  -
-        0  0  1  -  -
-        0  1  1  -  -
-        0  0  *  0  -
-        0  0  *  1  -
-        0  1  *  0  -
-        0  1  1  1  -
-        0  1  0  1  -
+            X1 X2 X3 X4
+        0   2  2  2  2
+        1   0  -  -  -
+        2   1  -  -  -
+        3   *  0  -  -
+        4   0  1  -  -
+        5   1  1  -  -
+        6   0  *  0  -
+        7   0  *  1  -
+        8   1  *  0  -
+        9   1  1  1  -
+        10  1  0  1  -
+        11  -  -  -  -
     """
     collabs= list(df.columns)
     

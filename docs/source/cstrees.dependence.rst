@@ -1,7 +1,7 @@
-csi_relation 
+dependence 
 =====================
 
-.. automodule:: cstrees.csi_relation
+.. automodule:: cstrees.dependence
    :members:
    :undoc-members:
    :show-inheritance:

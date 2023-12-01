@@ -24,44 +24,41 @@ def all_stagings(cards, level, max_cvars=1, poss_cvars=None):
         generator: generator over all stagings of a given level.
 
     Examples:
-        A staging with 2 stages for a binary CStree at level 2
-        (numbering levels from 0) could e.g. be:
 
         >>> import cstrees.learning as ctl
-        >>> cards = [2]*4
-        >>> stagings = ctl.all_stagings(cards, 2, max_cvars=2)
+        >>> cards = [2]*3
+        >>> stagings = ctl.all_stagings(cards, 1, max_cvars=2) # all stagings at level 1
         >>> for i, staging in enumerate(stagings):
-        >>>     print("staging: {}".format(i))
+        >>>     print("staging {}:".format(i))
         >>>     for stage in staging:
         >>>         print(stage)
-        staging: 0
-        [{0, 1}]
-        [{0, 1}]
-        staging: 1
+        staging 0:
+        [{0, 1}, {0, 1}]
+        staging 1:
         [0, {0, 1}]
         [1, {0, 1}]
-        staging: 2
-        [{0, 1}, 0]
-        [{0, 1}, 1]
-        staging: 3
-        [1, {0, 1}]
+        staging 2:
         [0, 0]
         [0, 1]
-        staging: 4
+        [1, {0, 1}]
+        staging 3:
         [0, {0, 1}]
         [1, 0]
         [1, 1]
-        staging: 5
-        [{0, 1}, 1]
+        staging 4:
         [0, 0]
-        [1, 0]
-        staging: 6
-        [{0, 1}, 0]
         [0, 1]
+        [1, 0]
         [1, 1]
-        staging: 7
+        staging 5:
+        [{0, 1}, 0]
+        [{0, 1}, 1]
+        staging 6:
         [0, 0]
         [1, 0]
+        [{0, 1}, 1]
+        staging 7:
+        [{0, 1}, 0]
         [0, 1]
         [1, 1]
 
@@ -104,7 +101,7 @@ def n_stagings(cards, level, max_cvars=1):
         >>> import cstrees.learning as ctl
         >>> cards = [2]*4
         >>> ctl.n_stagings(cards, 2, max_cvars=2)
-        8
+        28
 
     """
 
@@ -153,7 +150,7 @@ def _optimal_staging_at_level(order, context_scores, level, max_cvars=2, poss_cv
                 continue
 
             # here we (=I) anyway extract just the context, so the stage format is a bit redundant.
-            stage_context = sc.stage_to_context_key(stage, order) 
+            stage_context = sc._stage_to_context_key(stage, order) 
             score = context_scores["scores"][var][stage_context]
             staging_score += score
         
@@ -247,7 +244,7 @@ def _find_optimal_order(score_table):
     return optimal_orders, max_score
 
 
-def relocate_node_in_order(order, node, new_pos):
+def _relocate_node_in_order(order, node, new_pos):
     """ Relocate a node in an order.
 
     Args:
@@ -264,7 +261,7 @@ def relocate_node_in_order(order, node, new_pos):
     return order
 
 
-def move_up(node_index,
+def _move_up(node_index,
              order,
              orderscore,
              node_scores,
@@ -281,8 +278,8 @@ def move_up(node_index,
     active_cvars1 = [v for v in order[:node_index] if v in score_table["poss_cvars"][node1]]
     active_cvars2 = [v for v in order[:node_index+1] if v in score_table["poss_cvars"][node2]]
     
-    pred1 = sc.list_to_score_key(active_cvars1)
-    pred2 = sc.list_to_score_key(active_cvars2)
+    pred1 = sc._list_to_score_key(active_cvars1)
+    pred2 = sc._list_to_score_key(active_cvars2)
 
     node_scores[node_index] = score_table["scores"][order[node_index]][pred1]
     node_scores[node_index+1] = score_table["scores"][order[node_index+1]][pred2]
@@ -293,7 +290,7 @@ def move_up(node_index,
     return orderscore
 
 
-def move_down(node_index,
+def _move_down(node_index,
                order,
                orderscore,
                node_scores,
@@ -308,8 +305,8 @@ def move_down(node_index,
     active_cvars1 = [v for v in order[:node_index] if v in score_table["poss_cvars"][order[node_index]]]
     active_cvars2 = [v for v in order[:node_index-1] if v in score_table["poss_cvars"][order[node_index-1]]]
     
-    pred1 = sc.list_to_score_key(active_cvars1)
-    pred2 = sc.list_to_score_key(active_cvars2)
+    pred1 = sc._list_to_score_key(active_cvars1)
+    pred2 = sc._list_to_score_key(active_cvars2)
 
     node_scores[node_index] = score_table["scores"][order[node_index]][pred1]
     node_scores[node_index-1] = score_table["scores"][order[node_index-1]][pred2]
@@ -320,7 +317,7 @@ def move_down(node_index,
     return orderscore
 
 
-def move_node(node_index_from,
+def _move_node(node_index_from,
               node_index_to,
               order,
               orderscore,
@@ -343,27 +340,37 @@ def move_node(node_index_from,
 
     if node_index_from < node_index_to:
         for i in range(node_index_from, node_index_to):
-            orderscore = move_up(i, order, orderscore, node_scores, score_table)
+            orderscore = _move_up(i, order, orderscore, node_scores, score_table)
     else:
         for i in range(node_index_from, node_index_to, -1):
-            orderscore = move_down(
+            orderscore = _move_down(
                 i, order, orderscore, node_scores, score_table)
     return orderscore
 
 
-def swap_neigbors_in_order(order, node_index1, node_index2):
-    """ Swap two neighbors in an order.
-
-    Args:
-        order (list): The order of the variables.
-        node_index1 (int): The index of the first node.
-        node_index2 (int): The index of the second node.
-
-    """
-
 
 def gibbs_order_sampler(iterations, score_table):
     """ Gibbs order sampler.
+    
+    Example:
+    
+        >>> import cstrees.learning as ctl
+        >>> import cstrees.cstree as ct
+        >>> import numpy as np 
+        >>> import random
+        >>> np.random.seed(1)
+        >>> random.seed(1)
+        >>> 
+        >>> tree = ct.sample_cstree([2,2,2,2], max_cvars=1, prob_cvar=0.5, prop_nonsingleton=1)
+        >>> tree.sample_stage_parameters(1.0)
+        >>> df = tree.sample(500)
+        >>> score_table, context_scores, context_counts = sc.order_score_tables(df, 
+        >>>                                                                     max_cvars=2, 
+        >>>                                                                     alpha_tot=1.0,
+        >>>                                                                     method="BDeu",
+        >>>                                                                     poss_cvars=None)
+        >>> orders, scores = ctl.gibbs_order_sampler(5000, score_table)                                                                        
+
     """
     # Score table for all noded in all positions in the order
 
@@ -377,9 +384,9 @@ def gibbs_order_sampler(iterations, score_table):
     node_scores = [0]*p
     for i in range(p):
         # possible parents to string
-        subset_str = sc.list_to_score_key(order[:i] )
+        subset_str = sc._list_to_score_key(order[:i] )
         
-        subset_str = sc.list_to_score_key(list(set(order[:i]) & set(score_table["poss_cvars"][order[i]])))
+        subset_str = sc._list_to_score_key(list(set(order[:i]) & set(score_table["poss_cvars"][order[i]])))
         node_scores[i] = score_table["scores"][order[i]][subset_str]
 
     score = np.sum(node_scores)
@@ -392,7 +399,7 @@ def gibbs_order_sampler(iterations, score_table):
         node_index = np.random.randint(0, p)
         node = order_trajectory[i-1][node_index]
         # calculate the neighborhood scores
-        prop_probs = get_relocation_neighborhood(order_trajectory[i-1],
+        prop_probs = _get_relocation_neighborhood(order_trajectory[i-1],
                                                  node_index,
                                                  scores[i-1],
                                                  node_scores,
@@ -402,7 +409,7 @@ def gibbs_order_sampler(iterations, score_table):
         new_pos = np.random.choice(list(range(len(prop_probs))), p=prop_probs)
 
         neworder = order_trajectory[i-1].copy()
-        orderscore = move_node(node_index, new_pos,
+        orderscore = _move_node(node_index, new_pos,
                                 neworder,   
                                 scores[i-1],
                                 node_scores,
@@ -414,7 +421,7 @@ def gibbs_order_sampler(iterations, score_table):
     return order_trajectory, scores
 
 
-def get_relocation_neighborhood(order, node_index, orderscore, node_scores,
+def _get_relocation_neighborhood(order, node_index, orderscore, node_scores,
                                 score_table):
     # Move to the right
     # [1,2,3,i,4,5] => [1,2,3,4,i,5]
@@ -424,21 +431,21 @@ def get_relocation_neighborhood(order, node_index, orderscore, node_scores,
 
     for i in range(node_index, len(order)-1):
 
-        orderscore = move_up(i, order, orderscore, node_scores, score_table)
+        orderscore = _move_up(i, order, orderscore, node_scores, score_table)
         neig_log_scores[i+1] = orderscore
 
     # Move all the way back. But dont relocate the nodes that have already been
     # relocated.
     for i in range(len(order)-1, 0, -1):
-        orderscore = move_down(i, order, orderscore, node_scores, score_table)
+        orderscore = _move_down(i, order, orderscore, node_scores, score_table)
         neig_log_scores[i-1] = orderscore
 
     # move back to where we started
     for i in range(0, node_index):
-        orderscore = move_up(i, order, orderscore, node_scores, score_table)
+        orderscore = _move_up(i, order, orderscore, node_scores, score_table)
         neig_log_scores[i+1] = orderscore
 
-    log_tot_neigh_scores = sc.logsumexp(neig_log_scores)
+    log_tot_neigh_scores = sc._logsumexp(neig_log_scores)
     log_probs = neig_log_scores - log_tot_neigh_scores
 
     prop_probs = np.exp(log_probs)
@@ -456,15 +463,17 @@ def find_optimal_cstree(data, max_cvars=1, alpha_tot=1, method="BDeu"):
 
     Examples:
         >>> import cstrees.learning as ctl
+        >>> import cstrees.cstree as ct
+        >>> import numpy as np 
+        >>> import random
+        >>> np.random.seed(1)
+        >>> random.seed(1)
+        >>> 
+        >>> tree = ct.sample_cstree([2,2,2,2], max_cvars=1, prob_cvar=0.5, prop_nonsingleton=1)
+        >>> tree.sample_stage_parameters(1.0)
+        >>> df = tree.sample(500)
         >>> opttree = ctl.find_optimal_cstree(df, max_cvars=2, alpha_tot=1.0, method="BDeu")
         >>> opttree.to_df()
-                a	b	c
-        0	2	2	2
-        1	*	-	-
-        2	0	0	-
-        3	1	0	-
-        4	0	1	-
-        5	1	1	-
 
     """
     score_table, context_scores, context_counts = sc.order_score_tables(data, 
@@ -479,7 +488,37 @@ def find_optimal_cstree(data, max_cvars=1, alpha_tot=1, method="BDeu"):
     return opttree
 
 
-def causallearn_graph_posscvars(graph, labels):
+def causallearn_graph_to_posscvars(graph, labels):
+    """This function merely converts a graph estimated by causallearn to a dictionary of possible context variables.
+    The possible context variables are the parents of each node in the graph. 
+    These are used when calculating scores in :meth:`cstrees.scoring.order_score_tables()`.
+
+    Args:
+        graph (causalearn graph): A graph in causal learn format.
+        labels (list): Labels of the variables.
+
+    Returns:
+        dict: Dictionary of possible context variables for each variable.
+        
+    Examples:
+        >>> import cstrees.learning as ctl
+        >>> import cstrees.cstree as ct
+        >>> import numpy as np 
+        >>> import random
+        >>> np.random.seed(1)
+        >>> random.seed(1)
+        >>> 
+        >>> tree = ct.sample_cstree([2,2,2,2], max_cvars=1, prob_cvar=0.5, prop_nonsingleton=1)
+        >>> tree.sample_stage_parameters(1.0)
+        >>> df = tree.sample(500)
+        >>> score_table, context_scores, context_counts = sc.order_score_tables(df, 
+        >>>                                                                     max_cvars=2, 
+        >>>                                                                     alpha_tot=1.0,
+        >>>                                                                     method="BDeu",
+        >>>                                                                     poss_cvars=None)
+        >>> orders, scores = ctl.gibbs_order_sampler(5000, score_table)  
+        
+    """
     poss_cvars = {l:[] for l in labels}
     for (i, j) in graph.find_adj():
         poss_cvars[labels[i]].append(labels[j])

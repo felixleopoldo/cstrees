@@ -4,7 +4,7 @@ import random
 import numpy as np
 
 import cstrees.cstree as ct
-from cstrees import csi_relation
+from cstrees import dependence
 
 import logging
 import sys
@@ -176,10 +176,10 @@ class Stage:
             else:
                 context[i] = el
 
-        ci = csi_relation.CI(sepseta, sepsetb, cond_set, labels=labels)
-        context = csi_relation.Context(context, labels=labels)
+        ci = dependence.CI(sepseta, sepsetb, cond_set, labels=labels)
+        context = dependence.Context(context, labels=labels)
 
-        return csi_relation.CSI(ci, context, cards=self.cards)
+        return dependence.CSI(ci, context, cards=self.cards)
 
     def intersects(self, stage):
         """ Checks if the paths of two stages intersect.
