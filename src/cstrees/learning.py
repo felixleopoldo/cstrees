@@ -9,14 +9,14 @@ import cstrees.stage as stl
 import cstrees.scoring as sc
 
 
-def all_stagings(cards, level, max_cvars=1, poss_cvars=None):
-    """ Returns a generator over all stagings of a given level.
+def all_stagings(cards: list[int], level, max_cvars:int = 1, poss_cvars=None):
+    """ Returns a generator over all stagings at a given level of a CStree with given variable cardinalities.
 
     Args:
-        l (int): The level of the stage.
-        cards (list): List of cardinalities of the variables. Should be at least of length l+1. E.g.: l=2, cards=[2,2,2,2]
-        max_cvars (int, optional): The maximum number of context variables . Defaults to 1.
-        poss_cvars (list, optional): The possible context variables. Defaults to None.
+        cards (list[int]): List of cardinalities of the variables. Should be at least of length level+1. E.g.: l=2, cards=[2,2,2,2]
+        level (int): The level of the stage (visually, this is where the nodes are colored).
+        max_cvars (int, optional): The maximum number of context variables . Defaults to 1. Max is 2.
+        poss_cvars (list, optional): The possible context variables. Defaults to None, meaning no restrictions.
     Raises:
         NotImplementedError: Exception if max_cvars > 2.
 
@@ -88,14 +88,13 @@ def all_stagings(cards, level, max_cvars=1, poss_cvars=None):
         raise NotImplementedError("max_cvars > 2 not implemented yet")
 
 
-def n_stagings(cards, level, max_cvars=1):
-    """ Returns the number of stagings at a given level.
+def n_stagings(cards:list[int], level:int, max_cvars:int=1):
+    """ Returns the number of possible stagings at a given level of a CStree with given variable cardinalities.
 
     Args:
-        p (int): Number of variables.
         cards (list): List of cardinalities of the variables.
         level (int): The level in the CStree.
-        cvars (int, optional): The maximum number of context variables. Defaults to 1.
+        max_cvars (int, optional): The maximum number of context variables per variable. Defaults to 1.
 
     Examples:
         >>> import cstrees.learning as ctl
@@ -350,7 +349,7 @@ def _move_node(node_index_from,
 
 
 def gibbs_order_sampler(iterations, score_table):
-    """ Gibbs order sampler.
+    """ Gibbs order sampler. This is a Markov chain Monte Carlo method for sampling from the posterior distribution of variable orders for CStrees.
     
     Example:
     
@@ -453,7 +452,7 @@ def _get_relocation_neighborhood(order, node_index, orderscore, node_scores,
 
 
 def find_optimal_cstree(data, max_cvars=1, alpha_tot=1, method="BDeu"):
-    """ Find the optimal CStree for the data.
+    """ Find the optimal CStree for the data. It first finds the optimal order, then the optimal CStree given that order.
 
     Args:
         data (pandas DataFrame): The data as a pandas DataFrame.
@@ -500,9 +499,10 @@ def causallearn_graph_to_posscvars(graph, labels):
     Returns:
         dict: Dictionary of possible context variables for each variable.
         
-    Examples:
+    Examples:        
         >>> import cstrees.learning as ctl
         >>> import cstrees.cstree as ct
+        >>> from causallearn.search.ConstraintBased.PC import pc
         >>> import numpy as np 
         >>> import random
         >>> np.random.seed(1)
@@ -511,12 +511,11 @@ def causallearn_graph_to_posscvars(graph, labels):
         >>> tree = ct.sample_cstree([2,2,2,2], max_cvars=1, prob_cvar=0.5, prop_nonsingleton=1)
         >>> tree.sample_stage_parameters(1.0)
         >>> df = tree.sample(500)
-        >>> score_table, context_scores, context_counts = sc.order_score_tables(df, 
-        >>>                                                                     max_cvars=2, 
-        >>>                                                                     alpha_tot=1.0,
-        >>>                                                                     method="BDeu",
-        >>>                                                                     poss_cvars=None)
-        >>> orders, scores = ctl.gibbs_order_sampler(5000, score_table)  
+        >>> pcgraph = pc(df[1:].values, 0.05, "chisq", node_names=df.columns)
+        >>> poss_cvars = ctl.causallearn_graph_to_posscvars(pcgraph, labels=df.columns)
+        >>> print("Possible context variables per variable:", poss_cvars)
+        Depth=1, working on node 3: 100%|██████████| 4/4 [00:00<00:00, 1357.27it/s]
+        Possible context variables per variable: {0: [], 1: [2, 3], 2: [1], 3: [1]}
         
     """
     poss_cvars = {l:[] for l in labels}

@@ -24,17 +24,17 @@ class Context:
     """ A class for the context of a CSI.
 
     Args:
-        context (dict): A dictionary of the context.
+        context (dict): A dictionary of the context. The keys are the levels and the values are the values of the (context) variables at the same level.
         labels (list, optional): A list of labels for the keys in the dict. Defaults to None.
     Examples:
 
-    >>> import cstrees.dependence as cr
-    >>> c = cr.Context({0:0, 3:1})
-    >>> print(c)
-    >>> c = cr.Context({0:0, 3:1}, labels=["X"+str(i) for i in range(1, 5)])
-    >>> print(c)
-    0=0, 3=1
-    X1=0, X4=1
+        >>> from cstrees.csi_relation import Context
+        >>> c = Context({0:0, 3:1})
+        >>> print(c)
+        >>> c = Context({0:0, 3:1}, labels=["X"+str(i) for i in range(0, 4)])
+        >>> print(c)
+        0=0, 3=1
+        X1=0, X4=1
     """
 
     def __init__(self, context: dict, labels: list | None = None) -> None:
@@ -82,7 +82,7 @@ class Context:
 
 
 class CI:
-    """ This is a contitional independence relation.
+    """ This is a conditional independence relation on the form a ⊥ b | sep.
 
     Args:
         a (set): The first set of variables.
@@ -90,10 +90,10 @@ class CI:
         sep (set): The set of variables that separate a and b.
 
     Examples:
-        >>> import cstrees.dependence as cr
-        >>> ci = cr.CI({1}, {2}, {4, 5}, labels=["X"+str(i) for i in range(0, 6)])
+        >>> from cstrees.csi_relation import CI
+        >>> ci = CI({1}, {2}, {4, 0}, labels=["X"+str(i) for i in range(1, 6)])
         >>> print(ci)
-        X1 ⊥ X2 | X4, X5
+        X2 ⊥ X3 | X1, X5
     """
 
     def __init__(self, a:set, b:set, sep:set, labels: list[str] | None = None) -> None:
@@ -133,7 +133,7 @@ class CI:
 
 
 class CSI:
-    """This is a context specific relation.
+    """This is a context specific relation on the form a ⊥ b | sep, context=something.
     
     Args:
         ci (CI): The CI relation.
@@ -163,13 +163,13 @@ class CSI:
         for el in zip(a, b):
             pass
 
-        return CSI(c_list, cards=self.cards)
+        return CSI(c_list, cards=self.cards) #BUG: maybe never used
 
     def as_list(self):
-        """ List representation. Important: only for pairwise CSIs.
+        """ List representation. Important: only for pairwise CSIs, i.e. something like Xi ⊥ Xj | ...
 
         Returns:
-            list: list representation of the CSI.
+            list: List representation of the CSI. The indices in the list represents the levels. The None values encode the CI variables. The singleton sets encode the context variables values. The sets with full cardinalities encode the sep variables.
         Examples:
 
             >>> from cstrees.dependence import Context, CI, CSI
@@ -241,16 +241,16 @@ def decomposition(ci: CI):
         
     Examples:
         >>> from cstrees.dependence import CI, decomposition
-        >>> ci = CI({1,2}, {3,4},{5})
+        >>> ci = CI({1,2}, {3,4},{0})
         >>> print(ci)
         >>> dec = decomposition(ci)
         >>> for d in dec:
         >>>     print(d)
-        1, 2 ⊥ 3, 4 | 5
-        1 ⊥ 3 | 5
-        1 ⊥ 4 | 5
-        2 ⊥ 3 | 5
-        2 ⊥ 4 | 5
+        1, 2 ⊥ 3, 4 | 0
+        1 ⊥ 3 | 0
+        1 ⊥ 4 | 0
+        2 ⊥ 3 | 0
+        2 ⊥ 4 | 0
     """
 
     cilist = []
@@ -282,7 +282,7 @@ def _powerset(iterable):
 
 
 def weak_union(ci: CI):
-    """ Using weak union just to get pairwise indep relations from a CSI.
+    """ Using weak union just to get pairwise independence relations from a CSI.
     
     Args:
         ci (CI): CI relation
@@ -292,21 +292,21 @@ def weak_union(ci: CI):
     
     Examples:
         >>> from cstrees import dependence
-        >>> ci = dependence.CI({1,2}, {3,4},{5})
+        >>> ci = dependence.CI({1,2}, {3,4},{0})
         >>> print("Original CI:")
-        >>> print(ci)        
+        >>> print(ci)
         >>> dec = dependence.weak_union(ci)
-        >>> print("Pairwise CI relations:")
+        >>> print("CI relations extrracted by WU:")
         >>> for d in dec:
         >>>     print(d)
-        Original CSI:
-        X1, X2 ⊥ X3, X4 | X5
-        Pairwise CI relations:
-        X1, X2 ⊥ X4 | X3, X5
-        X1, X2 ⊥ X3 | X4, X5
-        X2 ⊥ X3, X4 | X1, X5
-        X1 ⊥ X3, X4 | X2, X5
-    """
+        Original CI:
+        1, 2 ⊥ 3, 4 | 0
+        CI relations extrracted by WU:
+        1, 2 ⊥ 4 | 0, 3
+        1, 2 ⊥ 3 | 0, 4
+        2 ⊥ 3, 4 | 0, 1
+        1 ⊥ 3, 4 | 0, 2
+        """
     cis = []
     for d in _powerset(ci.b):
         d = set(d)
@@ -333,7 +333,8 @@ def pairwise_cis(ci: CI):
         
     Args:
         ci (CI): CI relation
-        
+    Returns:
+        list: List of pairwise CI relations.        
     Examples:
         >>> from cstrees.dependence import CI, pairwise_cis
         >>> 
@@ -364,6 +365,9 @@ def pairwise_csis(csi: CSI, cards=None):
 
     Args:
         csi (CSI): CSI relation
+    
+    Returns:
+        list: List of pairwise CSI relations.
                 
     Examples:
         >>> from cstrees.dependence import CI, pairwise_cis, Context, CSI, pairwise_csis
@@ -400,7 +404,7 @@ def mix(csilist_tuple, level, cards):
 
     Args:
         csilist_tuple (tuple): Two pairwise CSI lists
-        l (int): the level
+        level (int): the level
         cards (list): cardinalities of the levels.
 
     Returns:
@@ -436,9 +440,9 @@ def mix(csilist_tuple, level, cards):
 
 
 def partition_csis(csilist_list, level, cards):
-    """ Put the csis in different sets that can possibly be mixed to create 
-    new csis. It is assumed that all are pairwise csis with the same 
-    "indepedent" variables.
+    """ Put the CSIs in different sets that can possibly be mixed to create 
+    new CSIs. It is assumed that all are pairwise CSIs and has the same 
+    "indepedent" variables, e.g. 1 and 3 in the example below.
 
     Args:
         csilist_list (list): List of pairwise CSI lists.
@@ -544,7 +548,7 @@ def minimal_csis(paired_csis, cards):
     """ Find the minimal CSIs from the pairwise CSIs.
 
     Args:
-        paired_csis (dict): Dict of csis grouped by pairwise indep rels as Xi _|_ Xj.
+        paired_csis (dict): Dict of csis grouped by pairwise indep rels as Xi ⊥ Xj | ...
         cards (list): Cardinalities of the levels.
         
     Example:
