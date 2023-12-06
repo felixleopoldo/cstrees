@@ -335,7 +335,7 @@ def order_score_tables(data: pd.DataFrame,
                        strategy="posterior", max_cvars=2,
                        poss_cvars: dict | None = None,
                        alpha_tot=1.0, method="BDeu"):
-    """Calculate the order score tables for a dataset.
+    """Calculatee the order score tables for a dataset.
 
     Args:
         data (pd.DataFrame): A dataset.
@@ -374,8 +374,6 @@ def order_score_tables(data: pd.DataFrame,
         >>> pp.pprint(context_scores)
         >>> print("Context counts:")
         >>> pp.pprint(context_counts)
-
-        >>>
         Order score table:
         {'max_cvars': 1,
         'poss_cvars': {'X1': ['X2', 'X3'], 'X2': ['X1', 'X3'], 'X3': ['X2', 'X1']},
@@ -504,14 +502,14 @@ def order_score_tables(data: pd.DataFrame,
 
 
 def score_order(order, order_scores):
-    """Scores an order using the order score tables.
+    """Scores an order using the order score tables. The score is the sum of the individual variable scores for each level.
 
     Args:
         order (list): List of variables in the order.
         order_scores (dict): Order scores.
 
     Returns:
-        double: Log score of an order.
+        double: Score of an order.
 
     Example:
 
@@ -534,8 +532,6 @@ def score_order(order, order_scores):
         >>>                                                                     method="BDeu",
         >>>                                                                     poss_cvars=None)
         >>> sc.score_order(["X3","X2","X1"], score_table)
-        
-        >>>
         -727.636031296346
 
     """

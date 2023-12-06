@@ -17,13 +17,17 @@ logging.basicConfig(stream=sys.stderr, level=logging.DEBUG, format=FORMAT)
 
 class Stage:
     """
-       A Stage is a CSI of form 
-       X_a:b _|_ Xj | S_s, X_c=x_c, 
-       with an order and mayube an associated cond prob dist.
-
+       A CStree stage.
     """
 
     def __init__(self, stage_repr, color=None, cards=None) -> None:
+        """A list representation of a stage.
+
+        Args:
+            stage_repr (list): A list of values for each level, e.g. [0,{0,1},1].
+            color (string, optional): Some color. Defaults to None.
+            cards (list[int], optional): Cardinalities for the levels. Defaults to None.
+        """
 
         self.level = len(stage_repr)-1
         self.list_repr = stage_repr
@@ -47,10 +51,10 @@ class Stage:
         """Checks is a node is contained in a stage. 
 
         Args:
-            node (_type_): A vector of values for each level.
+            node (tuple): A vector of values for each level.
 
         Returns:
-            _type_: _description_
+            Bool: True if the node is contained in the stage.
         """
 
         if (len(node) == 0):
@@ -208,20 +212,20 @@ class Stage:
 
     def __str__(self) -> str:
         if self.probs is not None:
-            return str(self.list_repr) + "; probs: " + str(self.probs) + "; color: " + str(self.color)
+            return "{}; probs: {}; color: {}".format(self.list_repr, [round(x,2 ) for x in self.probs], self.color) 
+        
+        #str(self.list_repr) + "; probs: " + str(round(self.probs, 2)) + "; color: " + str(self.color)
         return str(self.list_repr)
 
 
 def sample_stage_restr_by_stage(stage: Stage, max_cvars: int, cvar_prob: float, cards: list):
-    """
-        Samples a Stage on the space restricted by the arggument stage.
-        Not allow singleton stages.
+    """ Samples a Stage on the space restricted by the argument stage. Not allow singleton stages.
 
     Args:
-        stage (Stage): _description_
-        n_context_vars (int): _description_
-        cvar_prob (float): probability of a randomly picked variable to be a Context variable.
-        cards (list): _description_
+        stage (Stage): Restrict the space by this stage.
+        n_context_vars (int): Maximum number of context variables in the new stage.
+        cvar_prob (float): Probability of a randomly picked variable to be a context variable.
+        cards (list): Cardinalities for each level.
 
     Returns:
         _type_: _description_
@@ -271,10 +275,10 @@ def sample_random_stage(cards: list, level: int, max_contextvars: int, prob: flo
     """Sample a random non-singleton stage.
 
     Args:
-        cards (list): _description_
-        level (int): _description_
-        max_contextvars (int): _description_
-        prob (float): _description_
+        cards (list): Cardinalities for each level.
+        level (int): Level of the stage.
+        max_contextvars (int): Maximum number of context variables.
+        prob (float): Probability of a randomly picked variable to be a context variable.
 
     Returns:
         Stage: a random stage.

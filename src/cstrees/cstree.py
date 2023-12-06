@@ -44,7 +44,7 @@ def write_minimal_context_graphs_to_files(context_dags, prefix="mygraphs"):
 
 
 def plot(graph, layout="dot"):
-    """Plots a graph using graphviz. Essentially it return a pygraphviz graph from a NetworkX graph.
+    """Plots a graph using graphviz. Essentially it creates a pygraphviz graph from a NetworkX graph.
 
     Args:
         graph (nx.Graph): The graph to plot.
@@ -60,13 +60,13 @@ def plot(graph, layout="dot"):
 
 
 class CStree:
-    """A class representing a CStree. It is initialized by a list of cardinalities of the variables at each level and a list of labels. The labels are optional and defaults (None) to [0,1,...,p-1].
+    """A class representing a CStree, see [1]. It is initialized by a list of cardinalities of the variables at each level and a list of labels. The labels are optional and defaults (None) to [0,1,...,p-1].
 
     Args:
         cards (list): A list of integers representing the cardinality of each level (indexed from 0).
         labels (list, optional): A list of strings or integers representing the labels of each level. Defaults to [0,1,...,p-1].
     References:
-        E. Duarte and L. Solus. Representation of context-specific causal models with observational and interventional data, 2021.
+        [1] E. Duarte and L. Solus. Representation of context-specific causal models with observational and interventional data, 2021, https://arxiv.org/abs/2101.09271.
 
     Example:
         >>> # Figure 1. from (Duarte & Solus 2022)
@@ -247,10 +247,10 @@ class CStree:
         self.stages = {i: [] for i in range(self.p)}
 
     def stage_proportion(self, stage: st.Stage):
-        """The proportion of the space this stage represents.
+        """The proportion of the outcome space this stage represents.
 
         Args:
-            cards (list): A list of the cardinalities of the variables in the space.
+            cards (list): A list of the cardinalities of the variables in the stage.
 
         Returns:
             float: A number between 0 and 1.
@@ -269,7 +269,7 @@ class CStree:
         return prop
 
     def update_stages(self, stages: dict):
-        """Update the stages of the CStree.
+        """Update/set the stages of the CStree.
 
         Args:
             stages (dict): A dictionary of stage dicts. The keys are the levels, and the values are lists of dicts representing stages. The dicts representing stages should have the following keys: "context" and "color". The "context" should have a dict as value, where the keys are the levels and the values are the values of the variables at that level. The "color" key is optional but should have a string as value, representing the color of the stage.
@@ -331,7 +331,7 @@ class CStree:
             >>> # tree is the fig. 1 CStree
             >>> stage = tree.get_stage([0, 0])
             >>> print(stage)
-            [{0, 1}, 0]; probs: [0.37905534 0.62094466]; color: green
+            [{0, 1}, 0]; probs: [0.38 0.62]; color: green
         """
         assert self.stages is not None
         lev = len(node) - 1
@@ -418,15 +418,31 @@ class CStree:
 
         Args:
             data (pd.DataFrame): A pandas dataframe with the data.
-            method (str): The method to use for estimating the parameters.
-            Currently only "BDeu" is implemented.
-            alpha_tot (float): The total alpha value to use for the Dirichlet model.
-
+            method (str): The method to use for estimating the parameters. Currently only "BDeu" [2] is implemented.
+            alpha_tot (float): The total alpha value (to be splitted evenly in proportion to the stage sizes) to use for the Dirichlet model.
+        Reference:
+                [2] C. Hughes, P. Strong, and A. Shenvi. Score equivalence for staged trees, 2023, https://arxiv.org/abs/2206.15322
         Example:
             >>> t = ct.sample_cstree([2,2,2,2], max_cvars=1, prob_cvar=0.5, prop_nonsingleton=1)
             >>> t.sample_stage_parameters()
             >>> df = t.sample(500)
             >>> t.estimate_stage_parameters(df, alpha_tot=1.0, method="BDeu")
+            >>> for lev, stagings in t.stages.items():
+            >>>    print("Level {}".format(lev))
+            >>>    for stage in stagings:
+            >>>        print(stage)
+            >>>    print()
+            Level 0
+            [{0, 1}]; probs: [0.25, 0.75]; color: peru
+            Level 1
+            [{0, 1}, 0]; probs: [0.3, 0.7]; color: peru
+            [{0, 1}, 1]; probs: [0.64, 0.36]; color: blueviolet
+            Level 2
+            [{0, 1}, 0, {0, 1}]; probs: [0.41, 0.59]; color: peru
+            [{0, 1}, 1, {0, 1}]; probs: [0.71, 0.29]; color: blueviolet
+            Level 3
+            Level -1
+            []; probs: [0.92, 0.08]; color: black
 
         """
         import cstrees.scoring as sc
@@ -526,11 +542,10 @@ class CStree:
 
     # Here is the only place we need labels/orders.
     def to_minimal_context_graphs(self):
-        """This returns a sequence of minimal context NetworkX DAGs
-        (minimal I-maps).
+        """This returns a dict of minimal context NetworkX DAGs.
 
         Returns:
-            dict: The keys are the contexts, and the values are the DAGs.
+            dict: The keys are the contexts, and the values are the NetworkX DAGs.
 
         Example:
             >>> # tree is the Figure 1 CStree
@@ -550,7 +565,7 @@ class CStree:
         return cdags
 
     def to_minimal_context_agraphs(self, layout="dot"):
-        """This returns a sequence of minimal context DAGs as Graphviz AGraphs.
+        """This returns a dict   of minimal context DAGs as pgraphviz graphs.
 
         Args:
             layout (str, optional): Graphviz engine. Defaults to "dot".
@@ -568,16 +583,16 @@ class CStree:
         return agraphs
 
     def to_minimal_context_csis(self):
-        """This returns a sequence of minimal context graphs (minimal I-maps).
+        """This returns a dict of minimal context CSIs.
 
         Example:
-            >>> # tree is the Figure 1 CStree
-            >>> gs = tree.to_minimal_context_graphs()
-            >>> for key, graph in gs.items():
-            >>>     print("{}: Edges {}".format(key, graph.edges()))
-            X0=0: Edges [(1, 2), (2, 3)]
-            X1=0: Edges [(0, 3), (2, 3)]
-            X2=0: Edges [(0, 1), (0, 3)]
+            >>> minlcsis = tree.to_minimal_context_csis()
+            >>> for key, csis in minlcsis.items():
+            >>>     for csi in csis:
+            >>>         print("{}: CSI {}".format(key, csi))
+            X2=0: CSI X1 ⊥ X3 | X2=0
+            X3=0: CSI X2 ⊥ X4 | X1, X3=0
+            X1=0: CSI X2 ⊥ X4 | X3, X1=0
 
         """
 
@@ -636,6 +651,32 @@ class CStree:
 
         Returns:
             dict: The CSI relations per level. The keys are the levels, and the values are lists of CSI relations.
+
+        Example:
+
+            >>> rels = tree.csi_relations_per_level()
+            >>> print("CSI relations per level")
+            >>> for key, rel in rels.items():
+            >>>     print("level {}: ".format(key))
+            >>>     for r in rel:
+            >>>         if (len(r.ci.a) > 0) and (len(r.ci.b) > 0):
+            >>>             # avoiding the singletons
+            >>>             print("the CSI")
+            >>>             print(r)
+            CSI relations per level
+            level 0:
+            level 1:
+            the CSI
+            0 ⊥ 2 | 1=0
+            level 2:
+            the CSI
+            1 ⊥ 3 | 0=0, 2=0
+            the CSI
+            1 ⊥ 3 | 0=0, 2=1
+            the CSI
+            1 ⊥ 3 | 0=1, 2=0
+            level 3:
+
         """
 
         return {
@@ -645,9 +686,7 @@ class CStree:
         }
 
     def csi_relations(self, level="all"):
-        """Returns all the context specific indepencende (CSI) relations.
-        These should normally be thinned out using absorption, and then we would extract
-        the minmal contexts based on that.
+        """Returns the context specific indepencende (CSI) relations for the CStree.
 
         Examples:
             >>> rels = tree.csi_relations()
@@ -674,20 +713,16 @@ class CStree:
 
         return csi_rels
 
-    def sample(self, n):
-        """Draws n random samples from the CStree.
-        When singletons are allowed (maybe deprecated) it dynamically generates
-        nodes in the underlying tree and
-        associated parameters on the fly in order to avoid creating the whole
-        tree, which is O(2^p), just to sample
-        data.
+    def sample(self, n: int):
+        """Draws random samples from the CStree. It also dynamically generates nodes in the underlying tree and associated parameters on the fly in order to avoid creating the whole
+        tree, which is O(2^p) (if singeltone stages are allowed), just to sample data. This is also useful when plotting the tree, as it will only contain the nodes that are actually used in the sampling.
 
         Args:
             n (int): number of random samples.
 
         Returns:
-            pandas.DataFrame: A pandas dataframe with the sampled data. The first row contains the labels of the
-            variables and the second row contains the cardinalities.
+            pandas.DataFrame: A pandas dataframe containing the data. The header contains labels of the
+            variables and row 0 contains the cardinalities. The other rows contain the samples.
         Examples:
             >>> df = tree.sample(5)
             >>> print(df)
@@ -770,7 +805,7 @@ class CStree:
         """Plot the CStree.
 
         Args:
-            fill (bool): If True, the tree is filled with parameters.
+            fill (bool): If True, the tree is filled with parameters, taken from the individual stages. It defaults to False, which means that only the nodes that are used when sampling data are created. This is to save space both when plotting an for representing the tree in memory.
         Returns:
             pygraphviz.agraph.AGraph: A pygraphviz graph.
 
@@ -848,16 +883,20 @@ class CStree:
 
 
 def sample_cstree(
-    cards: list, max_cvars: int, prob_cvar: int, prop_nonsingleton: float, labels=None
+    cards: list[int],
+    max_cvars: int,
+    prob_cvar: int,
+    prop_nonsingleton: float = 1.0,
+    labels: list | None = None,
 ) -> CStree:
-    """
-       Sample a random CStree with given cardinalities.
+    """Sample a random CStree with given cardinalities.
 
     Args:
         cards (list): cardinalities of the levels.
         max_cvars (int): maximum number of context variables.
         prob_cvar (float): probability a potential context variable (in the algorithm) will a context variable.
-        prop_nonsingleton (float): proportion of non-singleton stages.
+        prop_nonsingleton (float): proportion of non-singleton stages. Defaults to 1.0, meaning no singletons, which is also what the algorithms in this library are designed for.
+        labels (list, optional): A list of strings or integers representing the labels of each level. Defaults to None which means [0,1,...,p-1].
 
     Returns:
         CStree: A CStree.
@@ -1009,7 +1048,11 @@ def df_to_cstree(df, read_probs=True):
     The first row should be the cardinalities, the second row should be the first stage, the third row the second stage etc. (see :meth:`cstrees.cstree.CStree.to_df()`).
 
     Args:
-        df (pd.DataFrame): The dataframe to convert.
+        df (Pandas DataFrame): The dataframe to convert.
+
+    Returns:
+        CStree: A CStree.
+
     Example:
         >>> df = tree.to_df()
         >>> print(df)
