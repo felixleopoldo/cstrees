@@ -1,10 +1,10 @@
-"""Enumerate stagings with up to 2 context variables ."""
+"""Enumerate stagings with up to 2 context variables."""
 from typing import Generator, Iterable
 from itertools import combinations, product
 
 
 def num_stagings(lvl: int) -> int:
-    """Use formula to compute number of stagings at given level of binary CStree ."""
+    """Use formula to compute number of stagings at given level of binary CStree."""
     return lvl**3 + 1 if lvl != 2 else 8
 
 
