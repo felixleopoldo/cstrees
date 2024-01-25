@@ -11,14 +11,16 @@ from importlib import reload  # Not needed in Python 2
 
 reload(logging)
 FORMAT = '%(filename)s:%(funcName)s (%(lineno)d):  %(message)s'
-#logging.basicConfig(stream=sys.stderr, level=logging.DEBUG, format=FORMAT)
+# logging.basicConfig(stream=sys.stderr, level=logging.DEBUG, format=FORMAT)
 logging.basicConfig(stream=sys.stderr, level=logging.ERROR, format=FORMAT)
 
+
 def _mymax(s):
-    if (type(s) is set) and (len(s) > 0):
+    if (isinstance(s, set)) and (len(s) > 0):
         return max(s)
     else:
         return 0
+
 
 class Context:
     """ A class for the context of a CSI.
@@ -38,7 +40,7 @@ class Context:
     """
 
     def __init__(self, context: dict, labels: list | None = None) -> None:
-    
+
         self.context = context
         if (labels is None) and (len(self.context) > 0):
             levels = max(self.context) + 1
@@ -47,7 +49,7 @@ class Context:
             self.labels = labels
 
     def __str__(self) -> str:
-        
+
         context_str = ""
         for key, val in self.context.items():
             context_str += "{}={}, ".format(self.labels[key], val)
@@ -73,8 +75,8 @@ class Context:
             return hash(())
 
         m = max(self.context)
-        tmp = [None] * (m+1)
-        for i in range(m+1):
+        tmp = [None] * (m + 1)
+        for i in range(m + 1):
             if i in self.context:
                 tmp[i] = self.context[i]
 
@@ -96,15 +98,16 @@ class CI:
         X2 ⊥ X3 | X1, X5
     """
 
-    def __init__(self, a:set, b:set, sep:set, labels: list[str] | None = None) -> None:
+    def __init__(self, a: set, b: set, sep: set,
+                 labels: list[str] | None = None) -> None:
         self.a = a
         self.b = b
         self.sep = sep
-        
+
         # Just set the labels to [0,1,2,3,..]
         if labels is None:
             levels = max(_mymax(self.a), _mymax(self.b), _mymax(
-            self.sep)) + 1        
+                self.sep)) + 1
             self.labels = range(levels)
         else:
             self.labels = labels
@@ -124,7 +127,7 @@ class CI:
             s2 += "{}, ".format(self.labels[i])
         s2 = s2[:-2]
         s3 = ""
-        if len(self.sep) > 0: # BUG: sum instead of len ???
+        if len(self.sep) > 0:  # BUG: sum instead of len ???
             for i in self.sep:
                 s3 += "{}, ".format(self.labels[i])
             s3 = s3[:-2]
@@ -134,7 +137,7 @@ class CI:
 
 class CSI:
     """This is a context specific relation on the form a ⊥ b | sep, context=something.
-    
+
     Args:
         ci (CI): The CI relation.
         context (Context): The context.
@@ -163,7 +166,7 @@ class CSI:
         for el in zip(a, b):
             pass
 
-        return CSI(c_list, cards=self.cards) #BUG: maybe never used
+        return CSI(c_list, cards=self.cards)  # BUG: maybe never used
 
     def as_list(self):
         """ List representation. Important: only for pairwise CSIs, i.e. something like Xi ⊥ Xj | ...
@@ -174,27 +177,26 @@ class CSI:
 
             >>> from cstrees.dependence import Context, CI, CSI
             >>> c = Context({0:0, 3:1})
-            >>> ci = CI({1}, {2}, {4, 5}) 
-            >>> csi = CSI(ci, c, cards=[2]*6) 
+            >>> ci = CI({1}, {2}, {4, 5})
+            >>> csi = CSI(ci, c, cards=[2]*6)
             >>> csi.as_list()
             [{0}, None, None, {1}, {0, 1}, {0, 1}]
         """
-        
+
         logging.debug("Pairwise CSI as a list ")
         assert self.cards is not None
-                
-       
+
         # Get the level as the max element-1
         # The Nones not at index 0 encode the CI variables.
-       
+
         if not ((len(self.ci.a) == 1) and (len(self.ci.b) == 1)):
             print("This only works for pairwise csis (Xi _|_ Xj | ...).")
             return None
         # print(print(self.ci.sep))
         levels = max(_mymax(self.ci.a), _mymax(self.ci.b), _mymax(
             self.ci.sep), _mymax(set(self.context.context.keys()))) + 1
-        cards = self.cards[:levels+1]
-         
+        cards = self.cards[:levels + 1]
+
         csilist = [None] * levels
         for l in range(levels):
             if (l in self.ci.a) or (l in self.ci.b):
@@ -229,6 +231,7 @@ class CSI:
                 # | is already there
                 return "{}, {}".format(self.ci, self.context)
 
+
 def decomposition(ci: CI):
     """Generate all possible pairwise CI relations that are implied by
     decomposition rule.
@@ -238,7 +241,7 @@ def decomposition(ci: CI):
 
     Returns:
         list: List of pairwise CI relations.
-        
+
     Examples:
         >>> from cstrees.dependence import CI, decomposition
         >>> ci = CI({1,2}, {3,4},{0})
@@ -278,18 +281,18 @@ def _powerset(iterable):
     """
 
     s = list(iterable)
-    return chain.from_iterable(combinations(s, r) for r in range(len(s)+1))
+    return chain.from_iterable(combinations(s, r) for r in range(len(s) + 1))
 
 
 def weak_union(ci: CI):
     """ Using weak union just to get pairwise independence relations from a CSI.
-    
+
     Args:
         ci (CI): CI relation
-    
+
     Returns:
         list: List of pairwise CI relations.
-    
+
     Examples:
         >>> from cstrees import dependence
         >>> ci = dependence.CI({1,2}, {3,4},{0})
@@ -314,7 +317,7 @@ def weak_union(ci: CI):
             continue
 
         BuD = ci.b
-        cis.append(CI(ci.a, BuD-d, ci.sep | d))
+        cis.append(CI(ci.a, BuD - d, ci.sep | d))
 
     for d in _powerset(ci.a):
         d = set(d)
@@ -330,14 +333,14 @@ def weak_union(ci: CI):
 
 def pairwise_cis(ci: CI):
     """ Using weak union just to get pairwise independence relations from a CI.
-        
+
     Args:
         ci (CI): CI relation
     Returns:
-        list: List of pairwise CI relations.        
+        list: List of pairwise CI relations.
     Examples:
         >>> from cstrees.dependence import CI, pairwise_cis
-        >>> 
+        >>>
         >>> ci = CI({1,2}, {3,4},{0})
         >>> pw = pairwise_cis(ci)
         >>> print("Original CI: ", ci)
@@ -365,13 +368,13 @@ def pairwise_csis(csi: CSI, cards=None):
 
     Args:
         csi (CSI): CSI relation
-    
+
     Returns:
         list: List of pairwise CSI relations.
-                
+
     Examples:
         >>> from cstrees.dependence import CI, pairwise_cis, Context, CSI, pairwise_csis
-        >>> 
+        >>>
         >>> ci = CI({1,2}, {3,4},{0})
         >>> c = Context({5:0})
         >>> csi = CSI(ci, c)
@@ -385,7 +388,7 @@ def pairwise_csis(csi: CSI, cards=None):
         1 ⊥ 3 | 0, 2, 4, 5=0
         1 ⊥ 4 | 0, 2, 3, 5=0
         2 ⊥ 3 | 0, 1, 4, 5=0
-        2 ⊥ 4 | 0, 1, 3, 5=0  
+        2 ⊥ 4 | 0, 1, 3, 5=0
     """
     logging.debug("Pairwise CSIs")
     context = csi.context
@@ -425,7 +428,7 @@ def mix(csilist_tuple, level, cards):
     # Going through all the levels and mix at all levels.
     # The result should be stored somewhere.
     for i, a in enumerate(zip(*csilist_tuple)):
-        #print(i, a)
+        # print(i, a)
         # None means that a[0] is some of the CI tuple. So just skip.
         if a[0] is None:
             continue
@@ -440,8 +443,8 @@ def mix(csilist_tuple, level, cards):
 
 
 def partition_csis(csilist_list, level, cards):
-    """ Put the CSIs in different sets that can possibly be mixed to create 
-    new CSIs. It is assumed that all are pairwise CSIs and has the same 
+    """ Put the CSIs in different sets that can possibly be mixed to create
+    new CSIs. It is assumed that all are pairwise CSIs and has the same
     "indepedent" variables, e.g. 1 and 3 in the example below.
 
     Args:
@@ -451,25 +454,25 @@ def partition_csis(csilist_list, level, cards):
 
     Returns:
         list: list of disjoint lists of pairwise CSI lists that can possibly be mixed.
-    
+
     Example:
         >>> from cstrees.dependence import CI, pairwise_cis, Context, CSI, pairwise_csis, partition_csis
         >>> cards = [2]*5
         >>> csi1 = CSI(CI({1}, {3},{4}), Context({0:0, 2:0}), cards=cards)
         >>> csi2 = CSI(CI({1}, {3},{4}), Context({0:0, 2:1}), cards=cards)
         >>> csi3 = CSI(CI({1}, {3},{4}), Context({0:1, 2:0}), cards=cards)
-        >>> 
+        >>>
         >>> print("CSIs:")
         >>> for x in [csi1, csi2, csi3]:
         >>>   print(x)
-        >>> 
+        >>>
         >>> print("CSIs list representations:")
         >>> for x in [csi1, csi2, csi3]:
         >>>   print(x.as_list())
-        >>> 
+        >>>
         >>> pairwise_csis = [csi1.as_list() , csi2.as_list(), csi3.as_list()]
         >>> partitioned_csis = partition_csis(pairwise_csis, 0, cards)
-        >>> 
+        >>>
         >>> print("CSI partitioned bases on values at level 0:")
         >>> for i, csis in enumerate(partitioned_csis):
         >>>   print("{}: {}".format(i, csis))
@@ -494,15 +497,16 @@ def partition_csis(csilist_list, level, cards):
     for csilist in csilist_list:
         if len(csilist[level]) > 1:  # Only consider those with single value
             continue
-        var_val = list(csilist[level])[0]  # just to get the single value from the set
+        # just to get the single value from the set
+        var_val = list(csilist[level])[0]
         logging.debug("var_val {}".format(var_val))
         csis_to_mix[var_val].append(csilist)
-      
+
     return csis_to_mix
 
 
-def _csilist_to_csi(csilist, labels=None): #This could probably take labels as well
-    """ The independent variables are represented by None. 
+def _csilist_to_csi(csilist, labels=None):  # This could probably take labels as well
+    """ The independent variables are represented by None.
     Only for pairwise CSIs.
 
     Args:
@@ -550,7 +554,7 @@ def minimal_csis(paired_csis, cards):
     Args:
         paired_csis (dict): Dict of csis grouped by pairwise indep rels as Xi ⊥ Xj | ...
         cards (list): Cardinalities of the levels.
-        
+
     Example:
         >>> # Figure 1. from (Duarte & Solus 2022)
         >>> import cstrees.cstree as ct
@@ -593,7 +597,7 @@ def minimal_csis(paired_csis, cards):
     #     When we loop through al levels again by where the old CSI are not mixed
     #     with each other that is, each tuple needs at least one CSI from the new
     #     CSIs.
-    
+
     for level in range(p):
         # initiate newbies in the first run to be
         logging.debug("\n#### Level {}".format(level))
@@ -613,13 +617,13 @@ def minimal_csis(paired_csis, cards):
                 fresh = []  # list of created csis
                 csis_to_absorb = []  # remove from the old ones due to mixing
                 # Go through all levels, potentially many times.
-                for l in range(level+1):  # Added +1 after refactorization
+                for l in range(level + 1):  # Added +1 after refactorization
                     logging.debug("level {}".format(l))
                     if l in pair:
                         continue
 
                     csis_to_mix = partition_csis(newbies + oldies, l, cards)
-                    #logging.debug("csis to mix")
+                    # logging.debug("csis to mix")
                     # logging.debug(csis_to_mix)
 
                     # Need to separate the newly created csis from the old
@@ -640,13 +644,13 @@ def minimal_csis(paired_csis, cards):
                                 no_newbies = False
                                 break
                         if no_newbies:
-                            #print("no newbies, so skip")
+                            # print("no newbies, so skip")
                             continue
 
                         # Mix
                         mixed_csi = mix(csilist_tuple, l, cards)
                         if mixed_csi is None:
-                            #print("Not mixeable")
+                            # print("Not mixeable")
                             continue
                         else:
                             # print(mix) assert(sum([len(el)==1 for el in mix
@@ -665,7 +669,8 @@ def minimal_csis(paired_csis, cards):
                                 for csilist in csilist_tuple:
                                     # print wher the csi is from, oldies, or
                                     # newbies.
-                                    if _csilist_subset(csilist, mixed_csi):  # This sho
+                                    if _csilist_subset(
+                                            csilist, mixed_csi):  # This sho
                                         logging.debug(
                                             "will later absorb {}".format(csilist))
                                         csis_to_absorb.append(csilist)
@@ -688,7 +693,8 @@ def minimal_csis(paired_csis, cards):
                 logging.debug(
                     "CSI to absorb/remove after having been mixed (can be duplicates)")
                 for csi in csis_to_absorb:
-                    # BUG: this is maybe not ok. Feels bad to alter here. Maybe an absorbtion step after instead.
+                    # BUG: this is maybe not ok. Feels bad to alter here. Maybe
+                    # an absorbtion step after instead.
                     if csi in oldies:  # Shouldnt it be here? Or somewhere else maybe.. Shouldnt we remove it whereever it is?
                         # Maybe make this removal after appending the newbies?
                         logging.debug(csi)
@@ -711,8 +717,9 @@ def minimal_csis(paired_csis, cards):
                     "Updating mix results by removing if they already are in oldies, or a subset of an oldie.")
                 newbies = []  # check that the newbies are not in oldies!
                 for csi in fresh:  # O( #tmp)
-                    #logging.debug("REMOVING {}".format(csi))
-                    if (csi not in oldies) and (csi not in csis_to_absorb):  # O(#oldies)
+                    # logging.debug("REMOVING {}".format(csi))
+                    if (csi not in oldies) and (
+                            csi not in csis_to_absorb):  # O(#oldies)
                         newbies.append(csi)
                     else:
                         newbies.append(csi)  # Add and then remove maybe :)
@@ -720,7 +727,7 @@ def minimal_csis(paired_csis, cards):
                             if _csilist_subset(csi, o):
                                 # logging.debug("FOUND A SUBSET OF AN OLDIE############")
                                 # logging.debug(csi)
-                                #logging.debug("is a subset of")
+                                # logging.debug("is a subset of")
                                 # logging.debug(o)
                                 newbies.remove(csi)
                                 break
@@ -738,22 +745,22 @@ def minimal_csis(paired_csis, cards):
     return ret
 
 
-def _csis_by_levels_2_by_pairs(rels,cards=None):
+def _csis_by_levels_2_by_pairs(rels, cards=None):
 
     paired_csis = [None] * len(rels)
 
     for l, val in rels.items():
-        #print("level: {}".format(l))
+        # print("level: {}".format(l))
         csi_pairs = []  # X_i _|_ X_j | something
         for v in val:
             # print(v)
-            csis = pairwise_csis(v, cards=cards) # Using weak unions
+            csis = pairwise_csis(v, cards=cards)  # Using weak unions
             csi_pairs = csi_pairs + csis
 
             # Loop though all levels for each of these and try to mix.
             # print("pairwise")
             # print("")
-        #print("All pairs")
+        # print("All pairs")
         cis_by_pairs = {}
         for c in csi_pairs:
             # print(c)
@@ -793,7 +800,8 @@ def _csi_lists_to_csis_by_level(csi_lists, p, labels):
         # Convert formats
         for pair, csil in csilist.items():
             for csi in csil:
-                csiobj = _csilist_to_csi(csi, labels=labels) # TODO: add labels?
+                csiobj = _csilist_to_csi(
+                    csi, labels=labels)  # TODO: add labels?
                 tmp.append(csiobj)
         stages[l] = tmp
     return stages
@@ -801,15 +809,15 @@ def _csi_lists_to_csis_by_level(csi_lists, p, labels):
 
 def csi_relations_to_dags(csi_relations, p, labels=None):
     """Converts the CSI relations to dags.
-    
+
     Args:
-        csi_relations (dict): A dictionary with contexts as keys and lists of csi relations as values.  
+        csi_relations (dict): A dictionary with contexts as keys and lists of csi relations as values.
         p (int): The number of variables.
         labels (list, optional): A list of labels for the variables. Defaults to None.
-    
+
     Returns:
         dict: A dictionary with contexts as keys and dags as values.
-    
+
     Examples:
         >>> # Figure 1. from (Duarte & Solus 2022)
         >>> import cstrees.cstree as ct
@@ -842,13 +850,13 @@ def csi_relations_to_dags(csi_relations, p, labels=None):
         X1=0:
         Nodes: ['X2', 'X3', 'X4']
         Edges: [('X2', 'X3'), ('X3', 'X4')]
-    
+
     """
 
     graphs = {context: None for context in csi_relations}
     for context, csis in csi_relations.items():
 
-        adjmat = np.zeros(p*p).reshape(p, p)
+        adjmat = np.zeros(p * p).reshape(p, p)
         for j in range(p):
             for i in range(j):
                 # This will anyway be disregarded in the matrix slice?

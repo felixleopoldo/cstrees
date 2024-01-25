@@ -40,7 +40,8 @@ def write_minimal_context_graphs_to_files(context_dags, prefix="mygraphs"):
     for key, val in context_dags.items():
         agraph = nx.nx_agraph.to_agraph(val)
         agraph.layout("dot")
-        agraph.draw(prefix + str(key) + ".png", args='-Glabel="' + str(key) + '"   ')
+        agraph.draw(prefix + str(key) + ".png",
+                    args='-Glabel="' + str(key) + '"   ')
 
 
 def plot(graph, layout="dot"):
@@ -293,9 +294,11 @@ class CStree:
         stages_to_add = {key: [] for key in stages.keys()}
 
         # If there are dicts, we convert them to Stages.
-        # Stages are updated to contain a cardinality list, inherited from the CStree.
+        # Stages are updated to contain a cardinality list, inherited from the
+        # CStree.
         for lev, list_of_stage_repr in stages.items():
-            # it can be either a Stage of a dict that should be converted to a stage.
+            # it can be either a Stage of a dict that should be converted to a
+            # stage.
 
             for stage_repr in list_of_stage_repr:
                 if isinstance(stage_repr, dict):
@@ -388,7 +391,8 @@ class CStree:
 
         for l, stages in self.stages.items():
             for s in stages:
-                dftmp = s.to_df(labs, max_card=max_card, write_probs=write_probs)
+                dftmp = s.to_df(labs, max_card=max_card,
+                                write_probs=write_probs)
                 df = pd.concat([df, dftmp])
         df.reset_index(drop=True, inplace=True)
 
@@ -410,7 +414,8 @@ class CStree:
                 probs = np.random.dirichlet([alpha] * self.cards[lev + 1])
                 stage.probs = probs
                 if stage.color is None:
-                    stage.color = self.colors[i]  # Set color from stage if possible
+                    # Set color from stage if possible
+                    stage.color = self.colors[i]
 
     def estimate_stage_parameters(self, data, method="BDeu", alpha_tot=1):
         """Estimate the parameters of the stages of the CStree under a Dirichlet model.
@@ -479,11 +484,12 @@ class CStree:
                 continue
             children = sorted(list(self.tree.successors(node)))
             probs = np.random.dirichlet([alpha] * self.cards[len(node)])
-            # Seems like a stage at level l holds the probtable for the variabel at level l+1.
+            # Seems like a stage at level l holds the probtable for the
+            # variabel at level l+1.
             for i, ch in enumerate(children):
                 stage = self.get_stage(node)
 
-                if stage != None:  # No singleton stages allowed!
+                if stage is not None:  # No singleton stages allowed!
                     prob = stage.probs[i]
                     self.tree[node][ch]["cond_prob"] = prob
                     self.tree[node][ch]["label"] = round(prob, 2)
@@ -522,11 +528,10 @@ class CStree:
             stage = self.get_stage(fr)
             self.tree.add_edge(fr, to)  # check if exists first
 
-            if stage != None:  # No singleton stages allowed!
+            if stage is not None:  # No singleton stages allowed!
                 if stage.probs is not None:
-                    prob = stage.probs[
-                        to[-1]
-                    ]  # The last digit/element in the node is the variable value
+                    # The last digit/element in the node is the variable value
+                    prob = stage.probs[to[-1]]
                     self.tree[fr][to]["cond_prob"] = prob
                     self.tree[fr][to]["label"] = round(prob, 2)
                 self.tree[fr][to]["color"] = stage.color
@@ -638,7 +643,8 @@ class CStree:
                 logging.debug("{}: {}".format(pair, val))
 
         logging.debug("#### minimal csis")
-        minl_csis_by_context = dependence._rels_by_level_2_by_context(minl_csis)
+        minl_csis_by_context = dependence._rels_by_level_2_by_context(
+            minl_csis)
         logging.debug(minl_csis_by_context)
         for pair, val in minl_csis_by_context.items():
             for csi in val:
@@ -703,7 +709,8 @@ class CStree:
         for key, stage_list in self.stages.items():
             for stage in stage_list:
                 if stage.is_singleton():
-                    continue  # As these dont encode any independence relations.
+                    # As these dont encode any independence relations.
+                    continue
                 csi_rel = stage.to_csi(labels=self.labels)
 
                 if csi_rel.context not in csi_rels.keys():
@@ -747,11 +754,11 @@ class CStree:
             x = []
             while len(x) < self.p:
                 # Create tree dynamically if isnt already crated.
-                if (node not in self.tree) or len(self.tree.out_edges(node)) == 0:
+                if (node not in self.tree) or len(
+                        self.tree.out_edges(node)) == 0:
                     lev = len(node) - 1
-                    edges = [
-                        (node, node + (ind,)) for ind in range(self.cards[lev + 1])
-                    ]
+                    edges = [(node, node + (ind,))
+                             for ind in range(self.cards[lev + 1])]
 
                     self.tree.add_edges_from(edges)
 
@@ -786,7 +793,8 @@ class CStree:
 
                 edges = list(self.tree.out_edges(node))
 
-                probabilities = [self.tree[e[0]][e[1]]["cond_prob"] for e in edges]
+                probabilities = [self.tree[e[0]][e[1]]["cond_prob"]
+                                 for e in edges]
 
                 # ind is the index or the outcome of the set_d variable
                 vals = len(edges)
@@ -849,11 +857,11 @@ class CStree:
 
         Notes:
             Given a CStree over RVs :math:`X_{[n]}` along with a
-        partial observation :math:`x_\mathbf{p}` for
-        :math:`\mathbf{p}\subseteq [n]`, compute :math:`\mathrm{arg\,
-        max}_{x \in X_{[n]\setminus\mathbf{p}}}
-        P(X_{[n]\setminus\mathbf{p}} = x \mid X_\mathbf{p} =
-        x_\mathbf{p})`.
+        partial observation :math:`x_\\mathbf{p}` for
+        :math:`\\mathbf{p}\\subseteq [n]`, compute :math:`\\mathrm{arg\\,
+        max}_{x \\in X_{[n]\\setminus\\mathbf{p}}}
+        P(X_{[n]\\setminus\\mathbf{p}} = x \\mid X_\\mathbf{p} =
+        x_\\mathbf{p})`.
         """
         factorized_outcomes = (
             range(card)
@@ -866,15 +874,17 @@ class CStree:
         def _prob_of_outcome(outcome):
             nodes = (outcome[:idx] for idx in range(self.p + 1))
             edges = pairwise(nodes)
-            probs = map(lambda edge: self.tree[edge[0]][edge[1]]["cond_prob"], edges)
+            probs = map(
+                lambda edge: self.tree[edge[0]][edge[1]]["cond_prob"], edges)
             return reduce(operator.mul, probs)
 
         if return_prob:
-            prob_dict = {outcome: _prob_of_outcome(outcome) for outcome in outcomes}
+            prob_dict = {outcome: _prob_of_outcome(
+                outcome) for outcome in outcomes}
             total_prob = sum(prob_dict.values())
             cond_prob_dict = {
-                outcome: prob_dict[outcome] / total_prob for outcome in prob_dict
-            }
+                outcome: prob_dict[outcome] /
+                total_prob for outcome in prob_dict}
             prediction = max(cond_prob_dict, key=cond_prob_dict.get)
             return prediction, cond_prob_dict[prediction]
         else:
@@ -958,19 +968,22 @@ def sample_cstree(
                     minimal_stage_size / full_stage_space_size, prop_nonsingleton
                 )
             )
-            b = np.random.multinomial(1, [prob_cvar, 1 - prob_cvar], size=1)[0][0]
+            b = np.random.multinomial(
+                1, [prob_cvar, 1 - prob_cvar], size=1)[0][0]
             stagings[level] = []
 
             if b == 0:
                 print(b)
                 # it should be the whole space to begin with
                 stage_restr = stage_space.pop(0)
-                new_stage = st.sample_stage_restr_by_stage(stage_restr, mc, 1.0, cards)
+                new_stage = st.sample_stage_restr_by_stage(
+                    stage_restr, mc, 1.0, cards)
                 stagings[level].append(new_stage)
             continue  # cant add anything anyway so just go to the next level.
         stagings[level] = []
 
-        while (1 - (singleton_space_size / full_stage_space_size)) < prop_nonsingleton:
+        while (1 - (singleton_space_size / full_stage_space_size)
+               ) < prop_nonsingleton:
             colored_size_old = full_stage_space_size - singleton_space_size
             # Choose randomly a stage space
 
@@ -1001,7 +1014,8 @@ def sample_cstree(
                     stage_space += [stage_restr]
                     singleton_space_size += new_stage.size()
                 else:
-                    # This is when it is impossible to push in a new stages since all are be too big.
+                    # This is when it is impossible to push in a new stages
+                    # since all are be too big.
                     break
             else:
                 stagings[level].append(new_stage)
@@ -1031,7 +1045,8 @@ def sample_cstree(
     for level, staging in stagings.items():
         for i, stage in enumerate(staging):
             if (level == -1) or (
-                (level > 0) and all([isinstance(i, int) for i in stage.list_repr])
+                (level > 0) and all([isinstance(i, int)
+                                     for i in stage.list_repr])
             ):
                 stage.color = "black"
             else:
