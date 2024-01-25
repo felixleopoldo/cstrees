@@ -1,0 +1,67 @@
+#!python3
+import os
+from importlib.metadata import version
+import warnings
+
+# import pycurl
+import pandas as pd
+from causallearn.search.ConstraintBased.PC import pc
+from causallearn.utils.cit import chisq
+
+import cstrees.learning as ctl
+import cstrees.scoring as sc
+
+
+def learn_cstree(data_path):
+    # load data
+    data = pd.read_csv(data_path, sep=" ", header=None).iloc[:, :-1]
+    data = pd.DataFrame(
+        pd.concat([data.nunique().to_frame().T.astype(int), data]).to_numpy()
+    )
+
+    # estimate possible context variables and create score tables
+    pcgraph = pc(data.values, 0.05, "chisq", node_names=data.columns)
+    poss_cvars = ctl.causallearn_graph_to_posscvars(pcgraph, labels=data.columns)
+    score_table, context_scores, _ = sc.order_score_tables(
+        data, max_cvars=1, alpha_tot=1.0, method="BDeu", poss_cvars=poss_cvars
+    )
+
+    # run Gibbs sampler to get MAP order
+    orders, scores = ctl.gibbs_order_sampler(5000, score_table)
+    map_order = orders[scores.index(max(scores))]
+
+    # estimate CStree
+    opt_tree = ctl._optimal_cstree_given_order(map_order, context_scores)
+
+    return opt_tree
+
+
+# script logic for CLI
+if __name__ == "__main__":
+    # check versions to ensure accurate reproduction
+    if version("cstrees") != "1.0.0":
+        warnings.warn(f"Current `cstrees` version unsupported.")
+
+    # download data unless it's already been downloaded
+    path = "../reproduced_uai_results/"
+    data_path = path + "sido0_train.data"
+    toy_path = path + "lucap0_train.data"
+    baby_path = path + "lucas0_train.data"
+
+    # # 5s for max_cvar==1; 150s for max_cvar==2
+    # baby_tree = learn_cstree(baby_path)
+
+    toy_tree = learn_cstree(toy_path)
+    df = toy_tree.to_df(write_probs=True)
+    df.to_pickle("toy_tree.pkl")
+
+    # if not os.path.exists(data_path):
+    #     os.makedirs(os.path.dirname(path), exist_ok=True)
+    #     print("Downloading data set...")
+    #     url = "http://..."
+    #     with open(data_path, "wb") as f:
+    #         c = pycurl.Curl()
+    #         c.setopt(c.URL, url)
+    #         c.setopt(c.WRITEDATA, f)
+    #         c.perform()
+    #         c.close()
