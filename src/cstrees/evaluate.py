@@ -32,7 +32,8 @@ def kl_divergence(estimated: CStree, true: CStree) -> float:
         def _probs_of_outcome(prev_pair, next_pair):
             return prev_pair[0] * next_pair[0], prev_pair[1] * next_pair[1]
 
-        est_prob_outcome, true_prob_outcome = reduce(_probs_of_outcome, zipped_probs)
+        est_prob_outcome, true_prob_outcome = reduce(
+            _probs_of_outcome, zipped_probs)
         return rel_entr(est_prob_outcome, true_prob_outcome)
 
     return sum(map(_rel_entr_of_outcome, outcomes))

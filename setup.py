@@ -36,7 +36,8 @@ setup(
     author_email="felix.leopoldo.rios@gmail.com",
     url="https://github.com/felixleopoldo/cstrees",
     description="A Python library for CStrees.",
-    long_description="A Python library for CStrees.",  # codecs.open('README.rst', 'rb', 'utf8').read(),
+    # codecs.open('README.rst', 'rb', 'utf8').read(),
+    long_description="A Python library for CStrees.",
     # Classifiers (see https://pypi.python.org/pypi?%3Aaction=list_classifiers)
     classifiers=[
         "Development Status :: 3 - Alpha",
