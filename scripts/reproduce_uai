@@ -2,14 +2,17 @@
 import os
 from importlib.metadata import version
 import warnings
+from networkx.generators.trees import _num_trees
 
 # import pycurl
 import pandas as pd
 from causallearn.search.ConstraintBased.PC import pc
-from causallearn.utils.cit import chisq
+import numpy as np
 
 import cstrees.learning as ctl
 import cstrees.scoring as sc
+from cstrees.evaluate import kl_divergence
+from cstrees import cstree as ct
 
 
 def learn_cstree(data_path):
@@ -35,6 +38,51 @@ def learn_cstree(data_path):
     opt_tree = ctl._optimal_cstree_given_order(map_order, context_scores)
 
     return opt_tree
+
+
+def learn_synth_cstree(data):
+    # estimate possible context variables and create score tables
+    pcgraph = pc(data.values, 0.05, "chisq", node_names=data.columns)
+    poss_cvars = ctl.causallearn_graph_to_posscvars(
+        pcgraph, labels=data.columns)
+    score_table, context_scores, _ = sc.order_score_tables(
+        data, max_cvars=1, alpha_tot=1.0, method="BDeu", poss_cvars=poss_cvars
+    )
+
+    # run Gibbs sampler to get MAP order
+    orders, scores = ctl.gibbs_order_sampler(5000, score_table)
+    map_order = orders[scores.index(max(scores))]
+
+    # estimate CStree
+    opt_tree = ctl._optimal_cstree_given_order(map_order, context_scores)
+
+    return opt_tree
+
+
+def kl_exp(cards, samp_size):
+    true = ct.sample_cstree(
+        cards,
+        max_cvars=2,
+        prob_cvar=0.5,
+        prop_nonsingleton=1)
+    true.sample_stage_parameters(alpha=2)
+    data = true.sample(samp_size)
+
+    est = learn_synth_cstree(data)
+    est.estimate_stage_parameters(data)
+    est._create_tree()
+    return kl_divergence(est, true)
+
+
+def run_kl_experiments():
+    num_runs = 10
+
+    cards = [2] * 5
+    samp_size = 10000
+    kl_values = np.empty(10, float)
+    for run_idx in range(num_runs):
+        kl_values[run_idx] = kl_exp(cards, samp_size)
+    return kl_values
 
 
 # script logic for CLI
@@ -66,3 +114,5 @@ if __name__ == "__main__":
     #         c.setopt(c.WRITEDATA, f)
     #         c.perform()
     #         c.close()
+
+    np.random.seed(1312)

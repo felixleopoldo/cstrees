@@ -1,7 +1,6 @@
 """Evaluate estimated CStrees."""
 from itertools import product, pairwise, tee
 from functools import reduce
-import operator
 
 from scipy.special import rel_entr
 
@@ -23,8 +22,16 @@ def kl_divergence(estimated: CStree, true: CStree) -> float:
         edges = pairwise(nodes)
 
         def _probs_map(edge):
-            est = estimated.tree[edge[0]][edge[1]]["cond_prob"]
-            tru = true.tree[edge[0]][edge[1]]["cond_prob"]
+            try:
+                est = estimated.tree[edge[0]][edge[1]]["cond_prob"]
+            except KeyError:
+                stage = estimated.get_stage(edge[0])
+                est = stage.probs[edge[1][-1]]
+            try:
+                tru = true.tree[edge[0]][edge[1]]["cond_prob"]
+            except KeyError:
+                stage = true.get_stage(edge[0])
+                tru = stage.probs[edge[1][-1]]
             return est, tru
 
         zipped_probs = map(_probs_map, edges)
@@ -37,9 +44,3 @@ def kl_divergence(estimated: CStree, true: CStree) -> float:
         return rel_entr(est_prob_outcome, true_prob_outcome)
 
     return sum(map(_rel_entr_of_outcome, outcomes))
-
-
-# because CStrees are created on the fly while sampling, computing KL
-# divergence (or making prediction) may produce key error; can catch
-# these errors and set prob of corresponding outcome to 0? or sample
-# more? or some other way to generate full tree?

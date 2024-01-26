@@ -54,3 +54,15 @@ def test_predict():
     assert t.predict(
         partial_observation_3, True) == (
         (1, 0, 0, 2), 0.5913854582044948)
+
+    # test conditional probs exist from small sample
+    s = ct.sample_cstree(
+        cards,
+        max_cvars=2,
+        prob_cvar=0.5,
+        prop_nonsingleton=1)
+    s.sample_stage_parameters(alpha=2)
+
+    s.sample(35)
+
+    s.predict({})  # shouldn't raise KeyError

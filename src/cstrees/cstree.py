@@ -1,8 +1,6 @@
-from math import comb
 import operator
 from itertools import product, pairwise
 from functools import reduce
-from random import uniform
 import logging
 import sys
 from importlib import reload  # Not needed in Python 2
@@ -40,8 +38,13 @@ def write_minimal_context_graphs_to_files(context_dags, prefix="mygraphs"):
     for key, val in context_dags.items():
         agraph = nx.nx_agraph.to_agraph(val)
         agraph.layout("dot")
-        agraph.draw(prefix + str(key) + ".png",
-                    args='-Glabel="' + str(key) + '"   ')
+        agraph.draw(
+            prefix +
+            str(key) +
+            ".png",
+            args='-Glabel="' +
+            str(key) +
+            '"   ')
 
 
 def plot(graph, layout="dot"):
@@ -391,8 +394,10 @@ class CStree:
 
         for l, stages in self.stages.items():
             for s in stages:
-                dftmp = s.to_df(labs, max_card=max_card,
-                                write_probs=write_probs)
+                dftmp = s.to_df(
+                    labs,
+                    max_card=max_card,
+                    write_probs=write_probs)
                 df = pd.concat([df, dftmp])
         df.reset_index(drop=True, inplace=True)
 
@@ -874,8 +879,16 @@ class CStree:
         def _prob_of_outcome(outcome):
             nodes = (outcome[:idx] for idx in range(self.p + 1))
             edges = pairwise(nodes)
-            probs = map(
-                lambda edge: self.tree[edge[0]][edge[1]]["cond_prob"], edges)
+
+            def _probs_map(edge):
+                try:
+                    prob = self.tree[edge[0]][edge[1]]["cond_prob"]
+                except KeyError:
+                    stage = self.get_stage(edge[0])
+                    prob = stage.probs[edge[1][-1]]
+                return prob
+
+            probs = map(_probs_map, edges)
             return reduce(operator.mul, probs)
 
         if return_prob:
@@ -1044,10 +1057,8 @@ def sample_cstree(
 
     for level, staging in stagings.items():
         for i, stage in enumerate(staging):
-            if (level == -1) or (
-                (level > 0) and all([isinstance(i, int)
-                                     for i in stage.list_repr])
-            ):
+            if (level == -1) or ((level > 0)
+                                 and all([isinstance(i, int) for i in stage.list_repr])):
                 stage.color = "black"
             else:
                 stage.color = colors[i]
