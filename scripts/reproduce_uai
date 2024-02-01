@@ -2,12 +2,18 @@
 import os
 from importlib.metadata import version
 import warnings
+
+warnings.simplefilter(action="ignore", category=FutureWarning)
 import time
+import random
 
 # import pycurl
 import pandas as pd
 from causallearn.search.ConstraintBased.PC import pc
+from causallearn.search.PermutationBased.GRaSP import grasp
+from causallearn.search.ScoreBased.GES import ges
 import numpy as np
+import seaborn as sns
 
 import cstrees.learning as ctl
 import cstrees.scoring as sc
@@ -27,8 +33,13 @@ def run_sid0_exp(path):
     tree_df.to_pickle(f"{path}sido0_tree.pkl-runtime={runtime}")
 
 
+def reset_seed():
+    np.random.seed(1312)
+    random.seed(1312)
+
+
 def run_lucap0_exp(path):
-    data_path = path + "lucap0_train.data"
+    data_path = path + "lucas0_train.data"
 
     start = time.time()
     tree = learn_cstree(data_path)
@@ -47,8 +58,11 @@ def learn_cstree(data_path):
     )
 
     # estimate possible context variables and create score tables
-    pcgraph = pc(data.values, 0.05, "chisq", node_names=data.columns)
-    poss_cvars = ctl.causallearn_graph_to_posscvars(pcgraph, labels=data.columns)
+    grasp_graph = grasp(data.values, score_func="local_score_BDeu", maxP=5, depth=3)
+    # pcgraph = pc(data.values, 0.001, "gsq", node_names=data.columns)
+    poss_cvars = ctl.causallearn_graph_to_posscvars(
+        grasp_graph, labels=data.columns, alg="grasp"
+    )
     score_table, context_scores, _ = sc.order_score_tables(
         data, max_cvars=2, alpha_tot=1.0, method="BDeu", poss_cvars=poss_cvars
     )
@@ -65,8 +79,19 @@ def learn_cstree(data_path):
 
 def learn_synth_cstree(data):
     # estimate possible context variables and create score tables
-    pcgraph = pc(data.values, 0.05, "chisq", node_names=data.columns)
-    poss_cvars = ctl.causallearn_graph_to_posscvars(pcgraph, labels=data.columns)
+    # pcgraph = pc(data.values, 0.05, "gsq", node_names=data.columns)
+    # poss_cvars = ctl.causallearn_graph_to_posscvars(pcgraph, labels=data.columns)
+
+    # grasp_graph = grasp(data.values, score_func="local_score_BDeu", maxP=5, depth=3)
+    # poss_cvars = ctl.causallearn_graph_to_posscvars(
+    #     grasp_graph, labels=data.columns, alg="grasp"
+    # )
+
+    ges_graph = ges(data.values, score_func="local_score_BDeu", maxP=5)
+    poss_cvars = ctl.causallearn_graph_to_posscvars(
+        ges_graph, labels=data.columns, alg="ges"
+    )
+
     score_table, context_scores, _ = sc.order_score_tables(
         data, max_cvars=2, alpha_tot=1.0, method="BDeu", poss_cvars=poss_cvars
     )
@@ -81,26 +106,121 @@ def learn_synth_cstree(data):
     return opt_tree
 
 
-def kl_exp(cards, samp_size):
+def kl_exp(cards, samp_sizes):
+    true = ct.sample_cstree(cards, max_cvars=2, prob_cvar=0.5, prop_nonsingleton=1)
+    true.sample_stage_parameters(alpha=2)
+
+    est_list = []
+    for samp_size in samp_sizes:
+        data = true.sample(samp_size)
+
+        est = learn_synth_cstree(data)
+        est.estimate_stage_parameters(data)
+        est._create_tree()
+        est_list.append(kl_divergence(est, true))
+
+    rand = ct.sample_cstree(cards, max_cvars=2, prob_cvar=0.5, prop_nonsingleton=1)
+    rand.sample_stage_parameters(alpha=2)
+    rand.sample(100)
+    rand_kl = kl_divergence(rand, true)
+    return est_list, rand_kl
+
+
+def run_kl_experiments(path):
+    samp_size_range = (250, 500, 1000, 10000)
+    num_runs_per = 10
+    num_levels_range = range(5, 31, 5)
+
+    results = pd.DataFrame(columns=["p", "samp_size", "KL-divergence"])
+    update_counter = 0
+    for num_levels in num_levels_range:
+        cards = [2] * num_levels
+
+        outer_update = pd.DataFrame(columns=["p", "samp_size", "KL-divergence"])
+        rand_kls = np.empty(num_runs_per, float)
+        for run_idx in range(num_runs_per):
+            est_list, rand_kls[run_idx] = kl_exp(cards, samp_size_range)
+            for samp_size, est_kl in zip(samp_size_range, est_list):
+                inner_update = pd.DataFrame(
+                    {
+                        "p": num_levels,
+                        "samp_size": samp_size,
+                        "KL-divergence": est_kl,
+                    },
+                    index=[0],
+                )
+                outer_update = pd.concat(
+                    (outer_update, inner_update), ignore_index=True
+                )
+
+            baseline_update = pd.DataFrame(
+                {
+                    "p": num_levels,
+                    "samp_size": 0,
+                    "KL-divergence": rand_kls,
+                }
+            )
+            update = pd.concat([outer_update, baseline_update], ignore_index=True)
+            update.to_csv(path + f"kl_intermediate/update_{update_counter}.tar.gz")
+            update_counter += 1
+            results = pd.concat((results, update), ignore_index=True)
+    results.to_csv(path + "kl_results.tar.gz")
+
+
+def runtime_exp(num_levels, samp_size):
+    cards = [2] * num_levels
     true = ct.sample_cstree(cards, max_cvars=2, prob_cvar=0.5, prop_nonsingleton=1)
     true.sample_stage_parameters(alpha=2)
     data = true.sample(samp_size)
 
+    start = time.time()
     est = learn_synth_cstree(data)
     est.estimate_stage_parameters(data)
-    est._create_tree()
-    return kl_divergence(est, true)
+    end = time.time()
+    runtime = end - start
+    return runtime
 
 
-def run_kl_experiments():
-    num_runs = 10
+def run_runtime_experiments(path):
+    samp_size_range = (1000, 10000)
+    num_levels_range = (10, 25, 50)
+    num_runs_per = 10
 
-    cards = [2] * 5
-    samp_size = 10000
-    kl_values = np.empty(10, float)
-    for run_idx in range(num_runs):
-        kl_values[run_idx] = kl_exp(cards, samp_size)
-    return kl_values
+    results = pd.DataFrame(columns=["p", "samp_size", "runtime"])
+    update_counter = 0
+    for samp_size in samp_size_range:
+        for num_levels in num_levels_range:
+            runtimes = np.empty(num_runs_per, float)
+            for run_idx in range(num_runs_per):
+                runtimes[run_idx] = runtime_exp(num_levels, samp_size)
+            results_update = pd.DataFrame(
+                {"p": num_levels, "samp_size": samp_size, "runtime": runtimes}
+            )
+            results_update.to_csv(
+                path + f"runtime_intermediate/results_update_{update_counter}.tar.gz"
+            )
+            update_counter += 1
+            results = pd.concat((results, results_update), ignore_index=True)
+    results.to_csv(path + "runtime_results.tar.gz")
+
+
+def plot_runtime_exps(path):
+    results = pd.read_csv(f"{path}runtime_results.tar.gz", index_col=0)
+
+    plt = sns.boxplot(data=results, x="p", y="runtime", hue="samp_size")
+    plt.figure.savefig(f"{path}runtime_results.pdf")
+    plt.clear()
+
+
+def plot_kl_exps(path):
+    results = pd.read_csv(f"{path}kl_results.tar.gz", index_col=0)
+
+    plt = sns.boxplot(
+        data=results, x="p", y="KL-divergence", hue="samp_size", showfliers=False
+    )
+    plt.set_ylim(-1, 10)
+    plt.figure.savefig(f"{path}kl_results.pdf")
+    plt.clear()
 
 
 # script logic for CLI
@@ -110,17 +230,7 @@ if __name__ == "__main__":
         warnings.warn(f"Current `cstrees` version unsupported.")
 
     # download data unless it's already been downloaded
-    path = "reproduced_uai_results/"
-    # data_path = path + "sido0_train.data"
-    # toy_path = path + "lucap0_train.data"
-    # baby_path = path + "lucas0_train.data"
-
-    # # 5s for max_cvar==1; 150s for max_cvar==2
-    # baby_tree = learn_cstree(baby_path)
-
-    # toy_tree = learn_cstree(toy_path)
-    # df = toy_tree.to_df(write_probs=True)
-    # df.to_pickle("toy_tree.pkl")
+    path = "/home/alex/projects/cstrees/code/reproduced_uai_results/"
 
     # if not os.path.exists(data_path):
     #     os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -133,6 +243,20 @@ if __name__ == "__main__":
     #         c.perform()
     #         c.close()
 
-    np.random.seed(1312)
+    # run_lucap0_exp(path)
 
-    run_lucap0_exp(path)
+    reset_seed()
+    run_kl_experiments(path)
+    plot_kl_exps(path)
+    reset_seed()
+    run_runtime_experiments(path)
+    plot_runtime_exps(path)
+
+########## notes
+# implement rejection sampling
+# use p-value in real data analysis to get sparse enough structure
+
+# - with grasp and without grasp for time
+# - add intermediate saves for kl
+# - run kl first with 10 on each to p=30 and n=10k and maxP=30; each kl run
+#   returns for the kl for rand and each different n
