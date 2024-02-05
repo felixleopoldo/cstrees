@@ -6,6 +6,7 @@ import warnings
 warnings.simplefilter(action="ignore", category=FutureWarning)
 import time
 import random
+from functools import partial
 
 # import pycurl
 import pandas as pd
@@ -14,6 +15,9 @@ from causallearn.search.PermutationBased.GRaSP import grasp
 from causallearn.search.ScoreBased.GES import ges
 import numpy as np
 import seaborn as sns
+from p_tqdm import p_umap
+
+# import matplotlib.pyplot as plt
 
 import cstrees.learning as ctl
 import cstrees.scoring as sc
@@ -58,7 +62,7 @@ def learn_cstree(data_path):
     )
 
     # estimate possible context variables and create score tables
-    grasp_graph = grasp(data.values, score_func="local_score_BDeu", maxP=5, depth=3)
+    grasp_graph = grasp(data.values[1:], score_func="local_score_BDeu", maxP=5, depth=3)
     # pcgraph = pc(data.values, 0.001, "gsq", node_names=data.columns)
     poss_cvars = ctl.causallearn_graph_to_posscvars(
         grasp_graph, labels=data.columns, alg="grasp"
@@ -77,21 +81,25 @@ def learn_cstree(data_path):
     return opt_tree
 
 
-def learn_synth_cstree(data):
+def learn_synth_cstree(data, return_times=False):
+    pc_start = time.time()
     # estimate possible context variables and create score tables
-    # pcgraph = pc(data.values, 0.05, "gsq", node_names=data.columns)
-    # poss_cvars = ctl.causallearn_graph_to_posscvars(pcgraph, labels=data.columns)
+    pcgraph = pc(data.values[1:], 0.05, "gsq", node_names=data.columns)
+    poss_cvars = ctl.causallearn_graph_to_posscvars(pcgraph, labels=data.columns)
+    pc_end = time.time()
+    pc_time = pc_end - pc_start
 
     # grasp_graph = grasp(data.values, score_func="local_score_BDeu", maxP=5, depth=3)
     # poss_cvars = ctl.causallearn_graph_to_posscvars(
     #     grasp_graph, labels=data.columns, alg="grasp"
     # )
 
-    ges_graph = ges(data.values, score_func="local_score_BDeu", maxP=5)
-    poss_cvars = ctl.causallearn_graph_to_posscvars(
-        ges_graph, labels=data.columns, alg="ges"
-    )
+    # ges_graph = ges(data.values, score_func="local_score_BDeu", maxP=5)
+    # poss_cvars = ctl.causallearn_graph_to_posscvars(
+    #     ges_graph, labels=data.columns, alg="ges"
+    # )
 
+    cst_start = time.time()
     score_table, context_scores, _ = sc.order_score_tables(
         data, max_cvars=2, alpha_tot=1.0, method="BDeu", poss_cvars=poss_cvars
     )
@@ -102,8 +110,10 @@ def learn_synth_cstree(data):
 
     # estimate CStree
     opt_tree = ctl._optimal_cstree_given_order(map_order, context_scores)
+    cst_end = time.time()
+    cst_time = cst_end - cst_start
 
-    return opt_tree
+    return opt_tree if not return_times else (opt_tree, pc_time, cst_time)
 
 
 def kl_exp(cards, samp_sizes):
@@ -119,7 +129,7 @@ def kl_exp(cards, samp_sizes):
         est._create_tree()
         est_list.append(kl_divergence(est, true))
 
-    rand = ct.sample_cstree(cards, max_cvars=2, prob_cvar=0.5, prop_nonsingleton=1)
+    rand = ct.sample_cstree(cards, max_cvars=3, prob_cvar=0.5, prop_nonsingleton=1)
     rand.sample_stage_parameters(alpha=2)
     rand.sample(100)
     rand_kl = kl_divergence(rand, true)
@@ -127,9 +137,9 @@ def kl_exp(cards, samp_sizes):
 
 
 def run_kl_experiments(path):
-    samp_size_range = (250, 500, 1000, 10000)
+    samp_size_range = (250, 500)  # , 1000, 10000)
     num_runs_per = 10
-    num_levels_range = range(5, 31, 5)
+    num_levels_range = range(5, 16, 5)  # 31, 5)
 
     results = pd.DataFrame(columns=["p", "samp_size", "KL-divergence"])
     update_counter = 0
@@ -167,52 +177,115 @@ def run_kl_experiments(path):
     results.to_csv(path + "kl_results.tar.gz")
 
 
-def runtime_exp(num_levels, samp_size):
-    cards = [2] * num_levels
-    true = ct.sample_cstree(cards, max_cvars=2, prob_cvar=0.5, prop_nonsingleton=1)
-    true.sample_stage_parameters(alpha=2)
-    data = true.sample(samp_size)
+def simulate_sparse_data(
+    num_levels: int, samp_size: int, max_poss_pa: int = 10, return_time: bool = False
+) -> tuple[ct.CStree, pd.DataFrame, dict, float]:
+    """Use rejection sampling to generate ground truth with specified sparsity."""
+    failed = True
+    while failed:
+        # propose ground truth
+        cards = [2] * num_levels
+        true = ct.sample_cstree(cards, max_cvars=2, prob_cvar=0.5, prop_nonsingleton=1)
+        true.sample_stage_parameters(alpha=2)
+        data = true.sample(samp_size)
 
-    start = time.time()
-    est = learn_synth_cstree(data)
-    est.estimate_stage_parameters(data)
-    end = time.time()
-    runtime = end - start
-    return runtime
+        # check max_poss_pa using PC algorithm
+        pc_start = time.time()
+        pcgraph = pc(data.values[1:], 0.05, "gsq", node_names=data.columns)
+        poss_cvars = ctl.causallearn_graph_to_posscvars(pcgraph, labels=data.columns)
+        pc_end = time.time()
+        pc_time = pc_end - pc_start
+
+        failed = any((len(poss_pa) > max_poss_pa for poss_pa in poss_cvars.values()))
+
+    return (
+        (true, data, poss_cvars, pc_time) if return_time else (true, data, poss_cvars)
+    )
 
 
-def run_runtime_experiments(path):
-    samp_size_range = (1000, 10000)
-    num_levels_range = (10, 25, 50)
+def runtime_experiment(num_levels, samp_size, max_poss_pa=10):
+    _, data, poss_cvars, pc_time = simulate_sparse_data(
+        num_levels, samp_size, max_poss_pa, True
+    )
+
+    cst_start = time.time()
+    score_table, context_scores, _ = sc.order_score_tables(
+        data, max_cvars=2, alpha_tot=1.0, method="BDeu", poss_cvars=poss_cvars
+    )
+
+    # run Gibbs sampler to get MAP order
+    orders, scores = ctl.gibbs_order_sampler(5000, score_table)
+    map_order = orders[scores.index(max(scores))]
+
+    # estimate CStree
+    _ = ctl._optimal_cstree_given_order(map_order, context_scores)
+    cst_end = time.time()
+    cst_time = cst_end - cst_start
+
+    return pc_time, cst_time
+
+
+def run_runtime_experiments(
+    path,
+    samp_size,
+    num_runs,
+    num_levels,
+):
+    pc_runtimes = np.empty(num_runs, float)
+    cst_runtimes = np.empty_like(pc_runtimes)
+    for run_idx in range(num_runs):
+        pc_runtime, cst_runtime = runtime_experiment(num_levels, samp_size)
+        pc_runtimes[run_idx] = pc_runtime
+        cst_runtimes[run_idx] = cst_runtime
+    total_runtimes = pc_runtimes + cst_runtimes
+    runtimes = np.append(pc_runtimes, cst_runtimes, total_runtimes)
+    alg = np.repeat(["PC", "CStree", "Total"], 10)
+    results = pd.DataFrame(
+        {
+            "p": num_levels,
+            "samp_size": samp_size,
+            "runtime": runtimes,
+            "alg": alg,
+        }
+    )
+    results.to_csv(path + f"runtime_intermediate/p={num_levels}_n={samp_size}.tar.gz")
+
+
+def runtime(path):
+    samp_size = 10000
+    num_levels_range = (10, 25, 50)  # , 100, 250, 500)
     num_runs_per = 10
 
-    results = pd.DataFrame(columns=["p", "samp_size", "runtime"])
-    update_counter = 0
-    for samp_size in samp_size_range:
-        for num_levels in num_levels_range:
-            runtimes = np.empty(num_runs_per, float)
-            for run_idx in range(num_runs_per):
-                runtimes[run_idx] = runtime_exp(num_levels, samp_size)
-            results_update = pd.DataFrame(
-                {"p": num_levels, "samp_size": samp_size, "runtime": runtimes}
-            )
-            results_update.to_csv(
-                path + f"runtime_intermediate/results_update_{update_counter}.tar.gz"
-            )
-            update_counter += 1
-            results = pd.concat((results, results_update), ignore_index=True)
+    run_runtime = partial(run_runtime_experiments, path, samp_size, num_runs_per)
+    p_umap(run_runtime, num_levels_range)
+
+    intermediate_results = {
+        num_levels_range: pd.read_csv(
+            f"{path}runtime_intermediate/p={num_levels}_n={samp_size}.tar.gz",
+            index_col=0,
+        )
+        for num_levels in num_levels_range
+    }
+    results = pd.concat(intermediate_results.values())
     results.to_csv(path + "runtime_results.tar.gz")
 
 
 def plot_runtime_exps(path):
     results = pd.read_csv(f"{path}runtime_results.tar.gz", index_col=0)
+    results["total_runtime"] = results["pc_runtime"] + results["cst_runtime"]
 
-    plt = sns.boxplot(data=results, x="p", y="runtime", hue="samp_size")
+    plt = sns.boxplot(data=results, x="p", y="total_runtime")  # , hue="samp_size")
     plt.figure.savefig(f"{path}runtime_results.pdf")
     plt.clear()
 
 
 def plot_kl_exps(path):
+    # res_dict = {
+    #     idx: pd.read_csv(f"{path}kl_intermediate/update_{idx}.tar.gz", index_col=0)
+    #     for idx in range(40)
+    # }
+    # c = pd.concat(res_dict.values())
+
     results = pd.read_csv(f"{path}kl_results.tar.gz", index_col=0)
 
     plt = sns.boxplot(
@@ -245,11 +318,11 @@ if __name__ == "__main__":
 
     # run_lucap0_exp(path)
 
+    # reset_seed()
+    # run_kl_experiments(path)
+    # plot_kl_exps(path)
     reset_seed()
-    run_kl_experiments(path)
-    plot_kl_exps(path)
-    reset_seed()
-    run_runtime_experiments(path)
+    runtime(path)
     plot_runtime_exps(path)
 
 ########## notes
