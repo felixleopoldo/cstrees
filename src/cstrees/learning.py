@@ -9,8 +9,8 @@ import cstrees.stage as stl
 import cstrees.scoring as sc
 
 
-def all_stagings(cards: list[int], level, max_cvars:int = 1, poss_cvars=None):
-    """ Returns a generator over all stagings at a given level of a CStree with given variable cardinalities.
+def all_stagings(cards: list[int], level, max_cvars: int = 1, poss_cvars=None):
+    """Returns a generator over all stagings at a given level of a CStree with given variable cardinalities.
 
     Args:
         cards (list[int]): List of cardinalities of the variables. Should be at least of length level+1. E.g.: l=2, cards=[2,2,2,2]
@@ -162,8 +162,9 @@ def _optimal_staging_at_level(
                 staging_score = context_scores["scores"][var]["None"]
                 continue
 
-            # here we (=I) anyway extract just the context, so the stage format is a bit redundant.
-            stage_context = sc._stage_to_context_key(stage, order) 
+            # here we (=I) anyway extract just the context, so the stage format
+            # is a bit redundant.
+            stage_context = sc._stage_to_context_key(stage, order)
             score = context_scores["scores"][var][stage_context]
             staging_score += score
 
@@ -190,7 +191,7 @@ def _optimal_cstree_given_order(order, context_scores):
     p = len(order)
     stages = {}
     stages[-1] = [stl.Stage([], color="black")]
-    for level in range(-1, p-1):  # dont stage the last level
+    for level in range(-1, p - 1):  # dont stage the last level
         max_staging, max_staging_score = _optimal_staging_at_level(
             order,
             context_scores,
