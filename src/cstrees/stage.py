@@ -29,7 +29,7 @@ class Stage:
             cards (list[int], optional): Cardinalities for the levels. Defaults to None.
         """
 
-        self.level = len(stage_repr)-1
+        self.level = len(stage_repr) - 1
         self.list_repr = stage_repr
 
         # Check if singleton, if so set color black
@@ -48,7 +48,7 @@ class Stage:
         return hash(__o) == hash(self)
 
     def __contains__(self, node):
-        """Checks is a node is contained in a stage. 
+        """Checks is a node is contained in a stage.
 
         Args:
             node (tuple): A vector of values for each level.
@@ -62,9 +62,9 @@ class Stage:
                 return True
         for i, val in enumerate(self.list_repr):
             # Must check if list
-            if (type(val) is list) and (node[i] not in val):
+            if (isinstance(val, list)) and (node[i] not in val):
                 return False
-            if (type(val) is int) and (node[i] != val):
+            if (isinstance(val, int)) and (node[i] != val):
                 return False
 
         return True
@@ -75,7 +75,7 @@ class Stage:
         """
         s = 1
         for e in self.list_repr:
-            if type(e) is set:
+            if isinstance(e, set):
                 s *= len(e)
         return s
 
@@ -104,7 +104,7 @@ class Stage:
 
         for i in cols:
             if i < len(self.list_repr):
-                if type(self.list_repr[i]) == set:
+                if isinstance(self.list_repr[i], set):
                     d[column_labels[i]] = ["*"]
                 else:
                     d[column_labels[i]] = [self.list_repr[i]]
@@ -114,7 +114,7 @@ class Stage:
         if (self.probs is not None) and write_probs:
             df = pd.DataFrame(d, columns=column_labels[:-max_card])
             df_prop = pd.DataFrame(
-                {"PROB_"+str(i): [prob] for i, prob in enumerate(self.probs)})
+                {"PROB_" + str(i): [prob] for i, prob in enumerate(self.probs)})
             df = pd.concat([df, df_prop], axis=1)
         else:
             df = pd.DataFrame(d, columns=column_labels)
@@ -143,14 +143,15 @@ class Stage:
         cards = self.cards
         # Keep all context vars from a. (this is already ok if b was sampled on a).
         # For each created csi, keep 1 of the context vars from b,
-        # vary the rest outside the context vars of b (or opposite??) (exept from those that were restricetd by a).
+        # vary the rest outside the context vars of b (or opposite??) (exept
+        # from those that were restricetd by a).
 
         result = []
         a_list = a.list_repr
         b_list = b.list_repr
 
         for level, val in enumerate(b_list):
-            if type(val) is not int:
+            if not isinstance(val, int):
                 # If not a context variable.
                 continue
             if level in a.csi.context.context:
@@ -163,7 +164,7 @@ class Stage:
                         continue
                     # Create the new space
                     # This takes care of the fixed ones.
-                    l = b_list[:level] + [v] + a_list[level+1:]
+                    l = b_list[:level] + [v] + a_list[level + 1:]
                     result.append(Stage(l, cards=cards))
 
         return result
@@ -172,10 +173,10 @@ class Stage:
         sepseta = set()
         cond_set = set()
         context = {}
-        sepsetb = {self.level+1}
+        sepsetb = {self.level + 1}
 
         for i, el in enumerate(self.list_repr):
-            if type(el) is set:
+            if isinstance(el, set):
                 sepseta.add(i)
             else:
                 context[i] = el
@@ -197,28 +198,30 @@ class Stage:
             # the whole outcome space.
             if (lev == s_lev):
                 continue
-            if type(s_lev) is list:
+            if isinstance(s_lev, list):
                 if (lev in s_lev):
                     continue
-            if type(lev) is list:
+            if isinstance(lev, list):
                 if (s_lev in lev):
                     continue
             return False
         return True
 
     def to_cstree_paths(self):
-        tmp = [[i] if type(i) is int else i for i in self.list_repr]
+        tmp = [[i] if isinstance(i, int) else i for i in self.list_repr]
         return list(itertools.product(*tmp))
 
     def __str__(self) -> str:
         if self.probs is not None:
-            return "{}; probs: {}; color: {}".format(self.list_repr, [round(x,2 ) for x in self.probs], self.color) 
-        
-        #str(self.list_repr) + "; probs: " + str(round(self.probs, 2)) + "; color: " + str(self.color)
+            return "{}; probs: {}; color: {}".format(
+                self.list_repr, [round(x, 2) for x in self.probs], self.color)
+
+        # str(self.list_repr) + "; probs: " + str(round(self.probs, 2)) + "; color: " + str(self.color)
         return str(self.list_repr)
 
 
-def sample_stage_restr_by_stage(stage: Stage, max_cvars: int, cvar_prob: float, cards: list):
+def sample_stage_restr_by_stage(
+        stage: Stage, max_cvars: int, cvar_prob: float, cards: list):
     """ Samples a Stage on the space restricted by the argument stage. Not allow singleton stages.
 
     Args:
@@ -235,7 +238,8 @@ def sample_stage_restr_by_stage(stage: Stage, max_cvars: int, cvar_prob: float, 
     levelplus1 = len(space)  # this is not the full p?
 
     assert (max_cvars <= levelplus1)  # < Since at least one cannot be a cvar.
-    # This may not be true if wa are at very low levels where the level in sthe constraint.
+    # This may not be true if wa are at very low levels where the level in
+    # sthe constraint.
     fixed_cvars = len(stage.csi.context.context)
     csilist = [None] * levelplus1
 
@@ -249,15 +253,16 @@ def sample_stage_restr_by_stage(stage: Stage, max_cvars: int, cvar_prob: float, 
         ind = randorder[i]
         s = space[ind]  # a context value (int) or the full set of values.
 
-        if type(s) is int:  # This is a restriction of the space.
+        if isinstance(s, int):  # This is a restriction of the space.
             csilist[ind] = s
             cont_var_counter += 1
         else:
-            if cont_var_counter < max_cvars-fixed_cvars:  # Make sure not too many context vars
+            if cont_var_counter < max_cvars - \
+                    fixed_cvars:  # Make sure not too many context vars
                 # (i.e. a cond var), pick either one or all.
 
                 b = np.random.multinomial(
-                    1, [cvar_prob, 1-cvar_prob], size=1)[0][0]
+                    1, [cvar_prob, 1 - cvar_prob], size=1)[0][0]
                 if b == 0:  # TODO: this should be able to happen anyway?
                     csilist[ind] = set(range(cards[ind]))
                 else:
@@ -271,7 +276,8 @@ def sample_stage_restr_by_stage(stage: Stage, max_cvars: int, cvar_prob: float, 
     return Stage(csilist, cards=stage.cards)
 
 
-def sample_random_stage(cards: list, level: int, max_contextvars: int, prob: float) -> Stage:
+def sample_random_stage(cards: list, level: int,
+                        max_contextvars: int, prob: float) -> Stage:
     """Sample a random non-singleton stage.
 
     Args:
@@ -288,21 +294,22 @@ def sample_random_stage(cards: list, level: int, max_contextvars: int, prob: flo
     # If the number is smaller than the level, then level is max.
     ncont = max_contextvars
     # Since not all can be context variables. (i.e. singleton stage)
-    if max_contextvars > level-1:
+    if max_contextvars > level - 1:
         ncont = level - 1
 
     possible_context_vars = np.random.choice(
-        range(level+1), ncont, replace=False)
+        range(level + 1), ncont, replace=False)
 
     context_vars = []
     # among the possible context variables, choose some of them.
     for i, val in enumerate(possible_context_vars):
-        if np.random.multinomial(1, [prob, 1-prob], size=1)[0][0] == 1:
+        if np.random.multinomial(1, [prob, 1 - prob], size=1)[0][0] == 1:
             context_vars.append(val)
 
-    # for each of the context variables, choose a random value. For the rest, use the whole set.
-    vals = [None]*len(cards[:level+1])
-    for i, _ in enumerate(cards[:level+1]):
+    # for each of the context variables, choose a random value. For the rest,
+    # use the whole set.
+    vals = [None] * len(cards[:level + 1])
+    for i, _ in enumerate(cards[:level + 1]):
         if i in context_vars:  # changed
             vals[i] = np.random.randint(cards[i])
         else:
