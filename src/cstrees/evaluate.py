@@ -1,7 +1,8 @@
 """Evaluate estimated CStrees."""
-from itertools import product, pairwise, tee
+from itertools import product, pairwise
 from functools import reduce
 
+import numpy as np
 from scipy.special import rel_entr
 
 from cstrees.cstree import CStree
@@ -18,29 +19,35 @@ def kl_divergence(estimated: CStree, true: CStree) -> float:
     outcomes = product(*factorized_outcomes)
 
     def _rel_entr_of_outcome(outcome):
-        nodes = (outcome[:idx] for idx in range(true.p + 1))
-        edges = pairwise(nodes)
+        assert true.labels == sorted(true.labels)
+        true_nodes = (outcome[:idx] for idx in range(true.p + 1))
+        true_edges = pairwise(true_nodes)
 
-        def _probs_map(edge):
+        est_ordered_outcome = tuple(outcome[i] for i in estimated.labels)
+        est_nodes = (est_ordered_outcome[:idx] for idx in range(true.p + 1))
+        est_edges = pairwise(est_nodes)
+
+        def _probs_map(zipped_edge):
+            est_edge, true_edge = zipped_edge
             try:
-                est = estimated.tree[edge[0]][edge[1]]["cond_prob"]
+                est = estimated.tree[est_edge[0]][est_edge[1]]["cond_prob"]
             except KeyError:
-                stage = estimated.get_stage(edge[0])
-                est = stage.probs[edge[1][-1]]
+                stage = estimated.get_stage(est_edge[0])
+                est = stage.probs[est_edge[1][-1]]
             try:
-                tru = true.tree[edge[0]][edge[1]]["cond_prob"]
+                tru = true.tree[true_edge[0]][true_edge[1]]["cond_prob"]
             except KeyError:
-                stage = true.get_stage(edge[0])
-                tru = stage.probs[edge[1][-1]]
+                stage = true.get_stage(true_edge[0])
+                tru = stage.probs[true_edge[1][-1]]
             return est, tru
 
-        zipped_probs = map(_probs_map, edges)
+        zipped_edges = zip(est_edges, true_edges)
+        zipped_probs = map(_probs_map, zipped_edges)
 
         def _probs_of_outcome(prev_pair, next_pair):
             return prev_pair[0] * next_pair[0], prev_pair[1] * next_pair[1]
 
-        est_prob_outcome, true_prob_outcome = reduce(
-            _probs_of_outcome, zipped_probs)
+        est_prob_outcome, true_prob_outcome = reduce(_probs_of_outcome, zipped_probs)
         return rel_entr(est_prob_outcome, true_prob_outcome)
 
     return sum(map(_rel_entr_of_outcome, outcomes))
