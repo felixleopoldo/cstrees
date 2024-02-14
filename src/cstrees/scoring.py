@@ -518,7 +518,8 @@ def order_score_tables(
                 for stage in staging:
                     # OK! even when restricting to some possible cvars
                     stage_context = _stage_to_context_key(stage, subset)
-                    staging_unnorm_post += context_scores["scores"][var][stage_context]
+                    if stage_context in context_scores["scores"][var]:
+                        staging_unnorm_post += context_scores["scores"][var][stage_context]
 
                 if i == 0:
                     order_scores["scores"][var][subset_str] = staging_unnorm_post

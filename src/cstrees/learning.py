@@ -162,10 +162,10 @@ def _optimal_staging_at_level(
                 staging_score = context_scores["scores"][var]["None"]
                 continue
 
-            # here we (=I) anyway extract just the context, so the stage format
-            # is a bit redundant.
-            stage_context = sc._stage_to_context_key(stage, order)
-            score = context_scores["scores"][var][stage_context]
+            # here we (=I) anyway extract just the context, so the stage format is a bit redundant.
+            stage_context = sc._stage_to_context_key(stage, order) 
+            if stage_context in context_scores["scores"][var]:
+                score = context_scores["scores"][var][stage_context]
             staging_score += score
 
         # Update the max score and the max staging
