@@ -252,8 +252,7 @@ def _context_score_tables(
                 [l for l in labels if l in poss_cvars[var]], csize
             ):
                 # get the active labels like A,B,C
-                active_labels = sorted(
-                    [l for l in labels if l in context_variables])
+                active_labels = sorted([l for l in labels if l in context_variables])
                 tmp = {c: None for c in active_labels}
 
                 if len(active_labels) == 0:
@@ -262,8 +261,7 @@ def _context_score_tables(
                     test = data[1:].groupby(active_labels)[var].value_counts()
 
                 # get the counts
-                testdf = test.to_frame().rename(
-                    columns={var: str(var) + " counts"})
+                testdf = test.to_frame().rename(columns={var: str(var) + " counts"})
                 for index, r in testdf.iterrows():
                     value = None
 
@@ -271,8 +269,7 @@ def _context_score_tables(
                     context = ""
                     if len(active_labels) > 0:
                         for cvarind, val in enumerate(index[:-1]):
-                            context += "{}={},".format(
-                                active_labels[cvarind], val)
+                            context += "{}={},".format(active_labels[cvarind], val)
                         context = context[:-1]
                         value = index[-1]
                     else:
@@ -336,16 +333,16 @@ def _log_n_stagings_tables(labels, cards_dict, poss_cvars, max_cvars=2):
     for var in tqdm(labels, desc="Creating #stagings tables"):
         # all cards except the current one
         cur_cards = [
-            cards_dict[l] for l in labels if (
-                l != var) and (
-                l in poss_cvars[var])]
+            cards_dict[l] for l in labels if (l != var) and (l in poss_cvars[var])
+        ]
         for subset in csi_rel._powerset(cur_cards):
             staging_lev = len(subset) - 1
             subset_str = _list_to_score_key(list(subset))
 
             if subset_str not in n_stagings:
-                n_stagings[subset_str] = np.log(learn.n_stagings(
-                    list(subset), staging_lev, max_cvars=max_cvars))
+                n_stagings[subset_str] = np.log(
+                    learn.n_stagings(list(subset), staging_lev, max_cvars=max_cvars)
+                )
     return n_stagings
 
 
@@ -567,8 +564,7 @@ def score_order(order, order_scores):
     """
     log_score = 0  # log score
     for level, var in enumerate(order):
-        poss_parents = list(set(order[:level]) & set(
-            order_scores["poss_cvars"][var]))
+        poss_parents = list(set(order[:level]) & set(order_scores["poss_cvars"][var]))
         # possible parents as string
         poss_parents_str = _list_to_score_key(poss_parents)
         score = order_scores["scores"][var][poss_parents_str]

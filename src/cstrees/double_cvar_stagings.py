@@ -1,4 +1,5 @@
 """Enumerate stagings with up to 2 context variables."""
+
 from typing import Generator, Iterable
 from itertools import combinations, product
 
@@ -48,8 +49,7 @@ def codim_max2_boxes(
         for subset_size in range(1, num_cd1_boxes):
             subsets = combinations(range(num_cd1_boxes), subset_size)
             for subset in subsets:
-                for cd12_subdiv in codim_1_subdivs(
-                        cd1_subdiv, poss_split_dims, subset):
+                for cd12_subdiv in codim_1_subdivs(cd1_subdiv, poss_split_dims, subset):
                     yield cd12_subdiv
         if degen:
             break
@@ -72,15 +72,14 @@ def codim_1_subdivs(
 
     if len(splittable_subboxes) == 0:
         splittable_subboxes = list(range(len(box)))
-    for dims_to_split in product(
-            *(splittable_coords for _ in splittable_subboxes)):
+    for dims_to_split in product(*(splittable_coords for _ in splittable_subboxes)):
         cd1_subdiv = []
         for subbox_idx, subbox in enumerate(box):
             if subbox_idx in splittable_subboxes:
                 dim = dims_to_split[splittable_subboxes.index(subbox_idx)]
                 points = box[0][dim]
                 for point in points:
-                    cd1_subdiv += [subbox[:dim] + [point] + subbox[dim + 1:]]
+                    cd1_subdiv += [subbox[:dim] + [point] + subbox[dim + 1 :]]
             else:
                 cd1_subdiv += [subbox]
         yield cd1_subdiv

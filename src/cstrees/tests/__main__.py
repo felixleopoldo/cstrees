@@ -8,9 +8,9 @@ def get_parser():
     """
     Creates a new argument parser.
     """
-    parser = argparse.ArgumentParser('CStrees')
-    version = '%(prog)s ' + __version__
-    parser.add_argument('--version', '-v', action='version', version=version)
+    parser = argparse.ArgumentParser("CStrees")
+    version = "%(prog)s " + __version__
+    parser.add_argument("--version", "-v", action="version", version=version)
     return parser
 
 
@@ -27,16 +27,17 @@ def main(args=None):
         import pytest
     except ImportError:
         raise SystemExit(
-            'You need py.test to run the test suite.\n'
-            'You can install it using your distribution package manager or\n'
-            '    $ python -m pip install pytest --user'
+            "You need py.test to run the test suite.\n"
+            "You can install it using your distribution package manager or\n"
+            "    $ python -m pip install pytest --user"
         )
 
     # Get data from test_module
     import cstrees.tests as test_module
+
     test_path = os.path.abspath(os.path.dirname(test_module.__file__))
-    pytest.main([test_path, '-m', 'not documentation'])
+    pytest.main([test_path, "-m", "not documentation"])
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

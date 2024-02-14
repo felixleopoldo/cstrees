@@ -18,14 +18,22 @@ import unittest
 
 
 class TestingToMinimalCSIs(unittest.TestCase):
-
     def test_v_structure(self):
         # 3 variables, 2 outcomes each
         tree = ct.CStree([2] * 3, labels=["a", "b", "c"])
 
         # V-structure
-        tree.update_stages({0: [st.Stage([{0, 1}])], 1: [st.Stage(
-            [0, 0]), st.Stage([0, 1]), st.Stage([1, 0]), st.Stage([1, 1])]})
+        tree.update_stages(
+            {
+                0: [st.Stage([{0, 1}])],
+                1: [
+                    st.Stage([0, 0]),
+                    st.Stage([0, 1]),
+                    st.Stage([1, 0]),
+                    st.Stage([1, 1]),
+                ],
+            }
+        )
         minl_csis = tree.to_minimal_context_csis()
 
         csi_strings = set([])
@@ -40,18 +48,24 @@ class TestingToMinimalCSIs(unittest.TestCase):
         self.assertEqual(csi_strings, correct_csis)
 
     def test_figure1(self):
-
-        tree = ct.CStree([2, 2, 2, 2], labels=["X" + str(i)
-                         for i in range(1, 5)])
-        tree.update_stages({
-            0: [st.Stage([0]), st.Stage([1])],
-            1: [st.Stage([{0, 1}, 0], color="green"), st.Stage([0, 1]), st.Stage([1, 1])],
-            2: [st.Stage([0, {0, 1}, 0], color="blue"),
-                st.Stage([0, {0, 1}, 1], color="orange"),
-                st.Stage([1, {0, 1}, 0], color="red"),
-                st.Stage([1, 1, 1]),
-                st.Stage([1, 0, 1])]
-        })
+        tree = ct.CStree([2, 2, 2, 2], labels=["X" + str(i) for i in range(1, 5)])
+        tree.update_stages(
+            {
+                0: [st.Stage([0]), st.Stage([1])],
+                1: [
+                    st.Stage([{0, 1}, 0], color="green"),
+                    st.Stage([0, 1]),
+                    st.Stage([1, 1]),
+                ],
+                2: [
+                    st.Stage([0, {0, 1}, 0], color="blue"),
+                    st.Stage([0, {0, 1}, 1], color="orange"),
+                    st.Stage([1, {0, 1}, 0], color="red"),
+                    st.Stage([1, 1, 1]),
+                    st.Stage([1, 0, 1]),
+                ],
+            }
+        )
 
         csi_strings = set([])
         minl_csis = tree.to_minimal_context_csis()
@@ -59,11 +73,9 @@ class TestingToMinimalCSIs(unittest.TestCase):
             for csi in csis:
                 csi_strings.add(str(csi))
 
-        correct_csis = {"X1 ⊥ X3 | X2=0",
-                        "X2 ⊥ X4 | X1, X3=0",
-                        "X2 ⊥ X4 | X3, X1=0"}
+        correct_csis = {"X1 ⊥ X3 | X2=0", "X2 ⊥ X4 | X1, X3=0", "X2 ⊥ X4 | X3, X1=0"}
         self.assertEqual(csi_strings, correct_csis)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

@@ -38,32 +38,28 @@ def write_minimal_context_graphs_to_files(context_dags, prefix="mygraphs"):
     for key, val in context_dags.items():
         agraph = nx.nx_agraph.to_agraph(val)
         agraph.layout("dot")
-        agraph.draw(
-            prefix +
-            str(key) +
-            ".png",
-            args='-Glabel="' +
-            str(key) +
-            '"   ')
+        agraph.draw(prefix + str(key) + ".png", args='-Glabel="' + str(key) + '"   ')
+
 
 def write_minimal_context_graphs_to_files(context_dags, prefix="mygraphs"):
     """Write minimal context graphs to files. This is useful since it also writes the context of each graph in the figures.
     The contexts are also part of the filenames.
-    
+
     Args:
         context_dags (dict): A dictionary of context graphs. The keys are the contexts, and the values are the graphs.
         prefix (str, optional): The prefix of the files. Defaults to "mygraphs".
-        
+
     Example:
         >>> # tree is the Figure 1 CStree
         >>> gs = tree.to_minimal_context_graphs()
         >>> ct.write_minimal_context_graphs_to_files(gs, prefix="mygraphs")
     """
-    
+
     for key, val in context_dags.items():
         agraph = nx.nx_agraph.to_agraph(val)
         agraph.layout("dot")
-        agraph.draw(prefix+str(key) + ".png", args='-Glabel="'+str(key)+'"   ')
+        agraph.draw(prefix + str(key) + ".png", args='-Glabel="' + str(key) + '"   ')
+
 
 def plot(graph, layout="dot"):
     """Plots a graph using graphviz. Essentially it creates a pygraphviz graph from a NetworkX graph.
@@ -71,7 +67,7 @@ def plot(graph, layout="dot"):
     Args:
         graph (nx.Graph): The graph to plot.
         layout (str, optional): The layout to use. Defaults to "dot".
-    
+
     Returns:
         pygraphviz.agraph.AGraph: A pygraphviz graph.
 
@@ -418,10 +414,7 @@ class CStree:
 
         for l, stages in self.stages.items():
             for s in stages:
-                dftmp = s.to_df(
-                    labs,
-                    max_card=max_card,
-                    write_probs=write_probs)
+                dftmp = s.to_df(labs, max_card=max_card, write_probs=write_probs)
                 df = pd.concat([df, dftmp])
         df.reset_index(drop=True, inplace=True)
 
@@ -672,8 +665,7 @@ class CStree:
                 logging.debug("{}: {}".format(pair, val))
 
         logging.debug("#### minimal csis")
-        minl_csis_by_context = dependence._rels_by_level_2_by_context(
-            minl_csis)
+        minl_csis_by_context = dependence._rels_by_level_2_by_context(minl_csis)
         logging.debug(minl_csis_by_context)
         for pair, val in minl_csis_by_context.items():
             for csi in val:
@@ -783,11 +775,11 @@ class CStree:
             x = []
             while len(x) < self.p:
                 # Create tree dynamically if isnt already crated.
-                if (node not in self.tree) or len(
-                        self.tree.out_edges(node)) == 0:
+                if (node not in self.tree) or len(self.tree.out_edges(node)) == 0:
                     lev = len(node) - 1
-                    edges = [(node, node + (ind,))
-                             for ind in range(self.cards[lev + 1])]
+                    edges = [
+                        (node, node + (ind,)) for ind in range(self.cards[lev + 1])
+                    ]
 
                     self.tree.add_edges_from(edges)
 
@@ -822,8 +814,7 @@ class CStree:
 
                 edges = list(self.tree.out_edges(node))
 
-                probabilities = [self.tree[e[0]][e[1]]["cond_prob"]
-                                 for e in edges]
+                probabilities = [self.tree[e[0]][e[1]]["cond_prob"] for e in edges]
 
                 # ind is the index or the outcome of the set_d variable
                 vals = len(edges)
@@ -893,9 +884,11 @@ class CStree:
         x_\\mathbf{p})`.
         """
         factorized_outcomes = (
-            range(card)
-            if idx not in partial_observation
-            else (partial_observation[idx],)
+            (
+                range(card)
+                if idx not in partial_observation
+                else (partial_observation[idx],)
+            )
             for idx, card in enumerate(self.cards)
         )
         outcomes = product(*factorized_outcomes)
@@ -916,12 +909,11 @@ class CStree:
             return reduce(operator.mul, probs)
 
         if return_prob:
-            prob_dict = {outcome: _prob_of_outcome(
-                outcome) for outcome in outcomes}
+            prob_dict = {outcome: _prob_of_outcome(outcome) for outcome in outcomes}
             total_prob = sum(prob_dict.values())
             cond_prob_dict = {
-                outcome: prob_dict[outcome] /
-                total_prob for outcome in prob_dict}
+                outcome: prob_dict[outcome] / total_prob for outcome in prob_dict
+            }
             prediction = max(cond_prob_dict, key=cond_prob_dict.get)
             return prediction, cond_prob_dict[prediction]
         else:
@@ -1005,22 +997,19 @@ def sample_cstree(
                     minimal_stage_size / full_stage_space_size, prop_nonsingleton
                 )
             )
-            b = np.random.multinomial(
-                1, [prob_cvar, 1 - prob_cvar], size=1)[0][0]
+            b = np.random.multinomial(1, [prob_cvar, 1 - prob_cvar], size=1)[0][0]
             stagings[level] = []
 
             if b == 0:
                 print(b)
                 # it should be the whole space to begin with
                 stage_restr = stage_space.pop(0)
-                new_stage = st.sample_stage_restr_by_stage(
-                    stage_restr, mc, 1.0, cards)
+                new_stage = st.sample_stage_restr_by_stage(stage_restr, mc, 1.0, cards)
                 stagings[level].append(new_stage)
             continue  # cant add anything anyway so just go to the next level.
         stagings[level] = []
 
-        while (1 - (singleton_space_size / full_stage_space_size)
-               ) < prop_nonsingleton:
+        while (1 - (singleton_space_size / full_stage_space_size)) < prop_nonsingleton:
             colored_size_old = full_stage_space_size - singleton_space_size
             # Choose randomly a stage space
 
@@ -1081,8 +1070,9 @@ def sample_cstree(
 
     for level, staging in stagings.items():
         for i, stage in enumerate(staging):
-            if (level == -1) or ((level > 0)
-                                 and all([isinstance(i, int) for i in stage.list_repr])):
+            if (level == -1) or (
+                (level > 0) and all([isinstance(i, int) for i in stage.list_repr])
+            ):
                 stage.color = "black"
             else:
                 stage.color = colors[i]

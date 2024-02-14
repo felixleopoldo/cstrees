@@ -1,4 +1,3 @@
-
 # %load_ext autoreload
 # %autoreload 2
 import os
@@ -36,7 +35,9 @@ for seed in seeds:
                 for p in ps:
                     filename = pathlib.Path(
                         "seed~{}_p~{}_max_cvars~{}_cvar_prob~{}_prop_colored~{}.csv".format(
-                            seed, p, m, prob_cvar, prop_nonsingleton))
+                            seed, p, m, prob_cvar, prop_nonsingleton
+                        )
+                    )
                     if (folder / filename).is_file():
                         tmp = pd.read_csv(folder / filename)
 
@@ -51,8 +52,7 @@ for seed in seeds:
                         start = time.perf_counter()
                         print("Sample tree")
                         cards = [2] * p
-                        t = st.sample_cstree(
-                            cards, m, prob_cvar, prop_nonsingleton)
+                        t = st.sample_cstree(cards, m, prob_cvar, prop_nonsingleton)
                         t.sample_stage_parameters()
                         print("df {}".format(t.to_df()))
                         stop = time.perf_counter()
@@ -72,15 +72,21 @@ for seed in seeds:
                                 agraph.layout("dot")
                                 d = "src/figures/{}/".format(filename.stem)
                                 pathlib.Path(d).mkdir(exist_ok=True)
-                                agraph.draw("{}/{}_csi.png".format(d, key),
-                                            args='-Glabel="' + str(key) + '"   ')
+                                agraph.draw(
+                                    "{}/{}_csi.png".format(d, key),
+                                    args='-Glabel="' + str(key) + '"   ',
+                                )
 
-                        tmp = pd.DataFrame({"seed": [seed],
-                                            "p": [p],
-                                            "max_cvars": [m],
-                                            "cvar_prob": [prob_cvar],
-                                            "prop_colored": [prop_nonsingleton],
-                                            "time": [stop - start]})
+                        tmp = pd.DataFrame(
+                            {
+                                "seed": [seed],
+                                "p": [p],
+                                "max_cvars": [m],
+                                "cvar_prob": [prob_cvar],
+                                "prop_colored": [prop_nonsingleton],
+                                "time": [stop - start],
+                            }
+                        )
 
                         tmp.to_csv(folder / filename, index=False)
 

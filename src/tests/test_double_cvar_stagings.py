@@ -8,4 +8,4 @@ def test_max2_cvars_stagings_binary():
         stagings = list(dcs.codim_max2_boxes(var_outcomes))
         assert num_binary_stagings == len(stagings)
         for idx, staging in enumerate(stagings):
-            assert staging not in stagings[idx + 1:]
+            assert staging not in stagings[idx + 1 :]

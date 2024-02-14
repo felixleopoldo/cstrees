@@ -1,4 +1,5 @@
 """Evaluate estimated CStrees."""
+
 from itertools import product, pairwise
 from functools import reduce
 

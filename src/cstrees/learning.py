@@ -111,12 +111,7 @@ def n_stagings(cards: list[int], level: int, max_cvars: int = 1):
     return sum(1 for _ in stagings)
 
 
-def _optimal_staging_at_level(
-        order,
-        context_scores,
-        level,
-        max_cvars=2,
-        poss_cvars=[]):
+def _optimal_staging_at_level(order, context_scores, level, max_cvars=2, poss_cvars=[]):
     """Find the optimal staging at a given level.
 
     Args:
@@ -137,21 +132,15 @@ def _optimal_staging_at_level(
 
     var = order[level + 1]
 
-    poss_cvars_inds = [i for i, j in enumerate(
-        order) if j in poss_cvars and i <= level]
+    poss_cvars_inds = [i for i, j in enumerate(order) if j in poss_cvars and i <= level]
 
     # BUG: here it is actually []. But is gives all...
     if len(poss_cvars_inds) > 0:
-        stagings = all_stagings(
-            cards,
-            level,
-            max_cvars,
-            poss_cvars=poss_cvars_inds)
+        stagings = all_stagings(cards, level, max_cvars, poss_cvars=poss_cvars_inds)
     # If the posible cvars is empty, then all variables are in the same
     # stage/color.
     else:
-        stagings = [[stl.Stage([set(range(cards[l]))
-                               for l in cards[: level + 1]])]]
+        stagings = [[stl.Stage([set(range(cards[l])) for l in cards[: level + 1]])]]
     max_staging = None
     max_staging_score = -np.inf
 
@@ -227,8 +216,9 @@ def _optimal_cstree_given_order(order, context_scores):
 
     for level, staging in stages.items():
         for i, stage in enumerate(staging):
-            if (level == -1) or ((level > 0)
-                                 and all([isinstance(i, int) for i in stage.list_repr])):
+            if (level == -1) or (
+                (level > 0) and all([isinstance(i, int) for i in stage.list_repr])
+            ):
                 stage.color = "black"
             else:
                 stage.color = colors[i]
@@ -303,18 +293,17 @@ def _move_up(node_index, order, orderscore, node_scores, score_table):
     active_cvars1 = [
         v for v in order[:node_index] if v in score_table["poss_cvars"][node1]
     ]
-    active_cvars2 = [v for v in order[: node_index + 1]
-                     if v in score_table["poss_cvars"][node2]]
+    active_cvars2 = [
+        v for v in order[: node_index + 1] if v in score_table["poss_cvars"][node2]
+    ]
 
     pred1 = sc._list_to_score_key(active_cvars1)
     pred2 = sc._list_to_score_key(active_cvars2)
 
     node_scores[node_index] = score_table["scores"][order[node_index]][pred1]
-    node_scores[node_index +
-                1] = score_table["scores"][order[node_index + 1]][pred2]
+    node_scores[node_index + 1] = score_table["scores"][order[node_index + 1]][pred2]
 
-    orderscore += node_scores[node_index] + \
-        node_scores[node_index + 1] - tmp1 - tmp2
+    orderscore += node_scores[node_index] + node_scores[node_index + 1] - tmp1 - tmp2
 
     return orderscore
 
@@ -341,11 +330,9 @@ def _move_down(node_index, order, orderscore, node_scores, score_table):
     pred2 = sc._list_to_score_key(active_cvars2)
 
     node_scores[node_index] = score_table["scores"][order[node_index]][pred1]
-    node_scores[node_index -
-                1] = score_table["scores"][order[node_index - 1]][pred2]
+    node_scores[node_index - 1] = score_table["scores"][order[node_index - 1]][pred2]
 
-    orderscore += node_scores[node_index] + \
-        node_scores[node_index - 1] - tmp1 - tmp2
+    orderscore += node_scores[node_index] + node_scores[node_index - 1] - tmp1 - tmp2
 
     return orderscore
 
@@ -370,12 +357,10 @@ def _move_node(
 
     if node_index_from < node_index_to:
         for i in range(node_index_from, node_index_to):
-            orderscore = _move_up(
-                i, order, orderscore, node_scores, score_table)
+            orderscore = _move_up(i, order, orderscore, node_scores, score_table)
     else:
         for i in range(node_index_from, node_index_to, -1):
-            orderscore = _move_down(
-                i, order, orderscore, node_scores, score_table)
+            orderscore = _move_down(i, order, orderscore, node_scores, score_table)
     return orderscore
 
 
@@ -440,12 +425,9 @@ def gibbs_order_sampler(iterations, score_table):
         new_pos = np.random.choice(list(range(len(prop_probs))), p=prop_probs)
 
         neworder = order_trajectory[i - 1].copy()
-        orderscore = _move_node(node_index,
-                                new_pos,
-                                neworder,
-                                scores[i - 1],
-                                node_scores,
-                                score_table)
+        orderscore = _move_node(
+            node_index, new_pos, neworder, scores[i - 1], node_scores, score_table
+        )
 
         order_trajectory.append(neworder)
         scores.append(orderscore)  # O(p)

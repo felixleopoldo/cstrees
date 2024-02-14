@@ -11,13 +11,13 @@ import sys
 from importlib import reload  # Not needed in Python 2
 
 reload(logging)
-FORMAT = '%(filename)s:%(funcName)s (%(lineno)d):  %(message)s'
+FORMAT = "%(filename)s:%(funcName)s (%(lineno)d):  %(message)s"
 logging.basicConfig(stream=sys.stderr, level=logging.DEBUG, format=FORMAT)
 
 
 class Stage:
     """
-       A CStree stage.
+    A CStree stage.
     """
 
     def __init__(self, stage_repr, color=None, cards=None) -> None:
@@ -57,8 +57,8 @@ class Stage:
             Bool: True if the node is contained in the stage.
         """
 
-        if (len(node) == 0):
-            if (len(self.list_repr) == 0):
+        if len(node) == 0:
+            if len(self.list_repr) == 0:
                 return True
         for i, val in enumerate(self.list_repr):
             # Must check if list
@@ -114,18 +114,18 @@ class Stage:
         if (self.probs is not None) and write_probs:
             df = pd.DataFrame(d, columns=column_labels[:-max_card])
             df_prop = pd.DataFrame(
-                {"PROB_" + str(i): [prob] for i, prob in enumerate(self.probs)})
+                {"PROB_" + str(i): [prob] for i, prob in enumerate(self.probs)}
+            )
             df = pd.concat([df, df_prop], axis=1)
         else:
             df = pd.DataFrame(d, columns=column_labels)
         return df
 
     def set_random_params(self, cards):
-        self.probs = np.random.dirichlet(
-            [1] * cards[self.level])  # Need to fix this
+        self.probs = np.random.dirichlet([1] * cards[self.level])  # Need to fix this
 
     def __sub__(self, stage):
-        """ b is typically a sample from the space self.
+        """b is typically a sample from the space self.
 
         Args:
             csi (CSI_rel): The CSI relation to subract.
@@ -164,7 +164,7 @@ class Stage:
                         continue
                     # Create the new space
                     # This takes care of the fixed ones.
-                    l = b_list[:level] + [v] + a_list[level + 1:]
+                    l = b_list[:level] + [v] + a_list[level + 1 :]
                     result.append(Stage(l, cards=cards))
 
         return result
@@ -187,8 +187,8 @@ class Stage:
         return dependence.CSI(ci, context, cards=self.cards)
 
     def intersects(self, stage):
-        """ Checks if the paths of two stages intersect.
-            Since then they cannot be in the same CStree.
+        """Checks if the paths of two stages intersect.
+        Since then they cannot be in the same CStree.
         """
 
         # Suffcient with some level with no overlap to return False.
@@ -196,13 +196,13 @@ class Stage:
             s_lev = self.list_repr[i]
             # Either same number of both sets. It is always the same sets,
             # the whole outcome space.
-            if (lev == s_lev):
+            if lev == s_lev:
                 continue
             if isinstance(s_lev, list):
-                if (lev in s_lev):
+                if lev in s_lev:
                     continue
             if isinstance(lev, list):
-                if (s_lev in lev):
+                if s_lev in lev:
                     continue
             return False
         return True
@@ -214,15 +214,17 @@ class Stage:
     def __str__(self) -> str:
         if self.probs is not None:
             return "{}; probs: {}; color: {}".format(
-                self.list_repr, [round(x, 2) for x in self.probs], self.color)
+                self.list_repr, [round(x, 2) for x in self.probs], self.color
+            )
 
         # str(self.list_repr) + "; probs: " + str(round(self.probs, 2)) + "; color: " + str(self.color)
         return str(self.list_repr)
 
 
 def sample_stage_restr_by_stage(
-        stage: Stage, max_cvars: int, cvar_prob: float, cards: list):
-    """ Samples a Stage on the space restricted by the argument stage. Not allow singleton stages.
+    stage: Stage, max_cvars: int, cvar_prob: float, cards: list
+):
+    """Samples a Stage on the space restricted by the argument stage. Not allow singleton stages.
 
     Args:
         stage (Stage): Restrict the space by this stage.
@@ -237,7 +239,7 @@ def sample_stage_restr_by_stage(
     space = stage.list_repr
     levelplus1 = len(space)  # this is not the full p?
 
-    assert (max_cvars <= levelplus1)  # < Since at least one cannot be a cvar.
+    assert max_cvars <= levelplus1  # < Since at least one cannot be a cvar.
     # This may not be true if wa are at very low levels where the level in
     # sthe constraint.
     fixed_cvars = len(stage.csi.context.context)
@@ -257,12 +259,12 @@ def sample_stage_restr_by_stage(
             csilist[ind] = s
             cont_var_counter += 1
         else:
-            if cont_var_counter < max_cvars - \
-                    fixed_cvars:  # Make sure not too many context vars
+            if (
+                cont_var_counter < max_cvars - fixed_cvars
+            ):  # Make sure not too many context vars
                 # (i.e. a cond var), pick either one or all.
 
-                b = np.random.multinomial(
-                    1, [cvar_prob, 1 - cvar_prob], size=1)[0][0]
+                b = np.random.multinomial(1, [cvar_prob, 1 - cvar_prob], size=1)[0][0]
                 if b == 0:  # TODO: this should be able to happen anyway?
                     csilist[ind] = set(range(cards[ind]))
                 else:
@@ -276,8 +278,9 @@ def sample_stage_restr_by_stage(
     return Stage(csilist, cards=stage.cards)
 
 
-def sample_random_stage(cards: list, level: int,
-                        max_contextvars: int, prob: float) -> Stage:
+def sample_random_stage(
+    cards: list, level: int, max_contextvars: int, prob: float
+) -> Stage:
     """Sample a random non-singleton stage.
 
     Args:
@@ -297,8 +300,7 @@ def sample_random_stage(cards: list, level: int,
     if max_contextvars > level - 1:
         ncont = level - 1
 
-    possible_context_vars = np.random.choice(
-        range(level + 1), ncont, replace=False)
+    possible_context_vars = np.random.choice(range(level + 1), ncont, replace=False)
 
     context_vars = []
     # among the possible context variables, choose some of them.
@@ -308,8 +310,8 @@ def sample_random_stage(cards: list, level: int,
 
     # for each of the context variables, choose a random value. For the rest,
     # use the whole set.
-    vals = [None] * len(cards[:level + 1])
-    for i, _ in enumerate(cards[:level + 1]):
+    vals = [None] * len(cards[: level + 1])
+    for i, _ in enumerate(cards[: level + 1]):
         if i in context_vars:  # changed
             vals[i] = np.random.randint(cards[i])
         else:
