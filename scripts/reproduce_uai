@@ -380,7 +380,7 @@ def plot_kl_exps(path):
 
 if __name__ == "__main__":
     # check versions to ensure accurate reproduction
-    if version("cstrees") != "1.1.0":
+    if version("cstrees") != "1.2.0":
         warnings.warn(f"Current `cstrees` version unsupported.")
 
     path = "reproduced_uai_results/"
