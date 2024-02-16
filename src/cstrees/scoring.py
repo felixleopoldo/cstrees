@@ -1,10 +1,9 @@
+from itertools import combinations
+
 from scipy.special import loggamma
-from itertools import combinations, product
-import itertools
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
-import pp
 
 import cstrees.learning as learn
 import cstrees.cstree as ct
@@ -13,7 +12,7 @@ import cstrees.dependence as csi_rel
 
 
 def _counts_at_level(cstree: ct.CStree, level: int, data):
-    """ Collect all the observed counts at a specific level by stages.
+    """Collect all the observed counts at a specific level by stages.
     So the counts for level l depends on the stage of level l-1.
     (we probably have to ase these on context instead of stage)
     This is a bit legacy, it is only used when estimating parameters for a stage in th CStee class.
@@ -43,7 +42,7 @@ def _counts_at_level(cstree: ct.CStree, level: int, data):
         6  -  -  -  -
         >>> tree.sample_stage_parameters(alpha=1.0)
         >>> df = tree.sample(1000)
-        >>> counts = sc.counts_at_level(tree, 2, df)
+        >>> counts = sc._counts_at_level(tree, 2, df)
         >>> for key, val in counts.items():
         >>>    print("Stage: {}".format(key))
         >>>    print("Counts: {}".format(val))
@@ -67,7 +66,8 @@ def _counts_at_level(cstree: ct.CStree, level: int, data):
         if stage is None:  # singleton stage. Shold note be any of these in our setting.
             print("singleton stage")
         if stage not in stage_counts:
-            # only save the observed ones #[0] * t.cards[l]  # initiate with zeros.x
+            # only save the observed ones #[0] * t.cards[l]  # initiate with
+            # zeros.x
             stage_counts[stage] = {}
         if dataperm[i, level] in stage_counts[stage]:
             stage_counts[stage][dataperm[i, level]] += 1
@@ -76,8 +76,10 @@ def _counts_at_level(cstree: ct.CStree, level: int, data):
     return stage_counts
 
 
-def _score_context(var, context, context_vars, cards, counts, alpha_tot=1.0, method="BDeu"):
-    """ Building block for the CS-BDeu score as defined in C. Hughes et al., but here we calculate it for a specific variable and a context.
+def _score_context(
+    var, context, context_vars, cards, counts, alpha_tot=1.0, method="BDeu"
+):
+    """Building block for the CS-BDeu score as defined in C. Hughes et al., but here we calculate it for a specific variable and a context.
     These are then combined to get the CS-BDeu score.
 
     Args:
@@ -97,7 +99,7 @@ def _score_context(var, context, context_vars, cards, counts, alpha_tot=1.0, met
         float: The context score for var.
     """
     if method == "K2":
-        assert (alpha_tot == 1)
+        assert alpha_tot == 1
         alpha_obs = alpha_tot
         alpha_context = alpha_tot * cards[var]
     if method == "BD":  # This should be the Cooper-Herzkovits
@@ -119,9 +121,11 @@ def _score_context(var, context, context_vars, cards, counts, alpha_tot=1.0, met
     return score
 
 
-def _estimate_parameters(cstree: ct.CStree, stage, stage_counts, method="BDeu", alpha_tot=1.0):
-    """Estimate the parameters for a stage. 
-        TODO: This should probably depend on the context counts instead of the stage counts. 
+def _estimate_parameters(
+    cstree: ct.CStree, stage, stage_counts, method="BDeu", alpha_tot=1.0
+):
+    """Estimate the parameters for a stage.
+        TODO: This should probably depend on the context counts instead of the stage counts.
         It is legacy code and only called from the CStree class atm so its works anyway.
 
     Args:
@@ -158,18 +162,24 @@ def _estimate_parameters(cstree: ct.CStree, stage, stage_counts, method="BDeu", 
         if i not in stage_counts[stage]:
             probs[i] = alpha_obs / alpha_stage
         else:  # posterior mean or posterior predictive probabilites.
-            probs[i] = (alpha_obs + stage_counts[stage][i]) / \
-                (alpha_stage + stage_counts_total)
+            probs[i] = (alpha_obs + stage_counts[stage][i]) / (
+                alpha_stage + stage_counts_total
+            )
     return probs
 
 
-def _context_score_tables(data: pd.DataFrame,
-                         strategy="posterior", max_cvars=2, poss_cvars: dict | None = None,
-                         alpha_tot=1.0, method="BDeu"):
+def _context_score_tables(
+    data: pd.DataFrame,
+    strategy="posterior",
+    max_cvars=2,
+    poss_cvars: dict | None = None,
+    alpha_tot=1.0,
+    method="BDeu",
+):
     """Generates the context score tables for a dataset.
 
     Args:
-        data (pd.DataFrame): A dataset. 
+        data (pd.DataFrame): A dataset.
         strategy (str, optional): Defaults to "posterior".
         max_cvars (int, optional): Maximum number of variables in a context. Defaults to 2.
         poss_cvars (dict | None, optional): Possible context variabels for each variable. Defaults to None which means all.
@@ -190,10 +200,10 @@ def _context_score_tables(data: pd.DataFrame,
         >>> tree = ct.sample_cstree([2,2,2], max_cvars=1, prob_cvar=0.5, prop_nonsingleton=1)
         >>> tree.sample_stage_parameters(alpha=1.0)
         >>> df = tree.sample(1000)
-        >>> context_scores, context_counts = sc.context_score_tables(df, strategy="posterior", 
+        >>> context_scores, context_counts = sc.context_score_tables(df, strategy="posterior",
         >>>                                                          max_cvars=1,
-        >>>                                                          poss_cvars=None, 
-        >>>                                                          alpha_tot=1.0, 
+        >>>                                                          poss_cvars=None,
+        >>>                                                          alpha_tot=1.0,
         >>>                                                          method="BDeu")
         >>> pp.pprint(context_scores)
         Context score tables: 100%|██████████| 3/3 [00:00<00:00, 320.68it/s]
@@ -214,9 +224,9 @@ def _context_score_tables(data: pd.DataFrame,
                         '1=1': -634.4367535840818,
                         'None': -646.6852726819745}}}
     """
-    
+
     labels = list(data.columns)
-    
+
     if poss_cvars is None:
         poss_cvars = {l: list(set(labels) - {l}) for l in labels}
 
@@ -232,16 +242,17 @@ def _context_score_tables(data: pd.DataFrame,
     # go through all variables
     for var in tqdm(data.columns, desc="Context score tables"):
         # Iterate through all context sizes
-        for csize in range(max_cvars+1):
+        for csize in range(max_cvars + 1):
             # Iterate through all possible contexts
             # remove the current variable from the active labels
             labels = [l for l in data.columns if l != var]
 
             # Restricting to some possible context variables.
-            for context_variables in combinations([l for l in labels if l in poss_cvars[var]], csize):
+            for context_variables in combinations(
+                [l for l in labels if l in poss_cvars[var]], csize
+            ):
                 # get the active labels like A,B,C
-                active_labels = sorted(
-                    [l for l in labels if l in context_variables])
+                active_labels = sorted([l for l in labels if l in context_variables])
                 tmp = {c: None for c in active_labels}
 
                 if len(active_labels) == 0:
@@ -250,8 +261,7 @@ def _context_score_tables(data: pd.DataFrame,
                     test = data[1:].groupby(active_labels)[var].value_counts()
 
                 # get the counts
-                testdf = test.to_frame().rename(
-                    columns={var: str(var)+" counts"})
+                testdf = test.to_frame().rename(columns={var: str(var) + " counts"})
                 for index, r in testdf.iterrows():
                     value = None
 
@@ -259,8 +269,7 @@ def _context_score_tables(data: pd.DataFrame,
                     context = ""
                     if len(active_labels) > 0:
                         for cvarind, val in enumerate(index[:-1]):
-                            context += "{}={},".format(
-                                active_labels[cvarind], val)
+                            context += "{}={},".format(active_labels[cvarind], val)
                         context = context[:-1]
                         value = index[-1]
                     else:
@@ -275,17 +284,23 @@ def _context_score_tables(data: pd.DataFrame,
         # Using the counts to compute the scores
         for count_context in counts["var_counts"][var]:
             active_labels = counts["var_counts"][var][count_context]["context_vars"]
-            score = _score_context(var, count_context, active_labels, cards_dict,
-                                   counts["var_counts"], alpha_tot=alpha_tot, method=method)
+            score = _score_context(
+                var,
+                count_context,
+                active_labels,
+                cards_dict,
+                counts["var_counts"],
+                alpha_tot=alpha_tot,
+                method=method,
+            )
             scores["scores"][var][count_context] = score
 
     return scores, counts
 
 
 def _list_to_score_key(labels: list):
-    subset = labels
-    subset.sort()
-    subset_str = ','.join([str(v) for v in subset])
+    subset = sorted(labels)
+    subset_str = ",".join([str(v) for v in subset])
     if subset_str == "":
         subset_str = "None"
     return subset_str
@@ -299,7 +314,6 @@ def _stage_to_context_key(stage: st.Stage, labels: list):
         # need to relabeled first
         cvars = {}
         for cvarind, val in enumerate(stage.list_repr):
-
             if isinstance(val, int):  # a context variable
                 cvars[labels[cvarind]] = val
 
@@ -318,23 +332,28 @@ def _log_n_stagings_tables(labels, cards_dict, poss_cvars, max_cvars=2):
 
     for var in tqdm(labels, desc="Creating #stagings tables"):
         # all cards except the current one
-        cur_cards = [cards_dict[l]
-                     for l in labels if (l != var) and (l in poss_cvars[var])]
+        cur_cards = [
+            cards_dict[l] for l in labels if (l != var) and (l in poss_cvars[var])
+        ]
         for subset in csi_rel._powerset(cur_cards):
             staging_lev = len(subset) - 1
             subset_str = _list_to_score_key(list(subset))
 
             if subset_str not in n_stagings:
-                n_stagings[subset_str] = np.log(learn.n_stagings(list(subset),
-                                                                 staging_lev,
-                                                                 max_cvars=max_cvars))
+                n_stagings[subset_str] = np.log(
+                    learn.n_stagings(list(subset), staging_lev, max_cvars=max_cvars)
+                )
     return n_stagings
 
 
-def order_score_tables(data: pd.DataFrame,
-                       strategy="posterior", max_cvars=2,
-                       poss_cvars: dict | None = None,
-                       alpha_tot=1.0, method="BDeu"):
+def order_score_tables(
+    data: pd.DataFrame,
+    strategy="posterior",
+    max_cvars=2,
+    poss_cvars: dict | None = None,
+    alpha_tot=1.0,
+    method="BDeu",
+):
     """Calculatee the order score tables for a dataset.
 
     Args:
@@ -357,9 +376,9 @@ def order_score_tables(data: pd.DataFrame,
         >>> import numpy as np
         >>> import random
         >>> np.random.seed(1)
-        >>> random.seed(1)  
+        >>> random.seed(1)
         >>>
-        >>> tree = ct.sample_cstree([2,2,2], max_cvars=1, prob_cvar=0.5, prop_nonsingleton=1, 
+        >>> tree = ct.sample_cstree([2,2,2], max_cvars=1, prob_cvar=0.5, prop_nonsingleton=1,
         >>>                         labels=["X"+str(i) for i in range(1, 4)])
         >>> tree.sample_stage_parameters(1.0)
         >>> df = tree.sample(500)
@@ -444,9 +463,14 @@ def order_score_tables(data: pd.DataFrame,
     if poss_cvars is None:
         poss_cvars = {l: list(set(labels) - {l}) for l in labels}
 
-    context_scores, context_counts = _context_score_tables(data, strategy=strategy, max_cvars=max_cvars,
-                                                          poss_cvars=poss_cvars,
-                                                          alpha_tot=alpha_tot, method=method)
+    context_scores, context_counts = _context_score_tables(
+        data,
+        strategy=strategy,
+        max_cvars=max_cvars,
+        poss_cvars=poss_cvars,
+        alpha_tot=alpha_tot,
+        method=method,
+    )
 
     context_scores["max_cvars"] = max_cvars
     context_scores["poss_cvars"] = poss_cvars
@@ -454,7 +478,8 @@ def order_score_tables(data: pd.DataFrame,
     cards_dict = {var: data.loc[0, var] for var in data.columns}
 
     log_n_stagings = _log_n_stagings_tables(
-        labels, cards_dict, poss_cvars, max_cvars=max_cvars)
+        labels, cards_dict, poss_cvars, max_cvars=max_cvars
+    )
 
     p = data.shape[1]
 
@@ -463,24 +488,24 @@ def order_score_tables(data: pd.DataFrame,
     order_scores["poss_cvars"] = poss_cvars
     order_scores["scores"] = {var: {} for var in labels}
     for var in tqdm(labels, desc="Order score tables"):
-
         # Ths subset are the variables before var in the order
         for subset in csi_rel._powerset(poss_cvars[var]):
             # TODO: It should sum over all the subsets for each subset.
             # This could be done faster using Hasse diagrams?
-            staging_level = len(subset)-1
+            staging_level = len(subset) - 1
 
             subset_str = _list_to_score_key(list(subset))
 
             cards = [cards_dict[l] for l in subset]
 
             # Te prior is uniform voer all stagings so we have it outside (ok?)
-            cards_str = _list_to_score_key(cards[:staging_level+1])
+            cards_str = _list_to_score_key(cards[: staging_level + 1])
             log_staging_prior = -log_n_stagings[cards_str]
-            log_level_prior = -np.log(p - staging_level-1)
+            log_level_prior = -np.log(p - staging_level - 1)
 
-            for i, staging in enumerate(learn.all_stagings(cards, staging_level, max_cvars=max_cvars)):
-
+            for i, staging in enumerate(
+                learn.all_stagings(cards, staging_level, max_cvars=max_cvars)
+            ):
                 staging_unnorm_post = log_level_prior + log_staging_prior
                 # this is for the level -1
                 if staging == []:  # special case at level -1
@@ -497,7 +522,8 @@ def order_score_tables(data: pd.DataFrame,
                     order_scores["scores"][var][subset_str] = staging_unnorm_post
                 else:
                     order_scores["scores"][var][subset_str] = _logsumexp(
-                        [order_scores["scores"][var][subset_str], staging_unnorm_post])
+                        [order_scores["scores"][var][subset_str], staging_unnorm_post]
+                    )
 
     return order_scores, context_scores, context_counts
 
@@ -521,9 +547,9 @@ def score_order(order, order_scores):
         >>> import numpy as np
         >>> import random
         >>> np.random.seed(1)
-        >>> random.seed(1)  
+        >>> random.seed(1)
         >>>
-        >>> tree = ct.sample_cstree([2,2,2], max_cvars=1, prob_cvar=0.5, prop_nonsingleton=1, 
+        >>> tree = ct.sample_cstree([2,2,2], max_cvars=1, prob_cvar=0.5, prop_nonsingleton=1,
         >>>                          labels=["X"+str(i) for i in range(1, 4)])
         >>> tree.sample_stage_parameters(1.0)
         >>> df = tree.sample(500)
@@ -538,8 +564,7 @@ def score_order(order, order_scores):
     """
     log_score = 0  # log score
     for level, var in enumerate(order):
-        poss_parents = list(set(order[:level]) & set(
-            order_scores["poss_cvars"][var]))
+        poss_parents = list(set(order[:level]) & set(order_scores["poss_cvars"][var]))
         # possible parents as string
         poss_parents_str = _list_to_score_key(poss_parents)
         score = order_scores["scores"][var][poss_parents_str]

@@ -7,10 +7,11 @@ def get_parser():
     """
     Creates a new argument parser.
     """
-    parser = argparse.ArgumentParser('CStrees')
-    version = '%(prog)s ' + __version__
-    parser.add_argument('--version', '-v', action='version', version=version)
+    parser = argparse.ArgumentParser("CStrees")
+    version = "%(prog)s " + __version__
+    parser.add_argument("--version", "-v", action="version", version=version)
     return parser
+
 
 def main(args=None):
     """
@@ -26,8 +27,8 @@ def main(args=None):
     args = parser.parse_args(args)
 
     # Put your main script logic here
-    print('No action defined for cstrees module!')
+    print("No action defined for cstrees module!")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

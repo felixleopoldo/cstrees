@@ -9,4 +9,3 @@ def test_max2_cvars_stagings_binary():
         assert num_binary_stagings == len(stagings)
         for idx, staging in enumerate(stagings):
             assert staging not in stagings[idx + 1 :]
-
