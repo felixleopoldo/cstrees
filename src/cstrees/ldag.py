@@ -144,46 +144,7 @@ def _getDAGmap(df):
     
     return adjmat
 
-def get_LDAG(cstree, varorder=None):
-    """REturns the LDAG representation of a CStree
-
-    Args:
-        cstree (CStree): A CStree object
-        varorder (CStree orded, optional): This might be redundant.
-
-    Returns:
-        Networkx graph: An LDAG representation of the CStree. It is a Networkx DAG with labels on the edges.
-    """
-    
-    df = cstree.to_df()
-    # convert variable names to integer values for purposes of finding LDAG representation
-    # These are later converted back to the variable names using an option in plotLDAG
-    df.columns = range(len(df.columns))
-    
-    num_nodes = len(list(df.columns))   
-    adjMat = _getDAGmap(df)
-    labels = _collectLabels(df)
-    
-    LDAG = nx.DiGraph(adjMat)
-    
-    if varorder != None:
-        newEdges = _updateEdges(labels, varorder)
-        newLabels = dict.fromkeys(newEdges)
-        labelkeys = list(labels.keys())
-        for i in range(len(labelkeys)):
-            newLabels[newEdges[i]] = labels[labelkeys[i]]
-        
-        newVertices = {}
-        for i in range(num_nodes):
-            newVertices[i] = varorder[i]
-        
-        LDAG = nx.relabel_nodes(LDAG, newVertices)        
-        nx.set_edge_attributes(LDAG, newLabels, 'label')
-    else:
-        nx.set_edge_attributes(LDAG, labels, 'label')
-    return LDAG
-    
-def plot_LDAG(LDAG, varorder=None, graphviz_prog="dot", graphviz_args=""):
+def plot(LDAG, varorder=None, graphviz_prog="dot", graphviz_args=""):
     
     agraph = nx.nx_agraph.to_agraph(LDAG)
     #agraph.layout(prog='circo', args='-Goneblock=True')
