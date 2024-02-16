@@ -144,7 +144,16 @@ def _getDAGmap(df):
     
     return adjmat
 
-def plot_LDAG(cstree, varorder=None, graphviz_prog="dot", graphviz_args=""):
+def get_LDAG(cstree, varorder=None):
+    """REturns the LDAG representation of a CStree
+
+    Args:
+        cstree (CStree): A CStree object
+        varorder (CStree orded, optional): This might be redundant.
+
+    Returns:
+        Networkx graph: An LDAG representation of the CStree. It is a Networkx DAG with labels on the edges.
+    """
     
     df = cstree.to_df()
     # convert variable names to integer values for purposes of finding LDAG representation
@@ -155,7 +164,7 @@ def plot_LDAG(cstree, varorder=None, graphviz_prog="dot", graphviz_args=""):
     adjMat = _getDAGmap(df)
     labels = _collectLabels(df)
     
-    G = nx.DiGraph(adjMat)
+    LDAG = nx.DiGraph(adjMat)
     
     if varorder != None:
         newEdges = _updateEdges(labels, varorder)
@@ -168,19 +177,15 @@ def plot_LDAG(cstree, varorder=None, graphviz_prog="dot", graphviz_args=""):
         for i in range(num_nodes):
             newVertices[i] = varorder[i]
         
-        H = nx.relabel_nodes(G, newVertices)        
-        nx.set_edge_attributes(H, newLabels, 'label')
-        
-        agraph = nx.nx_agraph.to_agraph(H)
-        #agraph.layout(prog='circo', args='-Goneblock=True')
-        agraph.layout(prog=graphviz_prog, args=graphviz_args)
-        
-        return agraph
-
+        LDAG = nx.relabel_nodes(LDAG, newVertices)        
+        nx.set_edge_attributes(LDAG, newLabels, 'label')
     else:
-        #H = nx.relabel_nodes(G, newVertices)        
-        nx.set_edge_attributes(G, labels, 'label')
-        agraph = nx.nx_agraph.to_agraph(G)
-        #agraph.layout(prog='circo', args='-Goneblock=True')
-        agraph.layout(prog=graphviz_prog, args=graphviz_args)
-        return agraph
+        nx.set_edge_attributes(LDAG, labels, 'label')
+    return LDAG
+    
+def plot_LDAG(LDAG, varorder=None, graphviz_prog="dot", graphviz_args=""):
+    
+    agraph = nx.nx_agraph.to_agraph(LDAG)
+    #agraph.layout(prog='circo', args='-Goneblock=True')
+    agraph.layout(prog=graphviz_prog, args=graphviz_args)
+    return agraph
