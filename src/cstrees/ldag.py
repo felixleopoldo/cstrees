@@ -1,21 +1,18 @@
-import sys
-import logging
-import random
-import time
-
 from causallearn.search.ConstraintBased.PC import pc
 from causallearn.utils.cit import chisq
 
 import pandas as pd
-import matplotlib.pyplot as plt
-import cstrees.cstree as ct
-import cstrees.scoring as sc
-import cstrees.stage as st
-import cstrees.learning as ctl
 import networkx as nx
 import numpy as np
 import pp
 
+
+class LDAG(nx.DiGraph):
+    
+    def plot_graphviz(self, prog="dot", args=""):            
+        agraph = nx.nx_agraph.to_agraph(self)
+        agraph.layout(prog=prog, args=args)
+        return agraph    
 
 # Functions needed for generating LDAG representation from a dataframe representation of the staging
 # of a CStree
@@ -143,10 +140,3 @@ def _getDAGmap(df):
     adjmat = np.matrix(adjmat)
     
     return adjmat
-
-def plot(LDAG, varorder=None, graphviz_prog="dot", graphviz_args=""):
-    
-    agraph = nx.nx_agraph.to_agraph(LDAG)
-    #agraph.layout(prog='circo', args='-Goneblock=True')
-    agraph.layout(prog=graphviz_prog, args=graphviz_args)
-    return agraph

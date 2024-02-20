@@ -941,7 +941,7 @@ class CStree:
         adjMat = ldag._getDAGmap(df)
         labels = ldag._collectLabels(df)
         
-        LDAG = nx.DiGraph(adjMat)
+        LDAG = ldag.LDAG(adjMat)
         varorder = self.labels
         
         newEdges = ldag._updateEdges(labels, varorder)
@@ -954,7 +954,7 @@ class CStree:
         for i in range(num_nodes):
             newVertices[i] = varorder[i]
         
-        LDAG = nx.relabel_nodes(LDAG, newVertices)        
+        LDAG = nx.relabel_nodes(LDAG, newVertices)
         nx.set_edge_attributes(LDAG, newLabels, 'label')
 
         return LDAG

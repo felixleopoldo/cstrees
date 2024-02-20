@@ -56,6 +56,8 @@ html:
 	cp ../notebooks/fig1_demo.ipynb source 
 	cp ../notebooks/learn_demo.ipynb source
 	cp ../notebooks/learn_demo_gibbs.ipynb source
+	cp ../notebooks/alarm_ldag_repr.ipynb source
+	cp ../notebooks/sachs_ldag_repr.ipynb source
 	$(SPHINXBUILD) -b html $(ALLSPHINXOPTS) $(BUILDDIR)/html
 	@echo
 	@echo "Build finished. The HTML pages are in $(BUILDDIR)/html."
