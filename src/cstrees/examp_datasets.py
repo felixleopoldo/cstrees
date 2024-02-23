@@ -1,5 +1,6 @@
 from importlib import resources
 import pandas as pd
+import numpy as np
 
 from . import datasets
 
@@ -28,7 +29,7 @@ def sachs_observational(binarized: bool = True) -> pd.DataFrame:
     data_path = resources.files(datasets) / "sachs_observational.csv"
     df = pd.read_csv(data_path)
     if binarized:
-        sachsnp = sachs.to_numpy()
+        sachsnp = df.to_numpy()
         sachs2 = np.zeros([len(df), len(list(df.columns))], int)
         for i in range(len(list(df.columns))):
             sachs2[:, i] = pd.cut(sachsnp[:, i], 2, labels=False)
