@@ -4,8 +4,8 @@ import pandas as pd
 from . import datasets
 
 
-def sachs_observational() -> pd.DataFrame:
-    """Binarized observational dataset extracted from [1]_
+def sachs_observational(binarized: bool = True) -> pd.DataFrame:
+    """(Binarized) observational dataset extracted from [1]_
 
     See Appendix C.3 of [2]_ and Section 5.2 of [3]_ for details of how
     the raw data is processed.
@@ -26,4 +26,11 @@ def sachs_observational() -> pd.DataFrame:
     Information Processing Systems, 30, 2017.
     """
     data_path = resources.files(datasets) / "sachs_observational.csv"
-    return pd.read_csv(data_path)
+    df = pd.read_csv(data_path)
+    if binarized:
+        sachsnp = sachs.to_numpy()
+        sachs2 = np.zeros([len(df), len(list(df.columns))], int)
+        for i in range(len(list(df.columns))):
+            sachs2[:, i] = pd.cut(sachsnp[:, i], 2, labels=False)
+        df = pd.DataFrame(sachs2, columns=list(df.columns))
+    return df
