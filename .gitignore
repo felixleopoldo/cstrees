@@ -53,4 +53,4 @@ dist/**
 .vscode
 .Rhistory
 build
-*__meta__.py
+src/tests/__meta__.py
