@@ -35,3 +35,21 @@ def sachs_observational(binarized: bool = True) -> pd.DataFrame:
             sachs2[:, i] = pd.cut(sachsnp[:, i], 2, labels=False)
         df = pd.DataFrame(sachs2, columns=list(df.columns))
     return df
+
+
+def alarm():
+    """Discrete observational (realistically sythetic) dataset from [1]_
+
+    Also availale from the R package `bnlearn <https://www.bnlearn.com/documentation/man/alarm.html>`_.
+
+    References
+    ----------
+    .. [1] I. Beinlich, H. J. Suermondt, R. M. Chavez, G. F. Cooper.
+    The ALARM Monitoring System: A Case Study with Two Probabilistic
+    Inference Techniques for Belief Networks. Proceedings of the 2nd
+    European Conference on Artificial Intelligence in Medicine,
+    247–256, 1989.
+    """
+    data_path = resources.files(datasets) / "alarm.csv"
+    df = pd.read_csv(data_path)
+    return df
