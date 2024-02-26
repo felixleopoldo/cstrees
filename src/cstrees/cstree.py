@@ -922,7 +922,7 @@ class CStree:
             return prediction
 
     def to_LDAG(self):
-        """REturns the LDAG representation of a CStree
+        """Returns the LDAG representation of a CStree
 
         Args:
             cstree (CStree): A CStree object
@@ -931,31 +931,31 @@ class CStree:
         Returns:
             Networkx graph: An LDAG representation of the CStree. It is a Networkx DAG with labels on the edges.
         """
-        
+
         df = self.to_df()
         # convert variable names to integer values for purposes of finding LDAG representation
         # These are later converted back to the variable names using an option in plotLDAG
         df.columns = range(len(df.columns))
-        
-        num_nodes = len(list(df.columns))   
+
+        num_nodes = len(list(df.columns))
         adjMat = ldag._getDAGmap(df)
         labels = ldag._collectLabels(df)
-        
+
         LDAG = ldag.LDAG(adjMat)
         varorder = self.labels
-        
+
         newEdges = ldag._updateEdges(labels, varorder)
         newLabels = dict.fromkeys(newEdges)
         labelkeys = list(labels.keys())
         for i in range(len(labelkeys)):
             newLabels[newEdges[i]] = labels[labelkeys[i]]
-        
+
         newVertices = {}
         for i in range(num_nodes):
             newVertices[i] = varorder[i]
-        
+
         LDAG = nx.relabel_nodes(LDAG, newVertices)
-        nx.set_edge_attributes(LDAG, newLabels, 'label')
+        nx.set_edge_attributes(LDAG, newLabels, "label")
 
         return LDAG
 
