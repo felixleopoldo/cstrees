@@ -8,6 +8,7 @@ from importlib import reload  # Not needed in Python 2
 import networkx as nx
 import numpy as np
 import pandas as pd
+from causallearn.search.ConstraintBased.PC import pc
 
 import cstrees.stage as st
 from cstrees import dependence
@@ -112,7 +113,7 @@ class CStree:
         >>> tree.sample_stage_parameters()
     """
 
-    def __init__(self, cards, labels=None):
+    def __init__(self, cards=[], labels=None):
         self.tree = None
         self.stages = None
         self.cards = cards
@@ -476,7 +477,6 @@ class CStree:
         import cstrees.scoring as sc
 
         # Set stage probabilities
-
         for lev, stages in self.stages.items():
             if lev == self.p - 1:
                 continue
@@ -920,6 +920,32 @@ class CStree:
         else:
             prediction = max(outcomes, key=_prob_of_outcome)
             return prediction
+
+    def fit(self, data: pd.DataFrame, poss_cvars=None):
+        """High-level wrapper combining model selection and parameter estimation."""
+        import cstrees.scoring as sc
+        import cstrees.learning as ctl
+
+        if poss_cvars is None:
+            # estimate possible context variables and create score tables
+            graph = pc(data.values, 0.05, "gsq", node_names=data.columns)
+            poss_cvars = ctl.causallearn_graph_to_posscvars(graph, labels=data.columns)
+
+        score_table, context_scores, _ = sc.order_score_tables(
+            data, max_cvars=2, alpha_tot=1.0, method="BDeu", poss_cvars=poss_cvars
+        )
+
+        # run Gibbs sampler to get MAP order
+        orders, scores = ctl.gibbs_order_sampler(5000, score_table)
+        map_order = orders[scores.index(max(scores))]
+
+        # estimate CStree
+        opt_tree = ctl._optimal_cstree_given_order(map_order, context_scores)
+        old_labels = self.labels
+        self.__dict__.update(opt_tree.__dict__)
+        if len(old_labels):
+            self.labels = [old_labels[idx] for idx in self.labels]
+        return self
 
     def to_LDAG(self):
         """Returns the LDAG representation of a CStree
