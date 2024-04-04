@@ -984,7 +984,87 @@ class CStree:
         nx.set_edge_attributes(LDAG, newLabels, "label")
 
         return LDAG
+    
+    def pmf(self, x):
+        """Calculate the probability mass function of a given outcome.
 
+        Args:
+            x (list): A list of values representing the outcome.
+
+        Returns:
+            float: The probability mass of the outcome.
+        """
+        prob = 1
+        for i, val in enumerate(x[:-1]):
+            stage = self.get_stage(x[: i + 1])
+            prob *= stage.probs[val]
+
+        return prob
+    
+    def pmf_log(self, x):
+        """Calculate the log probability mass function of a given outcome.
+
+        Args:
+            x (list): A list of values representing the outcome.
+
+        Returns:
+            float: The log probability mass of the outcome.
+        """
+        log_prob = 0
+        for i, val in enumerate(x[:-1]):
+            stage = self.get_stage(x[: i + 1])
+            log_prob += np.log(stage.probs[val])
+
+        return log_prob
+    
+    def to_joint_distribution(self):
+        """Return the joint distribution of the CStree.
+        
+        Example:
+            >>> df = tree.to_joint_distribution()
+            >>> print(df)
+                X1	X2	X3	X4	prob		log_prob
+            0	0	0	0	0	0.068657	-2.678635
+            1	0	0	0	1	0.068657	-2.678635
+            2	0	0	1	0	0.137287	-1.985679
+            3	0	0	1	1	0.137287	-1.985679
+            4	0	1	0	0	0.429202	-0.845828
+            5	0	1	0	1	0.429202	-0.845828
+            6	0	1	1	0	0.086900	-2.442994
+            7	0	1	1	1	0.086900	-2.442994
+            8	1	0	0	0	0.023855	-3.735747
+            9	1	0	0	1	0.023855	-3.735747
+            10	1	0	1	0	0.047702	-3.042791
+            11	1	0	1	1	0.047702	-3.042791
+            12	1	1	0	0	0.149130	-1.902940
+            13	1	1	0	1	0.149130	-1.902940
+            14	1	1	1	0	0.030194	-3.500105
+            15	1	1	1	1	0.030194	-3.500105
+        Returns:
+            Pandas Dataframe: The joint distribution of the CStree.
+        """
+        
+        ""
+        # Iterate over all possible outcomes and calculate the probability mass function.
+        # Store the outcomes together with the probabilities in a Pandas Dataframe.
+        outcomes = product(*[range(card) for card in self.cards])
+        
+        # Create an empty dataframe with the correct column names
+        df_outcomes = pd.DataFrame(columns=self.labels)                
+        # store all the outcomes and probabilities 
+        pmfs = [None]*np.prod(self.cards)
+        pmfs_log = [None]*np.prod(self.cards)
+        for i, outcome in enumerate(outcomes):
+            df_outcomes.loc[i] = outcome
+            pmfs[i] = self.pmf(outcome)
+            pmfs_log[i] = self.pmf_log(outcome)
+            
+        df_pmf = pd.DataFrame(pmfs, columns=["prob"])
+        df_pmf_log = pd.DataFrame(pmfs_log, columns=["log_prob"])
+        # join the two dataframes
+        df = pd.concat([df_outcomes, df_pmf, df_pmf_log], axis=1)
+                        
+        return df                
 
 def sample_cstree(
     cards: list[int],
