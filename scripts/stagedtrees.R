@@ -22,9 +22,9 @@ estimate_joint_distribution <- function(data){
   
 }
 
-samp_size_range <- c(1000)
-seeds <-  seq(10)-1
-num_levels_range <- c(5, 7)
+samp_size_range <- c(100, 1000, 10000)
+seeds <-  seq(20)-1
+num_levels_range <- c(5)
 path <- "sim_results"
 
 

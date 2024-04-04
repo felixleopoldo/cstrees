@@ -998,10 +998,16 @@ class CStree:
         if label_order is None:
             label_order = self.labels
         
+        #print(label_order)
         x = [x[label_order.index(l)] for l in self.labels]
+        #print(x)
+        
         prob = 1
-        for i, val in enumerate(x[:-1]):
-            stage = self.get_stage(x[: i + 1])
+        for i, val in enumerate(x):
+            stage = self.get_stage(x[: i ])
+            #print(x[: i ])
+            #print(val)
+            #print(stage.probs[val])
             prob *= stage.probs[val]
 
         return prob
@@ -1022,8 +1028,9 @@ class CStree:
         x = [x[label_order.index(l)] for l in self.labels]
         
         log_prob = 0
-        for i, val in enumerate(x[:-1]):
-            stage = self.get_stage(x[: i + 1])
+        for i, val in enumerate(x):
+
+            stage = self.get_stage(x[: i])
             log_prob += np.log(stage.probs[val])
 
         return log_prob
