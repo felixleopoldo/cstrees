@@ -984,8 +984,9 @@ class CStree:
         nx.set_edge_attributes(LDAG, newLabels, "label")
 
         return LDAG
-    
-    def pmf(self, x):
+
+
+    def pmf(self, x, label_order=None):
         """Calculate the probability mass function of a given outcome.
 
         Args:
@@ -994,14 +995,18 @@ class CStree:
         Returns:
             float: The probability mass of the outcome.
         """
+        if label_order is None:
+            label_order = self.labels
+        
+        x = [x[label_order.index(l)] for l in self.labels]
         prob = 1
         for i, val in enumerate(x[:-1]):
             stage = self.get_stage(x[: i + 1])
             prob *= stage.probs[val]
 
         return prob
-    
-    def pmf_log(self, x):
+
+    def pmf_log(self, x, label_order=None):
         """Calculate the log probability mass function of a given outcome.
 
         Args:
@@ -1010,16 +1015,22 @@ class CStree:
         Returns:
             float: The log probability mass of the outcome.
         """
+        if label_order is None:
+            label_order = self.labels
+
+        # relabel the outcome
+        x = [x[label_order.index(l)] for l in self.labels]
+        
         log_prob = 0
         for i, val in enumerate(x[:-1]):
             stage = self.get_stage(x[: i + 1])
             log_prob += np.log(stage.probs[val])
 
         return log_prob
-    
-    def to_joint_distribution(self):
+
+    def to_joint_distribution(self, label_order=None):
         """Return the joint distribution of the CStree.
-        
+
         Example:
             >>> df = tree.to_joint_distribution()
             >>> print(df)
@@ -1043,28 +1054,32 @@ class CStree:
         Returns:
             Pandas Dataframe: The joint distribution of the CStree.
         """
-        
+
         ""
+        if label_order is None:
+            label_order = self.labels
+        
         # Iterate over all possible outcomes and calculate the probability mass function.
         # Store the outcomes together with the probabilities in a Pandas Dataframe.
         outcomes = product(*[range(card) for card in self.cards])
-        
+
         # Create an empty dataframe with the correct column names
-        df_outcomes = pd.DataFrame(columns=self.labels)                
-        # store all the outcomes and probabilities 
+        #df_outcomes = pd.DataFrame(columns=self.labels)
+        df_outcomes = pd.DataFrame(columns=label_order)
+        # store all the outcomes and probabilities
         pmfs = [None]*np.prod(self.cards)
         pmfs_log = [None]*np.prod(self.cards)
         for i, outcome in enumerate(outcomes):
             df_outcomes.loc[i] = outcome
-            pmfs[i] = self.pmf(outcome)
-            pmfs_log[i] = self.pmf_log(outcome)
-            
+            pmfs[i] = self.pmf(outcome, label_order)
+            pmfs_log[i] = self.pmf_log(outcome, label_order)
+
         df_pmf = pd.DataFrame(pmfs, columns=["prob"])
         df_pmf_log = pd.DataFrame(pmfs_log, columns=["log_prob"])
         # join the two dataframes
         df = pd.concat([df_outcomes, df_pmf, df_pmf_log], axis=1)
-                        
-        return df                
+
+        return df
 
 def sample_cstree(
     cards: list[int],

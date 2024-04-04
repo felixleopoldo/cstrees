@@ -8,6 +8,19 @@ from scipy.special import rel_entr
 
 from cstrees.cstree import CStree
 
+def KL_divergence(df_distr1, df_distr2):
+    """Calculate the KL divergence between two distributions using scipy rel_entr.
+    df_distr2 is typically the true distribution and df_distr1 is the estimated distribution.
+    """
+
+    distr1 = df_distr1["prob"].values
+    distr2 = df_distr2["prob"].values
+    
+    log_distr1 = df_distr1["log_prob"].values
+    log_distr2 = df_distr2["log_prob"].values
+
+
+    return np.sum(rel_entr(distr1, distr2))
 
 def kl_divergence(estimated: CStree, true: CStree) -> float:
     """Quantify how distribution of estimated CStree differs from that of true CStree.
