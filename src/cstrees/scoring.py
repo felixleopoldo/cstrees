@@ -160,7 +160,10 @@ def _estimate_parameters(
     for i in range(cstree.cards[level]):
         # no observations here so use only prior
         if i not in stage_counts[stage]:
-            probs[i] = alpha_obs / alpha_stage
+            if alpha_obs == 0:
+                probs[i] = 0
+            else:
+                probs[i] = alpha_obs / alpha_stage
         else:  # posterior mean or posterior predictive probabilites.
             probs[i] = (alpha_obs + stage_counts[stage][i]) / (
                 alpha_stage + stage_counts_total

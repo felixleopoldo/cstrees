@@ -64,7 +64,7 @@ def estimate_cstree_distr(data_path, est_path, seeds, samp_size_range, num_level
     """ Estimate the CStree for all datasets in data_path.
     """
     Path(est_path).mkdir(parents=True, exist_ok=True)
-    
+    alpha = 0
     # get all data files
     for num_levels in num_levels_range:
         cards = [2] * num_levels
@@ -79,12 +79,18 @@ def estimate_cstree_distr(data_path, est_path, seeds, samp_size_range, num_level
                 print(f"Estimating CStree for {data_path}/{name}...")
                 data = pd.read_csv(f"{data_path}/{name}")
                 
-                score_table, context_scores, context_counts = sc.order_score_tables(
-                data, max_cvars=2, alpha_tot=1.0, method="BDeu", poss_cvars=None)
+                score_table, context_scores, context_counts = sc.order_score_tables(                
+                data, max_cvars=2, alpha_tot=1, method="BDeu", poss_cvars=None)
+                
                 orders, scores = ctl.gibbs_order_sampler(5000, score_table)
                 maporder = orders[scores.index(max(scores))]
+                
+                #maporder, score = ctl._find_optimal_order(score_table)
+                
                 tree = ctl._optimal_cstree_given_order(maporder, context_scores)
-                tree.estimate_stage_parameters(data, alpha_tot=1.0)
+                                
+                
+                tree.estimate_stage_parameters(data, alpha_tot=alpha)
 
                 tree_df = tree.to_joint_distribution(label_order=list(data.columns))
                 tree_df.to_csv(f"{est_path}/{name}", index=False)
@@ -110,7 +116,7 @@ def kl_div_from_files(true_path, est_path, seeds, samp_size_range, num_levels_ra
             name = f"p={num_levels}_n={samp_size}"
             print(f"KL divergence for {name}:")
             #print(kl_divs)
-            print(f"mean:{np.array(kl_divs).mean():.2f} std:{np.array(kl_divs).std():.2f}")
+            print(f"mean:{np.array(kl_divs).mean():.2f} median:{np.median(kl_divs):.2f} std:{np.array(kl_divs).std():.2f}")
 
 if __name__ == "__main__":
     # check versions to ensure accurate reproduction
