@@ -1037,7 +1037,13 @@ class CStree:
 
     def to_joint_distribution(self, label_order=None):
         """Return the joint distribution of the CStree.
+        
+        Args:
+            label_order (list, optional): A list of labels from self.labels in the desired order. Defaults to None which means self.labels.
 
+        Returns:
+            Pandas Dataframe: The joint distribution of the CStree.
+            
         Example:
             >>> df = tree.to_joint_distribution()
             >>> print(df)
@@ -1058,8 +1064,6 @@ class CStree:
             13	1	1	0	1	0.017241	-4.060480
             14	1	1	1	0	0.012563	-4.377006
             15	1	1	1	1	0.004451	-5.414586
-        Returns:
-            Pandas Dataframe: The joint distribution of the CStree.
         """
 
         ""

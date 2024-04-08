@@ -113,7 +113,7 @@ def _score_context(
     context_counts = sum(counts[var][context]["counts"].values())
 
     # Note that the score is depending on the context in the stage. So
-    # note really th satge as such.
+    # note really the stage as such.
     score = loggamma(alpha_context) - loggamma(alpha_context + context_counts)
     for val, count in counts[var][context]["counts"].items():
         score += loggamma(alpha_obs + count) - loggamma(alpha_obs)
