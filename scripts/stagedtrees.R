@@ -1,5 +1,5 @@
 library(stagedtrees)
-#library(bnlearn)
+library(bnlearn)
 library(parallel)
 library(doParallel)
 
@@ -123,77 +123,46 @@ x <- foreach(
   print(x)
 
 
-# initiate empty data.frame with columns: alg, p, n_samples, seed, time
-#df <- data.frame(method = character(), p = integer(), n_samples = integer(), seed = integer(), time = double())
+# # initiate empty data.frame with columns: alg, p, n_samples, seed, time
+# #df <- data.frame(method = character(), p = integer(), n_samples = integer(), seed = integer(), time = double())
 
-for (num_levels in num_levels_range) {
-    for (samp_size in samp_size_range) {
-        #for (seed in seeds) {
-        res <- foreach(seed = seeds, .combine = 'c') %dopar% {
-            library(stagedtrees)
-            library(bnlearn)
-            library(parallel)
-            library(doParallel)
-            set.seed(seed)
-            name <- paste0("p=", num_levels, "_n=", samp_size, "_seed=", seed, ".csv")
-            data <- read.csv(paste0(path, "/data/", name), check.names = FALSE)
+# for (num_levels in num_levels_range) {
+#     for (samp_size in samp_size_range) {
+#         #for (seed in seeds) {
+#         res <- foreach(seed = seeds, .combine = 'c') %dopar% {
+#             library(stagedtrees)
+#             library(bnlearn)
+#             library(parallel)
+#             library(doParallel)
+#             set.seed(seed)
+#             name <- paste0("p=", num_levels, "_n=", samp_size, "_seed=", seed, ".csv")
+#             data <- read.csv(paste0(path, "/data/", name), check.names = FALSE)
 
-            st_est_path <- paste0(path, "/distr/stagedtrees/est/", name)
-            print(st_est_path)
-            # if file exists, skip
-            if (file.exists(st_est_path)) {
-                #next
-            }
+#             st_est_path <- paste0(path, "/distr/stagedtrees/est/", name)
+#             print(st_est_path)
+#             # if file exists, skip
+#             if (file.exists(st_est_path)) {
+#                 #next
+#             }
 
-            dir.create(paste0(path, "/distr/stagedtrees/est"), showWarnings = FALSE, recursive = TRUE)
-            dir.create(paste0(path, "/distr/stagedtrees/time"), showWarnings = FALSE, recursive = TRUE)
+#             dir.create(paste0(path, "/distr/stagedtrees/est"), showWarnings = FALSE, recursive = TRUE)
+#             dir.create(paste0(path, "/distr/stagedtrees/time"), showWarnings = FALSE, recursive = TRUE)
             
-            start <- Sys.time()
-            df <- estimate_joint_distribution(data)
-            totaltime <- Sys.time() - start
-            print(totaltime)            
-            # write time to file
-            tmp <- data.frame(method = "best order search", p = num_levels, n_samples = samp_size, seed = seed, time = totaltime)
-            write.csv(tmp, file = paste0(path, "/distr/stagedtrees/time/", name), row.names = FALSE, quote = FALSE)
+#             start <- Sys.time()
+#             df <- estimate_joint_distribution(data)
+#             totaltime <- Sys.time() - start
+#             print(totaltime)            
+#             # write time to file
+#             tmp <- data.frame(method = "best order search", p = num_levels, n_samples = samp_size, seed = seed, time = totaltime)
+#             write.csv(tmp, file = paste0(path, "/distr/stagedtrees/time/", name), row.names = FALSE, quote = FALSE)
             
-            write.csv(df, file = st_est_path, row.names = FALSE, quote = FALSE)
-            tmp
-        }
-    }
-    #write.csv(df, file = paste0(path, "/distr/stagedtrees/time.csv"), row.names = FALSE, quote = FALSE)
-}
+#             write.csv(df, file = st_est_path, row.names = FALSE, quote = FALSE)
+#             tmp
+#         }
+#     }
+#     #write.csv(df, file = paste0(path, "/distr/stagedtrees/time.csv"), row.names = FALSE, quote = FALSE)
+# }
 
-# Tabu first
-for (num_levels in num_levels_range) {
-    for (samp_size in samp_size_range) {
-        for (seed in seeds) {
-            set.seed(seed)
-            name <- paste0("p=", num_levels, "_n=", samp_size, "_seed=", seed, ".csv")
-            data <- read.csv(paste0(path, "/data/", name), check.names = FALSE)
-
-            tabu_est_path <- paste0(path, "/distr/tabu/est/", name)
-            print(tabu_est_path)
-            # if file exists, skip
-            if (file.exists(tabu_est_path)) {
-                next
-            }
-
-            dir.create(paste0(path, "/distr/tabu/est"), showWarnings = FALSE, recursive = TRUE)
-            dir.create(paste0(path, "/distr/tabu/time"), showWarnings = FALSE, recursive = TRUE)
-            
-            start <- Sys.time()
-            df <- estimate_joint_distribution3(data)
-            totaltime <- Sys.time() - start
-            print(totaltime)            
-            # write time to file
-            tmp <- data.frame(method = "tabu", p = num_levels, n_samples = samp_size, seed = seed, time = totaltime)
-            write.csv(tmp, file = paste0(path, "/distr/tabu/time/", name), row.names = FALSE, quote = FALSE)
-            
-            write.csv(df, file = tabu_est_path, row.names = FALSE, quote = FALSE)
-        }
-    }
-    #write.csv(df, file = paste0(path, "/distr/stagedtrees/time.csv"), row.names = FALSE, quote = FALSE)
-}
 
 # PC first
 for (num_levels in num_levels_range) {

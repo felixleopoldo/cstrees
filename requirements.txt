@@ -12,6 +12,7 @@ mpl-tools
 tqdm
 pp-ez
 causal-learn
+causaldag
 
 pylint
 sphinx
