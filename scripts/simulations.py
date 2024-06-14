@@ -185,7 +185,8 @@ def estimate_cstree_distr(data_path, est_path, seeds, samp_size_range, num_level
                 data = pd.read_csv(f"{data_path}/{name}")
 
                 start = time.time()
-
+                
+                # try grasp first
                 pcgraph = pc(data[1:].values, 0.05, "chisq", node_names=data.columns)
                 poss_cvars = ctl.causallearn_graph_to_posscvars(pcgraph, labels=data.columns)
 
@@ -314,7 +315,7 @@ if __name__ == "__main__":
     df_kl[["p", "n_samples", "seed"]] = df_kl[["p", "n_samples", "seed"]].apply(pd.to_numeric)
 
     # relabel methods
-    df_kl["method"] = df_kl["method"].replace({"cslearn": "CSlearn", "pc": "PC", "pc_bhc": "PC + BHC", "bos": "BOS"})
+    df_kl["method"] = df_kl["method"].replace({"cslearn": "PC+CSlearn", "pc": "PC", "pc_bhc": "PC + BHC", "bos": "BOS"})
 
     print("KL divergence results:")
     print(df_kl)
@@ -332,7 +333,7 @@ if __name__ == "__main__":
     df_time = pd.concat([df_time_pc, df_time_cstree, df_time_pc_bhc, df_time_bos])
     df_time[["p", "n_samples", "seed"]] = df_time[["p", "n_samples", "seed"]].apply(pd.to_numeric)
     # relabel methods
-    df_time["method"] = df_time["method"].replace({"cslearn": "CSlearn", "pc": "PC", "pc_bhc": "PC + BHC", "bos": "BOS"})
+    df_time["method"] = df_time["method"].replace({"cslearn": "PC+CSlearn", "pc": "PC", "pc_bhc": "PC + BHC", "bos": "BOS"})
     
     print("Time taken results:")
     # print summary of datadframe

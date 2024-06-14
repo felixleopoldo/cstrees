@@ -922,22 +922,27 @@ class CStree:
             prediction = max(outcomes, key=_prob_of_outcome)
             return prediction
 
-    def fit(self, data: pd.DataFrame, poss_cvars=None):
+    def fit(self, data: pd.DataFrame, gibbs_samples=5000, poss_cvars=None, 
+            pc_alpha=0.05, pc_method="gsq", max_cvars=2, 
+            alpha_tot=1.0, method="BDeu"):
         """High-level wrapper combining model selection and parameter estimation."""
         import cstrees.scoring as sc
         import cstrees.learning as ctl
 
         if poss_cvars is None:
             # estimate possible context variables and create score tables
-            graph = pc(data.values, 0.05, "gsq", node_names=data.columns)
-            poss_cvars = ctl.causallearn_graph_to_posscvars(graph, labels=data.columns)
+            graph = pc(data.values, pc_alpha, pc_method, node_names=data.columns)
+            poss_cvars = ctl.causallearn_graph_to_posscvars(graph, 
+                                                            labels=data.columns,
+                                                            
+                                                            )
 
         score_table, context_scores, _ = sc.order_score_tables(
-            data, max_cvars=2, alpha_tot=1.0, method="BDeu", poss_cvars=poss_cvars
+            data, max_cvars=max_cvars, alpha_tot=alpha_tot, method=method , poss_cvars=poss_cvars
         )
 
         # run Gibbs sampler to get MAP order
-        orders, scores = ctl.gibbs_order_sampler(5000, score_table)
+        orders, scores = ctl.gibbs_order_sampler(gibbs_samples, score_table)
         map_order = orders[scores.index(max(scores))]
 
         # estimate CStree
