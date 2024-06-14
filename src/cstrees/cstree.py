@@ -5,6 +5,7 @@ import logging
 import sys
 from importlib import reload  # Not needed in Python 2
 
+from tqdm import tqdm
 import networkx as nx
 import numpy as np
 import pandas as pd
@@ -1031,6 +1032,8 @@ class CStree:
         for i, val in enumerate(x):
 
             stage = self.get_stage(x[: i])
+            if stage.probs[val] == 0:
+                return -np.inf
             log_prob += np.log(stage.probs[val])
 
         return log_prob
@@ -1070,9 +1073,11 @@ class CStree:
         if label_order is None:
             label_order = self.labels
         
+        
         # Iterate over all possible outcomes and calculate the probability mass function.
         # Store the outcomes together with the probabilities in a Pandas Dataframe.
         outcomes = product(*[range(card) for card in self.cards])
+        n_outcomes = np.prod(self.cards)
 
         # Create an empty dataframe with the correct column names
         #df_outcomes = pd.DataFrame(columns=self.labels)
@@ -1080,7 +1085,8 @@ class CStree:
         # store all the outcomes and probabilities
         pmfs = [None]*np.prod(self.cards)
         pmfs_log = [None]*np.prod(self.cards)
-        for i, outcome in enumerate(outcomes):
+        
+        for i, outcome in tqdm(enumerate(outcomes), total=n_outcomes, desc="Calculating joint distribution"):
             df_outcomes.loc[i] = outcome
             pmfs[i] = self.pmf(outcome, label_order)
             pmfs_log[i] = self.pmf_log(outcome, label_order)

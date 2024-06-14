@@ -271,12 +271,13 @@ if __name__ == "__main__":
     path = "sim_results"
     warnings.simplefilter(action="ignore", category=FutureWarning)
 
-    samp_size_range = [100, 1000] #10000
+    samp_size_range = [100, 250, 500, 1000, 10000]
     seeds = list(range(10))
-    num_levels_range = [5, 7, 10] #10, 20 For all except orderseach
+    num_levels_range = [5, 7, 10] #10, 15, 20 For all except orderseach
 
     print("Generating data and true distributions")
     generate_data_and_true_distr(path, seeds, samp_size_range, num_levels_range)
+
 
     print("Estimating CStree distributions")
     estimate_cstree_distr(f"{path}/data", f"{path}/distr/cstrees", seeds, samp_size_range, num_levels_range)
@@ -295,7 +296,6 @@ if __name__ == "__main__":
     print("Estimated PC time")
     print(df_time_pc)
     
-
     # print("Staged trees KL")
     # df_kl_st, df_time_st = kl_div_from_files(f"{path}/distr/stagedtrees/", f"{path}/distr/true","stagedtree", seeds, samp_size_range, num_levels_range)
     
@@ -303,29 +303,63 @@ if __name__ == "__main__":
     # df_kl_pc, df_time_pc_st = kl_div_from_files(f"{path}/distr/pc_st/", f"{path}/distr/true","pc_st", seeds, samp_size_range, num_levels_range)
 
     df_kl = pd.concat([df_kl_pc, df_kl_cstree])
+    df_kl[["p", "n_samples", "seed"]] = df_kl[["p", "n_samples", "seed"]].apply(pd.to_numeric)
     print("KL divergence results:")
     print(df_kl)
-
+   
     for p in num_levels_range:
-
+        
         sns_plot = sns.boxplot(data=df_kl[df_kl["p"]==p], x="n_samples", y="kl_divergence", hue="method")
         # add seeds and p to title
         sns_plot.set_title(f"KL divergence from true CStree for p={p} based on {len(seeds)} seeds")
-
         #sns_plot.facet("p")
         fig = sns_plot.get_figure()
         fig.savefig(f"kl_p={p}.png")
         plt.clf()
 
     df_time = pd.concat([df_time_pc, df_time_cstree])
-    
+    df_time[["p", "n_samples", "seed"]] = df_time[["p", "n_samples", "seed"]].apply(pd.to_numeric)
     print("Time taken results:")
-    print(df_time)
+    # print summary of datadframe
+    
     # plot time taken for each method
     for p in num_levels_range:
+        #print(df_time[df_time["p"]==p])
         sns_plot = sns.boxplot(data=df_time[df_time["p"]==p], x="n_samples", y="time", hue="method")
-        sns_plot.set_title(f"Time taken for p={p} based on {len(seeds)} seeds")
+        sns_plot.set_title(f"Time taken for p={str(p)} based on {str(len(seeds))} seeds")
         fig = sns_plot.get_figure()
         fig.savefig(f"time_p={p}.png")
         plt.clf()
+        
+    # Plot 1: 
+    # KL-divergence on y-axis
+    # x-axis: number of nodes (p = 5,7,10,15,20)
+    # algorithms:
+    #  - PC-estimated DAG MLE for n = 10000
+    #  - PC + CStrees with n = 250
+    #  - PC + CStrees with n = 500
+    #  - PC + CStrees with n = 1000
+    #  - PC + CStrees with n = 10000
+    #  - bos (stagedtrees) with n = 1000
+    #  - PC + bhc (stagedtrees) with n = 1000
+    #  - PC + bhc (stagedtrees) with n = 10000
+
+    # * notes:
+    #  - best order search is only done for p = 5,7,10
+    #  - PC + bhc is done for p = 5,7,10,15,20
+    #  - bhc = backwards hill climbing
+    #  - bos = best order search
+    #  - come up with a name to replace "CStrees" with
+    print("Plotting KL divergence")
+    
+    df_kl_plot1 = df_kl
+    df_kl_plot1["method_n"] = df_kl_plot1["method"] + " for n=" + df_kl_plot1["n_samples"].astype(str)
+    
+    print(df_kl_plot1)
+    
+    sns_plot = sns.boxplot(data=df_kl_plot1, x="p", y="kl_divergence", hue="method_n")
+    sns_plot.set_title(f"KL divergence from true CStree based on {len(seeds)} seeds")
+    fig = sns_plot.get_figure()
+    fig.savefig(f"plot_1_kl.png")
+    plt.clf()
 
