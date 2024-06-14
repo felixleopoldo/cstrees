@@ -241,8 +241,7 @@ def kl_div_from_files(true_path, est_path, alg, seeds, samp_size_range, num_leve
                 dftmp = pd.DataFrame(columns=["method", "kl_divergence", "p", "n_samples", "seed"])
                 # add row to dataframe
 
-                if alg=="stagedtree":
-                    alg = "best order search"
+     
                 dftmp["method"] = [alg]
                 dftmp["p"] = [num_levels]
                 dftmp["n_samples"] = [samp_size]
@@ -275,20 +274,32 @@ if __name__ == "__main__":
     seeds = list(range(10))
     num_levels_range = [5, 7, 10] #10, 15, 20 For all except orderseach
 
+
+
+    ######## Generate data and true distributions ##########
+
     print("Generating data and true distributions")
     generate_data_and_true_distr(path, seeds, samp_size_range, num_levels_range)
 
 
+
+    ######## Estimate the distributions ##########
+
     print("Estimating CStree distributions")
-    estimate_cstree_distr(f"{path}/data", f"{path}/distr/cstrees", seeds, samp_size_range, num_levels_range)
+    estimate_cstree_distr(f"{path}/data", f"{path}/distr/cslearn", seeds, samp_size_range, num_levels_range)
     
     print("Estimating PC distributions")
     estimate_pc_distr(f"{path}/data", f"{path}/distr/pc", seeds, samp_size_range, num_levels_range)
 
-    # Estimate the KL divergence between the true and estimated distributions
+
+
+    ######### KL divergence ##########
 
     print("Estimated cstree KL")
-    df_kl_cstree, df_time_cstree = kl_div_from_files(f"{path}/distr/cstrees/", f"{path}/distr/true", "cstree", seeds, samp_size_range, num_levels_range)
+    df_kl_cstree, df_time_cstree = kl_div_from_files(f"{path}/distr/cslearn/", f"{path}/distr/true", "cslearn", seeds, samp_size_range, num_levels_range)
+
+    print("Estimated cslearn KL")
+    print(df_kl_cstree)
 
     print("Estimated PC KL")
     df_kl_pc, df_time_pc = kl_div_from_files(f"{path}/distr/pc/", f"{path}/distr/true", "pc", seeds, [10000], num_levels_range)    
@@ -301,6 +312,10 @@ if __name__ == "__main__":
 
     df_kl = pd.concat([df_kl_pc, df_kl_cstree, df_kl_pc_bhc, df_kl_bos])
     df_kl[["p", "n_samples", "seed"]] = df_kl[["p", "n_samples", "seed"]].apply(pd.to_numeric)
+
+    # relabel methods
+    df_kl["method"] = df_kl["method"].replace({"cslearn": "CSlearn", "pc": "PC", "pc_bhc": "PC + BHC", "bos": "BOS"})
+
     print("KL divergence results:")
     print(df_kl)
    
@@ -316,6 +331,9 @@ if __name__ == "__main__":
 
     df_time = pd.concat([df_time_pc, df_time_cstree, df_time_pc_bhc, df_time_bos])
     df_time[["p", "n_samples", "seed"]] = df_time[["p", "n_samples", "seed"]].apply(pd.to_numeric)
+    # relabel methods
+    df_time["method"] = df_time["method"].replace({"cslearn": "CSlearn", "pc": "PC", "pc_bhc": "PC + BHC", "bos": "BOS"})
+    
     print("Time taken results:")
     # print summary of datadframe
     
