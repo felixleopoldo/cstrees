@@ -291,18 +291,15 @@ if __name__ == "__main__":
     df_kl_cstree, df_time_cstree = kl_div_from_files(f"{path}/distr/cstrees/", f"{path}/distr/true", "cstree", seeds, samp_size_range, num_levels_range)
 
     print("Estimated PC KL")
-    df_kl_pc, df_time_pc = kl_div_from_files(f"{path}/distr/pc/", f"{path}/distr/true", "pc", seeds, samp_size_range, num_levels_range)    
-    # time pc
-    print("Estimated PC time")
-    print(df_time_pc)
+    df_kl_pc, df_time_pc = kl_div_from_files(f"{path}/distr/pc/", f"{path}/distr/true", "pc", seeds, [10000], num_levels_range)    
     
-    # print("Staged trees KL")
-    # df_kl_st, df_time_st = kl_div_from_files(f"{path}/distr/stagedtrees/", f"{path}/distr/true","stagedtree", seeds, samp_size_range, num_levels_range)
+    print("Staged trees BOS KL")
+    df_kl_bos, df_time_bos = kl_div_from_files(f"{path}/distr/bos/", f"{path}/distr/true","bos", seeds, [1000], num_levels_range)
     
-    # print("PC + staged trees KL")
-    # df_kl_pc, df_time_pc_st = kl_div_from_files(f"{path}/distr/pc_st/", f"{path}/distr/true","pc_st", seeds, samp_size_range, num_levels_range)
+    print("PC + staged trees KL")
+    df_kl_pc_bhc, df_time_pc_bhc = kl_div_from_files(f"{path}/distr/pc_bhc", f"{path}/distr/true","pc_bhc", seeds, samp_size_range, num_levels_range)
 
-    df_kl = pd.concat([df_kl_pc, df_kl_cstree])
+    df_kl = pd.concat([df_kl_pc, df_kl_cstree, df_kl_pc_bhc, df_kl_bos])
     df_kl[["p", "n_samples", "seed"]] = df_kl[["p", "n_samples", "seed"]].apply(pd.to_numeric)
     print("KL divergence results:")
     print(df_kl)
@@ -317,7 +314,7 @@ if __name__ == "__main__":
         fig.savefig(f"kl_p={p}.png")
         plt.clf()
 
-    df_time = pd.concat([df_time_pc, df_time_cstree])
+    df_time = pd.concat([df_time_pc, df_time_cstree, df_time_pc_bhc, df_time_bos])
     df_time[["p", "n_samples", "seed"]] = df_time[["p", "n_samples", "seed"]].apply(pd.to_numeric)
     print("Time taken results:")
     # print summary of datadframe
@@ -354,6 +351,7 @@ if __name__ == "__main__":
     
     df_kl_plot1 = df_kl
     df_kl_plot1["method_n"] = df_kl_plot1["method"] + " for n=" + df_kl_plot1["n_samples"].astype(str)
+    df_kl
     
     print(df_kl_plot1)
     

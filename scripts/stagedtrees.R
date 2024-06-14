@@ -57,7 +57,7 @@ estimate_joint_distribution3 <- function(data) {
     df <- cbind(space, prob = prob, log_prob = log_prob)
 }
 
-estimate_joint_distribution_pc <- function(data) {
+estimate_joint_distribution_pc_bhc <- function(data) {
 
     cardinalities <- data[1, ]
 
@@ -68,9 +68,21 @@ estimate_joint_distribution_pc <- function(data) {
     # Estimate the model
     data <- data.frame(lapply(data, as.factor)) ## convert to factor
   
-    #get the dag using pc
-    cpdag <- bnlearn::pc.stable(data)
-    dag <- cextend(cpdag, strict=TRUE)
+    
+    # try to orient the edges in a trycatch block
+    dag <- tryCatch({
+                #get the dag using pc
+                cpdag <- bnlearn::pc.stable(data)
+                dag <- cextend(cpdag, strict=TRUE)               
+            }, error = function(e) {
+
+                print("Error in pc.stable orientation, using tabu instead")
+                dag <- bnlearn::tabu(data)
+
+                return(dag)
+            }, finally = {
+            }
+            )
 
     dagfit <- bnlearn::bn.fit(dag, data)
     model <- as_sevt(dagfit) |> sevt_fit(data, lambda = 0) |> stages_bhc()
@@ -90,10 +102,6 @@ estimate_joint_distribution_pc <- function(data) {
     df <- cbind(space, prob = prob, log_prob = log_prob)
 }
 
-samp_size_range <- c(100, 1000)
-seeds <- seq(10) - 1
-num_levels_range <- c(5, 7, 10)
-path <- "sim_results"
 
 
 n.cores <- parallel::detectCores() - 1
@@ -164,6 +172,12 @@ x <- foreach(
 # }
 
 
+samp_size_range <- c(100, 250, 500, 1000, 10000)
+seeds <- seq(10) - 1
+num_levels_range <- c(5, 7, 10)
+path <- "sim_results"
+
+
 # PC first
 for (num_levels in num_levels_range) {
     for (samp_size in samp_size_range) {
@@ -172,26 +186,65 @@ for (num_levels in num_levels_range) {
             name <- paste0("p=", num_levels, "_n=", samp_size, "_seed=", seed, ".csv")
             data <- read.csv(paste0(path, "/data/", name), check.names = FALSE)
 
-            tabu_est_path <- paste0(path, "/distr/pc/est/", name)
+            tabu_est_path <- paste0(path, "/distr/pc_bhc/est/", name)
             print(tabu_est_path)
             # if file exists, skip
             if (file.exists(tabu_est_path)) {
                 next
             }
 
-            dir.create(paste0(path, "/distr/pc/est"), showWarnings = FALSE, recursive = TRUE)
-            dir.create(paste0(path, "/distr/pc/time"), showWarnings = FALSE, recursive = TRUE)
+            dir.create(paste0(path, "/distr/pc_bhc/est"), showWarnings = FALSE, recursive = TRUE)
+            dir.create(paste0(path, "/distr/pc_bhc/time"), showWarnings = FALSE, recursive = TRUE)
             
             start <- Sys.time()
-            df <- estimate_joint_distribution_pc(data)
+            df <- estimate_joint_distribution_pc_bhc(data)
             totaltime <- Sys.time() - start
             print(totaltime)            
             # write time to file
             tmp <- data.frame(method = "pc + bhc", p = num_levels, n_samples = samp_size, seed = seed, time = totaltime)
-            write.csv(tmp, file = paste0(path, "/distr/pc/time/", name), row.names = FALSE, quote = FALSE)
+            write.csv(tmp, file = paste0(path, "/distr/pc_bhc/time/", name), row.names = FALSE, quote = FALSE)
             
             write.csv(df, file = tabu_est_path, row.names = FALSE, quote = FALSE)
         }
     }
     #write.csv(df, file = paste0(path, "/distr/stagedtrees/time.csv"), row.names = FALSE, quote = FALSE)
 }
+
+samp_size_range <- c(1000)
+seeds <- seq(10) - 1
+num_levels_range <- c(5, 7, 10)
+path <- "sim_results"
+
+
+# PC first
+for (num_levels in num_levels_range) {
+    for (samp_size in samp_size_range) {
+        for (seed in seeds) {
+            set.seed(seed)
+            name <- paste0("p=", num_levels, "_n=", samp_size, "_seed=", seed, ".csv")
+            data <- read.csv(paste0(path, "/data/", name), check.names = FALSE)
+
+            tabu_est_path <- paste0(path, "/distr/bos/est/", name)
+            print(tabu_est_path)
+            # if file exists, skip
+            if (file.exists(tabu_est_path)) {
+                next
+            }
+
+            dir.create(paste0(path, "/distr/bos/est"), showWarnings = FALSE, recursive = TRUE)
+            dir.create(paste0(path, "/distr/bos/time"), showWarnings = FALSE, recursive = TRUE)
+            
+            start <- Sys.time()
+            df <- estimate_joint_distribution_pc_bhc(data)
+            totaltime <- Sys.time() - start
+            print(totaltime)            
+            # write time to file
+            tmp <- data.frame(method = "bos", p = num_levels, n_samples = samp_size, seed = seed, time = totaltime)
+            write.csv(tmp, file = paste0(path, "/distr/bos/time/", name), row.names = FALSE, quote = FALSE)
+            
+            write.csv(df, file = tabu_est_path, row.names = FALSE, quote = FALSE)
+        }
+    }
+    #write.csv(df, file = paste0(path, "/distr/stagedtrees/time.csv"), row.names = FALSE, quote = FALSE)
+}
+
