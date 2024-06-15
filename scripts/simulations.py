@@ -162,7 +162,7 @@ def estimate_pc_distr(data_path, est_path, seeds, samp_size_range, num_levels_ra
 
                 distr_df.to_csv(f"{est_path}/est/{name}", index=False)
 
-def estimate_cstree_distr(data_path, est_path, seeds, samp_size_range, num_levels_range):
+def estimate_cstree_distr(method,data_path, est_path, seeds, samp_size_range, num_levels_range):
 
     """ Estimate the CStree for all datasets in data_path.
     """
@@ -187,8 +187,19 @@ def estimate_cstree_distr(data_path, est_path, seeds, samp_size_range, num_level
                 start = time.time()
                 
                 # try grasp first
-                pcgraph = pc(data[1:].values, 0.05, "chisq", node_names=data.columns)
-                poss_cvars = ctl.causallearn_graph_to_posscvars(pcgraph, labels=data.columns)
+                poss_cvars = None
+                print(f"Method: {method}")
+                if method == "grasp_cslearn":
+                    print("Using GRaSP")
+                    graspgraph = grasp(data[1:].values)
+                    print("GRaSP done") 
+                    print(graspgraph)
+                    poss_cvars = ctl.causallearn_graph_to_posscvars(graspgraph, labels=data.columns, alg="grasp")
+                elif method == "pc_cslearn":
+                    pcgraph = pc(data[1:].values, 0.05, "chisq", node_names=data.columns)
+                    poss_cvars = ctl.causallearn_graph_to_posscvars(pcgraph, labels=data.columns, alg="pc") 
+                else:
+                    raise ValueError("Method not recognized.")
 
                 score_table, context_scores, context_counts = sc.order_score_tables(
                     data, max_cvars=2, alpha_tot=1, method="BDeu", poss_cvars=poss_cvars)
@@ -208,7 +219,7 @@ def estimate_cstree_distr(data_path, est_path, seeds, samp_size_range, num_level
                 print(f"Time taken: {totaltime}")
                 # save total time taken to dataframe with columns method, p, n_samples, seed, time
                 time_df = pd.DataFrame(columns=["method", "p", "n_samples", "seed", "time"])
-                time_df["method"] = ["cstree"]
+                time_df["method"] = [method]
                 time_df["p"] = [num_levels]
                 time_df["n_samples"] = [samp_size]
                 time_df["seed"] = [seed]
@@ -268,6 +279,8 @@ if __name__ == "__main__":
         warnings.warn(f"Current `cstrees` version unsupported.")
     sns.set_style("whitegrid")
 
+
+
     path = "sim_results"
     warnings.simplefilter(action="ignore", category=FutureWarning)
 
@@ -283,24 +296,25 @@ if __name__ == "__main__":
     generate_data_and_true_distr(path, seeds, samp_size_range, num_levels_range)
 
 
-
     ######## Estimate the distributions ##########
 
-    print("Estimating CStree distributions")
-    estimate_cstree_distr(f"{path}/data", f"{path}/distr/cslearn", seeds, samp_size_range, num_levels_range)
-    
+    print("Estimating PC + CStree distributions")
+    estimate_cstree_distr("pc_cslearn", f"{path}/data", f"{path}/distr/pc_cslearn", seeds, samp_size_range, num_levels_range)
+
+    print("Estimating GRaSP + CStree distributions")
+    estimate_cstree_distr("grasp_cslearn", f"{path}/data", f"{path}/distr/grasp_cslearn", seeds, samp_size_range, num_levels_range)
+        
     print("Estimating PC distributions")
     estimate_pc_distr(f"{path}/data", f"{path}/distr/pc", seeds, samp_size_range, num_levels_range)
 
 
-
     ######### KL divergence ##########
 
-    print("Estimated cstree KL")
-    df_kl_cstree, df_time_cstree = kl_div_from_files(f"{path}/distr/cslearn/", f"{path}/distr/true", "cslearn", seeds, samp_size_range, num_levels_range)
+    print("Estimated PC + CSlearn KL")
+    df_kl_cstree, df_time_cstree = kl_div_from_files(f"{path}/distr/pc_cslearn/", f"{path}/distr/true", "pc_cslearn", seeds, samp_size_range, num_levels_range)
 
-    print("Estimated cslearn KL")
-    print(df_kl_cstree)
+    print("Estimated GRaSP + CSlearn KL")
+    df_kl_grasp_cslearn, df_time_grasp_cslearn = kl_div_from_files(f"{path}/distr/grasp_cslearn/", f"{path}/distr/true", "grasp_cslearn", seeds, samp_size_range, num_levels_range)
 
     print("Estimated PC KL")
     df_kl_pc, df_time_pc = kl_div_from_files(f"{path}/distr/pc/", f"{path}/distr/true", "pc", seeds, [10000], num_levels_range)    
@@ -311,14 +325,20 @@ if __name__ == "__main__":
     print("PC + staged trees KL")
     df_kl_pc_bhc, df_time_pc_bhc = kl_div_from_files(f"{path}/distr/pc_bhc", f"{path}/distr/true","pc_bhc", seeds, samp_size_range, num_levels_range)
 
-    df_kl = pd.concat([df_kl_pc, df_kl_cstree, df_kl_pc_bhc, df_kl_bos])
+
+    ######### Join results ##########
+
+    df_kl = pd.concat([df_kl_pc, df_kl_cstree, df_kl_pc_bhc, df_kl_bos, df_kl_grasp_cslearn])
     df_kl[["p", "n_samples", "seed"]] = df_kl[["p", "n_samples", "seed"]].apply(pd.to_numeric)
 
     # relabel methods
-    df_kl["method"] = df_kl["method"].replace({"cslearn": "PC+CSlearn", "pc": "PC", "pc_bhc": "PC + BHC", "bos": "BOS"})
+    df_kl["method"] = df_kl["method"].replace({"grasp_cslearn": "GRaSP + CSlearn", "pc_cslearn": "PC+CSlearn", "pc": "PC", "pc_bhc": "PC + BHC", "bos": "BOS"})
 
     print("KL divergence results:")
     print(df_kl)
+   
+   
+   #### Plotting ####
    
     for p in num_levels_range:
         
@@ -330,7 +350,7 @@ if __name__ == "__main__":
         fig.savefig(f"kl_p={p}.png")
         plt.clf()
 
-    df_time = pd.concat([df_time_pc, df_time_cstree, df_time_pc_bhc, df_time_bos])
+    df_time = pd.concat([df_time_pc, df_time_cstree, df_time_pc_bhc, df_time_bos, df_time_grasp_cslearn])
     df_time[["p", "n_samples", "seed"]] = df_time[["p", "n_samples", "seed"]].apply(pd.to_numeric)
     # relabel methods
     df_time["method"] = df_time["method"].replace({"cslearn": "PC+CSlearn", "pc": "PC", "pc_bhc": "PC + BHC", "bos": "BOS"})
