@@ -39,7 +39,7 @@ def test_predict_tree():
     assert t.predict(partial_observation_1, True) == ((1, 0, 1, 1), 0.26674411494959)
     # poper
     po = pd.DataFrame({0: [1]})
-    t.predict_proper(po)
+    t.predict_proper(po, True)
 
     partial_observation_2 = {0: 1, 3: 2}
     assert t.predict(partial_observation_2, True) == ((1, 1, 1, 2), 0.3829026812192928)

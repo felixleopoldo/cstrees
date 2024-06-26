@@ -893,7 +893,11 @@ class CStree:
             )
             preds[idx] = max(outcomes, key=pmf)[-len(to_predict_labels) :]
             if return_probs:
-                outcome_probs = map(pmf, outcomes)
+                outcomes = (
+                    list(partial) + list(completion)
+                    for completion in outcome_completions
+                )
+                outcome_probs = list(map(pmf, outcomes))
                 probs[idx] = max(outcome_probs) / sum(outcome_probs)
 
         """still TODO:
@@ -903,7 +907,7 @@ class CStree:
         """
         preds_df = pd.DataFrame(preds, columns=to_predict_labels)
         if return_probs:
-            preds_df["PROB":probs]
+            preds_df["PROB"] = probs
         return preds_df
 
     def predict(self, partial_observation, return_prob=False):
