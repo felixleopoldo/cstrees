@@ -2,6 +2,7 @@
 import random
 
 import numpy as np
+import pandas as pd
 
 import cstrees
 from cstrees import cstree as ct
@@ -12,7 +13,7 @@ def test_project_defines_author_and_version():
     assert hasattr(cstrees, "__version__")
 
 
-def test_predict():
+def test_predict_tree():
     np.random.seed(22)
     random.seed(22)
 
@@ -36,12 +37,21 @@ def test_predict():
     partial_observation_1 = {0: 1}
     t.predict(partial_observation_1, True)
     assert t.predict(partial_observation_1, True) == ((1, 0, 1, 1), 0.26674411494959)
+    # poper
+    po = pd.DataFrame({0: [1]})
+    t.predict_proper(po)
 
     partial_observation_2 = {0: 1, 3: 2}
     assert t.predict(partial_observation_2, True) == ((1, 1, 1, 2), 0.3829026812192928)
+    # proper
+    po = pd.DataFrame({0: [1], 3: [2]})
+    t.predict_proper(po)
 
     partial_observation_3 = {0: 1, 2: 0, 3: 2}
     assert t.predict(partial_observation_3, True) == ((1, 0, 0, 2), 0.5913854582044948)
+    # proper
+    po = pd.DataFrame({0: [1], 2: [0], 3: [2]})
+    t.predict_proper(po)
 
     # test conditional probs exist from small sample
     s = ct.sample_cstree(cards, max_cvars=2, prob_cvar=0.5, prop_nonsingleton=1)
