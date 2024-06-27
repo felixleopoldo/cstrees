@@ -152,7 +152,7 @@ def _optimal_staging_at_level(order, context_scores, level, max_cvars=2, poss_cv
                 continue
 
             # here we (=I) anyway extract just the context, so the stage format is a bit redundant.
-            stage_context = sc._stage_to_context_key(stage, order) 
+            stage_context = sc._stage_to_context_key(stage, order)
             if stage_context in context_scores["scores"][var]:
                 score = context_scores["scores"][var][stage_context]
             staging_score += score
@@ -221,7 +221,7 @@ def _optimal_cstree_given_order(order, context_scores):
             ):
                 stage.color = "black"
             else:
-                stage.color = colors[i]
+                stage.color = colors[i % 15]
     tree.update_stages(stages)
 
     return tree
