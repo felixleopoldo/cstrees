@@ -1,0 +1,125 @@
+#!python3
+import pickle
+import warnings
+
+warnings.simplefilter(action="ignore", category=FutureWarning)
+
+from causallearn.search.PermutationBased.GRaSP import grasp
+import numpy as np
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import OrdinalEncoder
+from sklearn.metrics import confusion_matrix
+from ucimlrepo import fetch_ucirepo
+
+import cstrees.learning as ctl
+import cstrees.scoring as sc
+from cstrees.cstree import CStree
+
+
+# fetch dataset
+# https://archive.ics.uci.edu/dataset/73/mushroom
+mushroom = fetch_ucirepo(id=73)
+X = mushroom.data.features
+y = mushroom.data.targets
+data = pd.concat([X, y], axis=1)
+
+data.dropna(inplace=True)  # remove missing data
+data.drop("veil-type", axis=1, inplace=True)  # RV is constant, so no
+# point in modelling; just complicates things
+
+ordinalized = OrdinalEncoder().fit_transform(data.values).astype(int)
+
+data = pd.DataFrame(ordinalized, columns=data.columns)
+
+cards = data.nunique().values
+# cards = [6, 4, 10, 2, 9, 4, 3, 2, 12, 2, 7, 4, 4, 9, 9, 2, 4, 3, 8,
+# 9, 6, 7, 2] # cards[15] is for 'veil-type'
+
+train, test = train_test_split(data, test_size=0.3, random_state=0)
+
+
+# grasp_graph = grasp(train.values, score_func="local_score_BDeu", maxP=5, depth=3)
+# poss_cvars = ctl.causallearn_graph_to_posscvars(
+#     grasp_graph, labels=data.columns, alg="grasp"
+# )
+
+# with open("grasp-mushroom.pkl", "wb") as f:
+#     pickle.dump(poss_cvars, f)
+
+# with open("grasp-mushroom.pkl", "rb") as f:
+#     poss_cvars = pickle.load(f)
+
+# num_poss_cvars = [len(val) for val in poss_cvars.values()]
+
+train.loc[-1] = cards
+rolled_i = np.roll(train.index, 1)
+raw_idx_train = train.reindex(rolled_i)
+train = raw_idx_train.reset_index(drop=True)
+
+# score_table, context_scores, _ = sc.order_score_tables(
+#     train, max_cvars=2, alpha_tot=1.0, method="BDeu", poss_cvars=poss_cvars
+# )
+
+# # run Gibbs sampler to get MAP order
+# orders, scores = ctl.gibbs_order_sampler(5000, score_table)
+# map_order = orders[scores.index(max(scores))]
+
+# # estimate CStree
+# opt_tree = ctl._optimal_cstree_given_order(map_order, context_scores)
+
+# with open("mushroom-opt_tree.pkl", "rb") as f:
+#     opt_tree = pickle.load(f)
+
+# opt_tree.estimate_stage_parameters(train, alpha_tot=2.0, method="BDeu")
+
+# treedf = opt_tree.to_df(write_probs=True)
+
+# for to_save, name in zip(
+#     [score_table, context_scores, orders, scores, map_order, opt_tree, treedf],
+#     [
+#         "score_table",
+#         "context_scores",
+#         "orders",
+#         "scores",
+#         "map_order",
+#         "opt_tree",
+#         "treedf",
+#     ],
+# ):
+#     with open(f"mushroom-{name}.pkl", "wb") as f:
+#         pickle.dump(to_save, f)
+
+# instead of L41--48 and L59--90 above, can call this wrapper func:
+# opt_tree = CStree().fit(train, save_as="mushroom")
+
+with open("mushroom-opt_tree.pkl", "rb") as f:
+    opt_tree = pickle.load(f)
+
+# prediction task
+small_test = test
+predict_from = small_test.drop("poisonous", axis=1)
+true = small_test["poisonous"].values
+prediction = opt_tree.predict_proper(predict_from)
+acc = (prediction.values.flatten() == true).mean()
+conf_mat = confusion_matrix(true, prediction)
+
+# plot LDAG
+ldag = opt_tree.to_LDAG()
+agraph = ldag.plot_graphviz()
+agraph.draw("mushroom-ldag.pdf")
+
+# with open("mushroom-score_table.pkl", "rb") as f:
+#     score_table = pickle.load(f)
+# with open("mushroom-context_scores.pkl", "rb") as f:
+#     context_scores = pickle.load(f)
+# with open("mushroom-orders.pkl", "rb") as f:
+#     orders = pickle.load(f)
+# with open("mushroom-scores.pkl", "rb") as f:
+#     scores = pickle.load(f)
+# with open("mushroom-map_order.pkl", "rb") as f:
+#     map_order = pickle.load(f)
+# with open("mushroom-opt_tree.pkl", "rb") as f:
+#     opt_tree = pickle.load(f)
+# with open("mushroom-treedf.pkl", "rb") as f:
+#     treedf = pickle.load(f)
