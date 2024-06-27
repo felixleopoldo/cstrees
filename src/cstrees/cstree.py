@@ -9,7 +9,7 @@ from tqdm import tqdm
 import networkx as nx
 import numpy as np
 import pandas as pd
-from causallearn.search.ConstraintBased.PC import pc
+from causallearn.search.PermutationBased.GRaSP import grasp
 
 import cstrees.stage as st
 from cstrees import dependence
@@ -967,8 +967,9 @@ class CStree:
         data: pd.DataFrame,
         gibbs_samples=5000,
         poss_cvars=None,
-        pc_alpha=0.05,
-        pc_method="gsq",
+        grasp_max_p=5,
+        grasp_depth=3,
+        grasp_score="local_score_BDeu",
         max_cvars=2,
         alpha_tot=1.0,
         method="BDeu",
@@ -979,10 +980,14 @@ class CStree:
 
         if poss_cvars is None:
             # estimate possible context variables and create score tables
-            graph = pc(data.values, pc_alpha, pc_method, node_names=data.columns)
+            graph = grasp(
+                data.values[1:],
+                score_func=grasp_score,
+                maxP=grasp_max_p,
+                depth=grasp_depth,
+            )
             poss_cvars = ctl.causallearn_graph_to_posscvars(
-                graph,
-                labels=data.columns,
+                graph, labels=data.columns, alg="grasp"
             )
 
         score_table, context_scores, _ = sc.order_score_tables(
@@ -997,8 +1002,10 @@ class CStree:
         orders, scores = ctl.gibbs_order_sampler(gibbs_samples, score_table)
         map_order = orders[scores.index(max(scores))]
 
-        # estimate CStree
+        # estimate CStree and stage params
         opt_tree = ctl._optimal_cstree_given_order(map_order, context_scores)
+        opt_tree.estimate_stage_parameters(data, alpha_tot=2.0, method="BDeu")
+
         old_labels = self.labels
         self.__dict__.update(opt_tree.__dict__)
         if len(old_labels):
