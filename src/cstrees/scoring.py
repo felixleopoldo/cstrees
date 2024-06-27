@@ -156,7 +156,13 @@ def _estimate_parameters(
 
     probs = [None] * cstree.cards[level]
 
+    if stage not in stage_counts:
+        # no observations here so use only prior
+        prob = 0 if alpha_obs == 0 else alpha_obs / alpha_stage
+        return [prob for p in probs]
+
     stage_counts_total = sum(stage_counts[stage].values())
+
     for i in range(cstree.cards[level]):
         # no observations here so use only prior
         if i not in stage_counts[stage]:
