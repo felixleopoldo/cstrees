@@ -1,4 +1,5 @@
 import operator
+import pickle
 from itertools import product, pairwise
 from functools import reduce
 import logging
@@ -965,7 +966,7 @@ class CStree:
     def fit(
         self,
         data: pd.DataFrame,
-        gibbs_samples=5000,
+        gibbs_samples=10000,
         poss_cvars=None,
         grasp_max_p=5,
         grasp_depth=3,
@@ -973,6 +974,7 @@ class CStree:
         max_cvars=2,
         alpha_tot=1.0,
         method="BDeu",
+        save_as="",
     ):
         """High-level wrapper combining model selection and parameter estimation."""
         import cstrees.scoring as sc
@@ -1005,6 +1007,27 @@ class CStree:
         # estimate CStree and stage params
         opt_tree = ctl._optimal_cstree_given_order(map_order, context_scores)
         opt_tree.estimate_stage_parameters(data, alpha_tot=2.0, method="BDeu")
+
+        if save_as is not "":
+            to_saves = [
+                poss_cvars,
+                score_table,
+                context_scores,
+                orders,
+                scores,
+                opt_tree,
+            ]
+            names = [
+                "poss_cvars",
+                "score_table",
+                "context_scores",
+                "orders",
+                "scores",
+                "opt_tree",
+            ]
+            for to_save, name in zip(to_saves, names):
+                with open(f"{save_as}-{name}.pkl", "wb") as f:
+                    pickle.dump(to_save, f)
 
         old_labels = self.labels
         self.__dict__.update(opt_tree.__dict__)
