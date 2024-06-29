@@ -53,3 +53,8 @@ dist/**
 .vscode
 .Rhistory
 build
+scripts/sim_results
+sim_results
+.RData
+devcontainer.json
+*.png
