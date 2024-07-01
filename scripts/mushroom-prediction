@@ -106,8 +106,13 @@ conf_mat = confusion_matrix(true, prediction)
 
 # plot LDAG
 ldag = opt_tree.to_LDAG()
-agraph = ldag.plot_graphviz()
-agraph.draw("mushroom-ldag.pdf")
+agraph, legend = ldag.plot_graphviz(with_legend=True)
+agraph.draw("mushroom-ldag.pdf", prog="dot")
+# , args="-Gratio=fill -Gsize=6 -Gfontsize=20")
+# args="-Grankdir='LR'"
+# )
+#  -Nfontsize=20 -Efontsize=20"
+# )
 
 # with open("mushroom-score_table.pkl", "rb") as f:
 #     score_table = pickle.load(f)
